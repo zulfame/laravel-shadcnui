@@ -7,9 +7,10 @@ const appName = 'AdminKit';
 
 createInertiaApp({
     title: (title) => (title ? `${title} · ${appName}` : appName),
+    // Halaman dimuat lazy (code-splitting) agar bundle awal tetap kecil.
     resolve: (name) => {
-        const pages = import.meta.glob('./pages/**/*.vue', { eager: true });
-        return pages[`./pages/${name}.vue`];
+        const pages = import.meta.glob('./pages/**/*.vue');
+        return pages[`./pages/${name}.vue`]();
     },
     setup({ el, App, props, plugin }) {
         createApp({ render: () => h(App, props) })

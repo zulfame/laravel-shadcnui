@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\RoleName;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -14,14 +15,28 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+
         return array_merge(parent::share($request), [
             'auth' => [
-                'user' => $request->session()->get('demo_user', config('adminkit.demo_user')),
+                'user' => $user ? [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'username' => $user->username,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'office' => $user->office,
+                    'avatar' => $user->avatar,
+                    'role' => $user->getRoleNames()->first(),
+                    'roles' => $user->getRoleNames(),
+                    'permissions' => $user->getAllPermissions()->pluck('name'),
+                    'is_admin' => $user->hasRole(RoleName::SuperAdmin->value),
+                ] : null,
             ],
             'branding' => config('adminkit.branding'),
             'flash' => [
-                'success' => $request->session()->get('success'),
-                'error' => $request->session()->get('error'),
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
             ],
         ]);
     }

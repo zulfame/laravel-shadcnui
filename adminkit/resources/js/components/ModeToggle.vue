@@ -1,51 +1,21 @@
 <script setup>
 import { Moon, Sun, Monitor } from 'lucide-vue-next';
-import { onMounted, ref } from 'vue';
 
 import Button from '@/components/ui/Button.vue';
 import DropdownMenu from '@/components/ui/DropdownMenu.vue';
 import DropdownMenuTrigger from '@/components/ui/DropdownMenuTrigger.vue';
 import DropdownMenuContent from '@/components/ui/DropdownMenuContent.vue';
 import DropdownMenuItem from '@/components/ui/DropdownMenuItem.vue';
+import { useTheme } from '@/composables/useTheme';
 import { cn } from '@/lib/utils';
 
-const STORAGE_KEY = 'adminkit.theme';
 const OPTIONS = [
     { value: 'light', label: 'Terang', icon: Sun },
     { value: 'dark', label: 'Gelap', icon: Moon },
     { value: 'system', label: 'Sistem', icon: Monitor },
 ];
 
-const theme = ref('system');
-
-const apply = (value) => {
-    const dark =
-        value === 'dark' ||
-        (value === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.documentElement.classList.toggle('dark', dark);
-};
-
-const setTheme = (value) => {
-    theme.value = value;
-    try {
-        window.localStorage.setItem(STORAGE_KEY, value);
-    } catch (e) {
-        /* penyimpanan tidak tersedia */
-    }
-    apply(value);
-};
-
-onMounted(() => {
-    try {
-        theme.value = window.localStorage.getItem(STORAGE_KEY) || 'system';
-    } catch (e) {
-        theme.value = 'system';
-    }
-    apply(theme.value);
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-        if (theme.value === 'system') apply('system');
-    });
-});
+const { theme, setTheme } = useTheme();
 </script>
 
 <template>

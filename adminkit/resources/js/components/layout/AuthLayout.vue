@@ -22,7 +22,7 @@ const highlights = [
     {
         icon: ShieldCheck,
         title: 'Peranan & hak akses',
-        description: 'Matriks izin per modul dengan pola kartu yang konsisten.',
+        description: 'Peranan pengguna dikelola dengan pola kartu yang konsisten.',
     },
     {
         icon: SlidersHorizontal,
@@ -53,17 +53,19 @@ const highlights = [
                     <span class="text-sm font-semibold tracking-tight" data-testid="auth-brand-name">
                         {{ branding.app_name || 'AdminKit' }}
                     </span>
-                    <span class="text-xs text-primary-foreground/60">{{ branding.company || 'Admin Panel Starter Kit' }}</span>
+                    <span class="text-xs text-primary-foreground/60">
+                        {{ branding.company || 'Admin Panel Starter Kit' }}
+                    </span>
                 </span>
             </div>
 
             <div class="relative z-10 max-w-md space-y-8">
                 <div class="space-y-3">
                     <h1 class="text-3xl font-semibold leading-tight tracking-tight xl:text-4xl">
-                        Fondasi panel admin yang rapi sejak menit pertama.
+                        Kelola pekerjaan harian dengan tenang.
                     </h1>
                     <p class="text-sm leading-relaxed text-primary-foreground/70">
-                        {{ branding.meta_description || 'Laravel 12 · Inertia · Vue 3 · TailwindCSS. Compact, monokrom, token-first.' }}
+                        {{ branding.meta_description || 'Sederhana untuk digunakan, kuat di balik layar.' }}
                     </p>
                 </div>
 
@@ -71,19 +73,23 @@ const highlights = [
 
                 <ul class="space-y-6">
                     <li v-for="item in highlights" :key="item.title" class="flex items-start gap-3">
-                        <span class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-primary-foreground/10">
+                        <span
+                            class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-primary-foreground/10"
+                        >
                             <component :is="item.icon" class="size-4" aria-hidden="true" />
                         </span>
                         <div class="space-y-0.5">
                             <p class="text-sm font-medium">{{ item.title }}</p>
-                            <p class="text-sm leading-relaxed text-primary-foreground/60">{{ item.description }}</p>
+                            <p class="text-sm leading-relaxed text-primary-foreground/60">
+                                {{ item.description }}
+                            </p>
                         </div>
                     </li>
                 </ul>
             </div>
 
-            <p class="relative z-10 text-xs text-primary-foreground/50">
-                {{ branding.footer_text || `© ${new Date().getFullYear()} AdminKit` }}
+            <p class="relative z-10 text-xs text-primary-foreground/50" data-testid="auth-brand-copyright">
+                {{ branding.footer_text || '© AdminKit' }}
             </p>
         </aside>
 
@@ -96,7 +102,9 @@ const highlights = [
                     </span>
                     <span class="flex flex-col">
                         <span class="text-sm font-semibold tracking-tight">{{ branding.app_name || 'AdminKit' }}</span>
-                        <span class="text-xs text-muted-foreground">{{ branding.company || 'Admin Panel Starter Kit' }}</span>
+                        <span class="text-xs text-muted-foreground">
+                            {{ branding.company || 'Admin Panel Starter Kit' }}
+                        </span>
                     </span>
                 </div>
 
@@ -108,11 +116,12 @@ const highlights = [
                         <a
                             :href="`mailto:${branding.support_email}`"
                             class="font-medium text-foreground underline-offset-4 hover:underline"
+                            data-testid="auth-support-email"
                         >
                             {{ branding.support_email }}
                         </a>
                     </p>
-                    <p>{{ branding.footer_text || `© ${new Date().getFullYear()} AdminKit` }}</p>
+                    <p>{{ branding.footer_text || '© AdminKit' }}</p>
                 </div>
             </div>
         </main>

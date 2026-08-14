@@ -10,7 +10,9 @@ import SidebarTrigger from '@/components/ui/sidebar/SidebarTrigger.vue';
 import AppSidebar from '@/components/layout/AppSidebar.vue';
 import NotificationsBell from '@/components/layout/NotificationsBell.vue';
 import ModeToggle from '@/components/ModeToggle.vue';
+import Toaster from '@/components/ui/Toaster.vue';
 import { getBreadcrumb } from '@/config/navigation';
+import { useFlashToast } from '@/composables/useFlashToast';
 
 /**
  * AppLayout — shell aplikasi.
@@ -20,6 +22,8 @@ import { getBreadcrumb } from '@/config/navigation';
  */
 const page = usePage();
 const trail = computed(() => getBreadcrumb(page.url.split('?')[0]).trail);
+
+useFlashToast();
 </script>
 
 <template>
@@ -61,5 +65,6 @@ const trail = computed(() => getBreadcrumb(page.url.split('?')[0]).trail);
                 <slot />
             </div>
         </SidebarInset>
+        <Toaster />
     </SidebarProvider>
 </template>

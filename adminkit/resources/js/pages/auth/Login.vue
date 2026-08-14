@@ -1,12 +1,11 @@
 <script setup>
-import { ref } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import { AlertCircle, Eye, EyeOff, Loader2, LogIn } from 'lucide-vue-next';
+import { AlertCircle, Loader2, LogIn } from 'lucide-vue-next';
 
 import AuthLayout from '@/components/layout/AuthLayout.vue';
 import Alert from '@/components/ui/Alert.vue';
-import AlertTitle from '@/components/ui/AlertTitle.vue';
 import AlertDescription from '@/components/ui/AlertDescription.vue';
+import AlertTitle from '@/components/ui/AlertTitle.vue';
 import Button from '@/components/ui/Button.vue';
 import Card from '@/components/ui/Card.vue';
 import CardContent from '@/components/ui/CardContent.vue';
@@ -17,74 +16,73 @@ import CardTitle from '@/components/ui/CardTitle.vue';
 import Checkbox from '@/components/ui/Checkbox.vue';
 import Input from '@/components/ui/Input.vue';
 import Label from '@/components/ui/Label.vue';
+import Toaster from '@/components/ui/Toaster.vue';
+import PasswordInput from '@/components/composite/PasswordInput.vue';
+import { useFlashToast } from '@/composables/useFlashToast';
 import { ACTION } from '@/constants/labels';
 
-const props = defineProps({ error: { type: String, default: '' } });
+/**
+ * Login — mengikuti design system: AuthLayout split-screen + Card
+ * (header judul, isi form `.form-dense`, footer aksi).
+ * Kredensial dapat berupa email, nama pengguna, atau nomor telepon.
+ */
+useFlashToast();
 
-const form = useForm({ email: 'admin@adminkit.test', password: 'password', remember: true });
-const showPassword = ref(false);
+const form = useForm({ credential: '', password: '', remember: false });
 
-const submit = () => form.post('/login');
+const submit = () =>
+    form.post('/login', {
+        onFinish: () => form.reset('password'),
+    });
 </script>
 
 <template>
     <Head title="Masuk" />
+
     <AuthLayout>
         <Card>
             <CardHeader>
-                <CardTitle class="text-xl">Masuk</CardTitle>
+                <CardTitle>Masuk</CardTitle>
                 <CardDescription>Gunakan kredensial akun Anda untuk melanjutkan.</CardDescription>
             </CardHeader>
 
             <form class="form-dense" novalidate @submit.prevent="submit">
                 <CardContent class="space-y-[var(--field-gap)]">
-                    <Alert v-if="props.error" variant="destructive" data-testid="login-error-alert">
+                    <Alert v-if="form.errors.credential" variant="destructive" data-testid="login-form-error">
                         <AlertCircle aria-hidden="true" />
                         <AlertTitle>Gagal masuk</AlertTitle>
-                        <AlertDescription>{{ props.error }}</AlertDescription>
+                        <AlertDescription>{{ form.errors.credential }}</AlertDescription>
                     </Alert>
 
                     <div class="space-y-[var(--item-gap)]">
-                        <Label for="email" class="text-sm">Kredensial</Label>
+                        <Label for="credential" class="text-sm">Kredensial</Label>
                         <Input
-                            id="email"
-                            v-model="form.email"
+                            id="credential"
+                            v-model="form.credential"
                             type="text"
                             autocomplete="username"
-                            placeholder="Email atau nama pengguna"
-                            data-testid="login-email-input"
+                            placeholder="Email, Nama Pengguna atau Nomor HP"
+                            data-testid="login-credential-input"
                         />
                     </div>
 
                     <div class="space-y-[var(--item-gap)]">
                         <Label for="password" class="text-sm">Kata Sandi</Label>
-                        <div class="relative">
-                            <Input
-                                id="password"
-                                v-model="form.password"
-                                :type="showPassword ? 'text' : 'password'"
-                                autocomplete="current-password"
-                                placeholder="Kata sandi"
-                                class="pr-9"
-                                data-testid="login-password-input"
-                            />
-                            <button
-                                type="button"
-                                class="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground"
-                                :aria-label="showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'"
-                                data-testid="login-password-toggle"
-                                @click="showPassword = !showPassword"
-                            >
-                                <EyeOff v-if="showPassword" class="size-4" />
-                                <Eye v-else class="size-4" />
-                            </button>
-                        </div>
+                        <PasswordInput
+                            id="password"
+                            v-model="form.password"
+                            placeholder="*****************************"
+                            testid="login-password-input"
+                        />
+                        <p v-if="form.errors.password" class="text-xs font-medium text-destructive">
+                            {{ form.errors.password }}
+                        </p>
                     </div>
 
                     <div class="flex items-center gap-2">
                         <Checkbox id="remember" v-model="form.remember" data-testid="login-remember-checkbox" />
                         <Label for="remember" class="text-sm font-normal text-muted-foreground">
-                            Ingat email saya
+                            Ingat saya
                         </Label>
                     </div>
                 </CardContent>
@@ -99,4 +97,6 @@ const submit = () => form.post('/login');
             </form>
         </Card>
     </AuthLayout>
+
+    <Toaster />
 </template>

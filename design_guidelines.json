@@ -1,0 +1,117 @@
+{
+  "theme_strategy": "The Architectural Split (Glass & Void)",
+  "concept": "Breaking the generic 'white card on gray background' SaaS mold. A high-contrast, split-screen layout prioritizing emotional elegance. The functional form sits in a clean, minimalist void, contrasted by a cinematic, architectural/abstract texture on the opposing side.",
+  "typography": {
+    "brand_display_font": {
+      "name": "Playfair Display",
+      "import_instruction": "Add Google Font import for 'Playfair Display' (weights 400, 500, 600) to the main layout or app.css.",
+      "usage": "Use ONLY for the 'AdminKit' brand name and the hero tagline to create a 'Luxury/Editorial' contrast against the functional interface."
+    },
+    "body_font": {
+      "name": "Geist",
+      "usage": "Use for all inputs, labels, and standard text (already defined in the app)."
+    },
+    "hierarchy": {
+      "brand_logo": "text-2xl font-semibold tracking-tight font-serif",
+      "h1_tagline": "text-4xl lg:text-5xl font-medium tracking-tight font-serif leading-tight mb-2",
+      "subtitle": "text-sm text-muted-foreground",
+      "labels": "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+    }
+  },
+  "colors": {
+    "palette_rules": "Strict adherence to the existing monochrome compact UI (FlowDesk style). No new vibrant colors. Use pure contrast (black/white/zinc) using existing CSS variables.",
+    "tokens": {
+      "background": "hsl(var(--background))",
+      "foreground": "hsl(var(--foreground))",
+      "muted": "hsl(var(--muted))",
+      "border": "hsl(var(--border))",
+      "error": "hsl(var(--destructive))"
+    }
+  },
+  "layouts": {
+    "main_container": "min-h-screen w-full flex flex-col lg:flex-row bg-background text-foreground",
+    "left_panel": "w-full lg:w-[45%] xl:w-[40%] flex flex-col justify-center items-center p-8 lg:p-16 xl:p-24 relative z-10",
+    "form_container": "w-full max-w-[400px] flex flex-col gap-6",
+    "right_panel": "hidden lg:flex lg:w-[55%] xl:w-[60%] relative bg-zinc-950 overflow-hidden"
+  },
+  "components": {
+    "logo_area": {
+      "classes": "flex items-center gap-2 mb-12",
+      "icon": "Lucide Hexagon or Box (w-6 h-6)",
+      "text": "AdminKit"
+    },
+    "inputs": {
+      "credential_input": {
+        "label": "Kredensial (Email / Username / No. HP)",
+        "classes": "flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all shadow-sm"
+      },
+      "password_input": {
+        "wrapper": "relative w-full",
+        "classes": "flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all shadow-sm pr-10",
+        "toggle_button": "absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors",
+        "icons": "Lucide Eye / EyeOff"
+      }
+    },
+    "checkbox": {
+      "wrapper": "flex items-center space-x-2",
+      "label": "Ingat saya"
+    },
+    "button": {
+      "classes": "inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-foreground text-background hover:bg-foreground/90 h-11 px-4 py-2 w-full shadow-md active:scale-[0.98]",
+      "loading_state": "Include Lucide Loader2 with 'animate-spin' class when submitting."
+    },
+    "alerts": {
+      "form_error": "bg-destructive/10 text-destructive border border-destructive/20 p-3 rounded-md text-sm flex items-start gap-2",
+      "field_error": "text-[0.8rem] font-medium text-destructive mt-1"
+    }
+  },
+  "motion": {
+    "entrance": "Staggered fade-in for form elements. Use 'animate-in fade-in slide-in-from-bottom-4 duration-500'. Apply utility classes or @vueuse/motion if installed.",
+    "micro_interactions": "Inputs have subtle shadow expansion on focus. Button scales down 2% on active (active:scale-[0.98]). Image panel has a very slow scale effect on load."
+  },
+  "media": {
+    "strategy": "Render two distinct images based on the active theme (dark/light) to maintain emotional resonance.",
+    "dark_mode_image": {
+      "url": "https://images.unsplash.com/photo-1638376776402-9a4b75fe21bb?crop=entropy&cs=srgb&fm=jpg&w=1920",
+      "description": "Elegant abstract black and white wavy lines.",
+      "classes": "hidden dark:block object-cover w-full h-full opacity-90 animate-in fade-in duration-1000"
+    },
+    "light_mode_image": {
+      "url": "https://images.unsplash.com/photo-1496865534669-25ec2a3a0fd3?crop=entropy&cs=srgb&fm=jpg&w=1920",
+      "description": "Light, airy, elegant minimalist architecture.",
+      "classes": "block dark:hidden object-cover w-full h-full opacity-95 animate-in fade-in duration-1000"
+    },
+    "overlay": "Absolute inset-0 bg-black/10 dark:bg-black/40 pointer-events-none mix-blend-multiply dark:mix-blend-overlay"
+  },
+  "accessibility": {
+    "testing_attributes": {
+      "email_input": "data-testid=\"login-credential-input\"",
+      "password_input": "data-testid=\"login-password-input\"",
+      "password_toggle": "data-testid=\"login-password-toggle\"",
+      "remember_checkbox": "data-testid=\"login-remember-checkbox\"",
+      "submit_button": "data-testid=\"login-submit-button\"",
+      "form_error": "data-testid=\"login-form-error\""
+    },
+    "aria": "Use aria-invalid on inputs when errors exist. Use aria-describedby linking input to error message IDs."
+  },
+  "instructions_to_main_agent": [
+    "Modify ONLY `/app/adminkit/resources/js/pages/auth/Login.vue`.",
+    "Use Inertia.js `useForm` for state management (kredensial, password, remember).",
+    "Implement the 'Kredensial' logic: one single input field bound to 'kredensial' in the form data, handling the fallback to email/username/phone on the backend (you only need to send the 'kredensial' payload).",
+    "Use `<script setup>` syntax for Vue 3.",
+    "Inject the Lucide icons: `Eye`, `EyeOff`, `Loader2`, `Hexagon`, `AlertCircle`.",
+    "Implement the password visibility toggle using a reactive ref.",
+    "Do NOT use external motion libraries unless already installed. Use Tailwind's built-in transition classes or `tailwindcss-animate`.",
+    "To handle Dark Mode gracefully, use the Tailwind `dark:` variant extensively on the form side, and use `dark:block hidden` vs `block dark:hidden` for the two provided Unsplash images on the right side.",
+    "Add a 'Tema Terang/Gelap' floating toggle ONLY if it doesn't exist globally; the prompt implies the toggle is already available in the app, but since this is an auth page, you may place a discrete toggle at the top right of the left panel if necessary.",
+    "DO NOT use `transparent` backgrounds over the image for the form. Keep the form strictly in the solid background panel (left side)."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You tend to converge toward generic outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects only where appropriate (not for primary text readability areas).",
+    "Do NOT apply universal transition (transition: all). Use specific transitions (transition-colors, transition-transform).",
+    "Every interaction needs micro-animations - hover states, focus rings.",
+    "All interactive elements MUST include a data-testid attribute in kebab-case."
+  ]
+}
