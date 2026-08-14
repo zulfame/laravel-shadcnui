@@ -1,0 +1,314 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    margin: 0;
+    /* Primary: Geist · Fallback: Inter, system-ui, sans-serif (R04) */
+    font-family: "Geist", "Inter", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+    font-family:
+        source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+}
+
+/*
+ * ─────────────────────────────────────────────────────────────────────────
+ * 2-LAYER DESIGN TOKEN ARCHITECTURE (R28)
+ * ─────────────────────────────────────────────────────────────────────────
+ * Layer 1 — Primitive tokens: raw, theme-independent HSL triplets
+ *           (monochrome neutral scale + red for destructive + chart hues).
+ *           These NEVER change between light and dark. Do not consume directly.
+ * Layer 2 — Semantic tokens: role-based aliases (background, foreground, …)
+ *           that reference Layer 1. Light/Dark only re-map semantics → primitives.
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+@layer base {
+    :root {
+        /* ── Layer 1 · Primitives (raw HSL triplets — do not consume directly) ── */
+        --neutral-0: 0 0% 100%;
+        --neutral-50: 0 0% 98%;
+        --neutral-100: 0 0% 96.1%;
+        --neutral-200: 0 0% 89.8%;
+        --neutral-300: 0 0% 83.1%;
+        --neutral-400: 0 0% 63.9%;
+        --neutral-500: 0 0% 45.1%;
+        --neutral-600: 0 0% 32.2%;
+        --neutral-700: 0 0% 25%;
+        --neutral-800: 0 0% 14.9%;
+        --neutral-900: 0 0% 9%;
+        --neutral-950: 0 0% 3.9%;
+
+        --red-500: 0 84.2% 60.2%;
+        --red-900: 0 62.8% 30.6%;
+
+        /* Feedback-only hues (FD7) — dipakai HANYA untuk status umpan balik
+           (toast/badge status), bukan dekorasi UI. UI tetap monokrom. */
+        --green-600: 142 71% 36%;
+        --green-400: 142 62% 52%;
+        --amber-600: 32 95% 38%;
+        --amber-400: 38 92% 58%;
+
+        --hue-chart-1: 12 76% 61%;
+        --hue-chart-2: 173 58% 39%;
+        --hue-chart-3: 197 37% 24%;
+        --hue-chart-4: 43 74% 66%;
+        --hue-chart-5: 27 87% 67%;
+
+        /* ── Layer 2 · Semantic tokens → reference primitives (LIGHT) ── */
+        --background: var(--neutral-0);
+        --foreground: var(--neutral-950);
+        --card: var(--neutral-0);
+        --card-foreground: var(--neutral-950);
+        --popover: var(--neutral-0);
+        --popover-foreground: var(--neutral-950);
+        --primary: var(--neutral-900);
+        --primary-foreground: var(--neutral-50);
+        --secondary: var(--neutral-100);
+        --secondary-foreground: var(--neutral-900);
+        --muted: var(--neutral-100);
+        --muted-foreground: var(--neutral-500);
+        --accent: var(--neutral-100);
+        --accent-foreground: var(--neutral-900);
+        --destructive: var(--red-500);
+        --destructive-foreground: var(--neutral-50);
+        --success: var(--green-600);
+        --success-foreground: var(--neutral-0);
+        --warning: var(--amber-600);
+        --warning-foreground: var(--neutral-0);
+        --border: var(--neutral-200);
+        --input: var(--neutral-200);
+        --ring: var(--neutral-950);
+        --radius: 0.5rem;
+
+        /* ── Density — COMPACT IS MANDATORY (FD1): single, non-switchable mode ── */
+        --ctl-h: 2rem;          /* control height · h-8 */
+        --ctl-h-sm: 1.75rem;    /* small control · h-7 */
+        --ctl-h-lg: 2.25rem;    /* large control · h-9 */
+        --field-gap: 0.75rem;   /* form field-stack · space-y-3 */
+        --item-gap: 0.375rem;   /* label→control · space-y-1.5 */
+        --tbl-cell-py: 0.25rem; /* table row vertical padding · compact */
+
+        --chart-1: var(--hue-chart-1);
+        --chart-2: var(--hue-chart-2);
+        --chart-3: var(--hue-chart-3);
+        --chart-4: var(--hue-chart-4);
+        --chart-5: var(--hue-chart-5);
+
+        /* ── State hues (E9) — HANYA untuk badge Status & Prioritas tugas.
+           Dikecualikan dari aturan monokrom agar status cepat terbaca. ── */
+        --st-draft: 220 9% 46%;
+        --st-pending: 32 95% 38%;
+        --st-progress: 217 91% 48%;
+        --st-done: 142 71% 36%;
+        --st-overdue: 0 72% 48%;
+        --st-cancelled: 0 0% 45%;
+        --st-archived: 262 52% 47%;
+        --pr-urgent: 0 72% 48%;
+        --pr-high: 25 95% 42%;
+        --pr-medium: 217 91% 48%;
+        --pr-low: 220 9% 46%;
+        --mt-internal: 217 91% 48%;
+        --mt-eksternal: 262 52% 47%;
+        --mt-online: 174 72% 34%;
+        --mt-klien: 25 95% 42%;
+        --mt-review: 330 74% 44%;
+        /* Agenda kalender (E9) — warna terang agar jenis agenda cepat dibedakan */
+        --ev-meeting: 217 91% 55%;
+        --ev-task: 25 95% 50%;
+        --ev-reminder: 271 81% 60%;
+        --ev-event: 165 82% 40%;
+        /* Linimasa Time Schedule (E9) — kategori & kolom hari libur */
+        --ts-plan: 38 92% 55%;
+        --ts-event: 160 84% 39%;
+        --ts-holiday: 347 77% 57%;
+        --ts-holiday-col: 0 86% 97%;
+        --ts-event-col: 152 70% 92%;
+
+        /* Sidebar semantics (monochrome-first) */
+        --sidebar-background: var(--neutral-50);
+        --sidebar-foreground: var(--neutral-700);
+        --sidebar-primary: var(--neutral-900);
+        --sidebar-primary-foreground: var(--neutral-50);
+        --sidebar-accent: var(--neutral-100);
+        --sidebar-accent-foreground: var(--neutral-900);
+        --sidebar-border: var(--neutral-200);
+        --sidebar-ring: var(--neutral-950);
+    }
+
+    .dark {
+        /* ── Layer 2 · Semantic tokens → reference primitives (DARK) ── */
+        --background: var(--neutral-950);
+        --foreground: var(--neutral-50);
+        --card: var(--neutral-950);
+        --card-foreground: var(--neutral-50);
+        --popover: var(--neutral-950);
+        --popover-foreground: var(--neutral-50);
+        --primary: var(--neutral-50);
+        --primary-foreground: var(--neutral-900);
+        --secondary: var(--neutral-800);
+        --secondary-foreground: var(--neutral-50);
+        --muted: var(--neutral-800);
+        --muted-foreground: var(--neutral-400);
+        --accent: var(--neutral-800);
+        --accent-foreground: var(--neutral-50);
+        --destructive: var(--red-900);
+        --destructive-foreground: var(--neutral-50);
+        --success: var(--green-400);
+        --success-foreground: var(--neutral-950);
+        --warning: var(--amber-400);
+        --warning-foreground: var(--neutral-950);
+        --border: var(--neutral-800);
+        --input: var(--neutral-800);
+        --ring: var(--neutral-300);
+
+        --chart-1: 220 70% 50%;
+        --chart-2: 160 60% 45%;
+        --chart-3: 30 80% 55%;
+        --chart-4: 280 65% 60%;
+        --chart-5: 340 75% 55%;
+
+        /* State hues (E9) — versi terang untuk latar gelap */
+        --st-draft: 220 9% 65%;
+        --st-pending: 38 92% 62%;
+        --st-progress: 213 94% 68%;
+        --st-done: 142 62% 55%;
+        --st-overdue: 0 84% 65%;
+        --st-cancelled: 0 0% 63%;
+        --st-archived: 258 90% 74%;
+        --pr-urgent: 0 84% 65%;
+        --pr-high: 27 96% 61%;
+        --pr-medium: 213 94% 68%;
+        --pr-low: 220 9% 65%;
+        --mt-internal: 213 94% 68%;
+        --mt-eksternal: 258 90% 74%;
+        --mt-online: 172 66% 50%;
+        --mt-klien: 27 96% 61%;
+        --mt-review: 330 81% 66%;
+        /* Agenda kalender (E9) — dark */
+        --ev-meeting: 213 94% 68%;
+        --ev-task: 27 96% 61%;
+        --ev-reminder: 270 95% 75%;
+        --ev-event: 163 74% 50%;
+        /* Linimasa Time Schedule (E9) — dark */
+        --ts-plan: 41 96% 62%;
+        --ts-event: 158 64% 52%;
+        --ts-holiday: 351 95% 71%;
+        --ts-holiday-col: 350 40% 16%;
+        --ts-event-col: 155 40% 18%;
+
+        /* Sidebar semantics (dark) */
+        --sidebar-background: var(--neutral-900);
+        --sidebar-foreground: var(--neutral-100);
+        --sidebar-primary: var(--neutral-50);
+        --sidebar-primary-foreground: var(--neutral-900);
+        --sidebar-accent: var(--neutral-800);
+        --sidebar-accent-foreground: var(--neutral-100);
+        --sidebar-border: var(--neutral-800);
+        --sidebar-ring: var(--neutral-300);
+    }
+
+}
+
+/* Badge status/prioritas berwarna (E9): tint lembut + teks & garis sewarna.
+   Hue di-set lewat inline `--chip` agar tetap token-based. */
+@layer components {
+    .state-chip {
+        background-color: hsl(var(--chip) / 0.12);
+        color: hsl(var(--chip));
+        border-color: hsl(var(--chip) / 0.32);
+    }
+}
+
+/* Density-aware table rows (opt-in via `.tbl-density`) — R47.1/R47.8. */
+@layer components {
+    .tbl-density td,
+    .tbl-density th {
+        padding-top: var(--tbl-cell-py);
+        padding-bottom: var(--tbl-cell-py);
+    }
+    .tbl-density td {
+        font-size: 0.8125rem; /* ~13px */
+        line-height: 1.5rem; /* fixed line box so badge rows match plain rows */
+        vertical-align: middle;
+    }
+    .tbl-density td .inline-flex,
+    .tbl-density td [data-slot="badge"] {
+        vertical-align: middle;
+    }
+    .tbl-density th {
+        height: auto;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.75rem;
+    }
+    .tbl-density th * {
+        text-transform: uppercase;
+    }
+    .tbl-density thead th {
+        background-color: hsl(var(--muted) / 0.5);
+    }
+
+    /* Compact form density (opt-in via `.form-dense`) — R47.7 + FD8.
+       FD8: label box kini sama dengan kotak teks (tanpa slack inline ±4px),
+       jadi nilai gap = jarak yang benar-benar terlihat. Dense dinaikkan
+       0.125rem → 0.25rem (4px) agar label tidak menempel ke kontrol. */
+    .form-dense {
+        --item-gap: 0.25rem;
+    }
+    /* `:where(label)` menjaga specificity tetap 1 class agar utilitas
+       ukuran teks (mis. `text-sm` pada label Login) masih bisa menimpanya. */
+    .form-dense :where(label),
+    .form-dense input,
+    .form-dense textarea,
+    .form-dense [role="combobox"] {
+        font-size: 13px;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+        /* FD10 — Skala tipografi compact: teks isi default 14px.
+           Tabel (.tbl-density) & form (.form-dense) turun ke 13px,
+           judul card/dialog 16px, teks bantu 12px. */
+        font-size: 0.875rem;
+        line-height: 1.45;
+    }
+}
+
+/* ── Utilities retained for not-yet-migrated modules (removed per phase) ── */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.4); background-clip: content-box; }
+
+.thin-scroll { scrollbar-width: thin; scrollbar-color: hsl(var(--muted-foreground) / 0.45) transparent; }
+.thin-scroll::-webkit-scrollbar { width: 8px; }
+.thin-scroll::-webkit-scrollbar-track { background: transparent; }
+.thin-scroll::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.45); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+.thin-scroll::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.65); background-clip: content-box; }
+
+/* Rich-text editor content (Catatan & Rapat) */
+.rte-content:empty:before {
+    content: attr(data-placeholder);
+    color: hsl(var(--muted-foreground));
+}
+.rte-content ul { list-style: disc; padding-left: 1.5rem; }
+.rte-content ol { list-style: decimal; padding-left: 1.5rem; }
+.rte-content table { border-collapse: collapse; width: 100%; margin: 0.5rem 0; }
+.rte-content td, .rte-content th { border: 1px solid hsl(var(--border)); padding: 0.35rem 0.5rem; }
+.rte-content img { max-width: 100%; border-radius: 0.5rem; margin: 0.5rem 0; }
+
+@media print {
+  aside, header, .no-print { display: none !important; }
+  main { padding: 0 !important; }
+}

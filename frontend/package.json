@@ -1,0 +1,8 @@
+{
+  "name": "frontend",
+  "private": true,
+  "scripts": {
+    "start": "cd /app/adminkit && PHP_CLI_SERVER_WORKERS=6 php artisan serve --host=0.0.0.0 --port=3000",
+    "build": "cd /app/adminkit && yarn build"
+  }
+}

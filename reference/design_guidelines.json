@@ -1,0 +1,51 @@
+{
+  "project_name": "FlowDesk",
+  "app_type": "internal_operations_saas",
+  "source_of_truth": [
+    "frontend/docs/DESIGN_SYSTEM.md",
+    "frontend/docs/DESIGN_SYSTEM_RULES.md",
+    "frontend/docs/FLOWDESK_EXCEPTIONS.md (aturan wajib FD1–FD15 & pengecualian E1–E11)",
+    "frontend/docs/design-guard.sh (24 pemeriksaan otomatis, WAJIB exit 0)"
+  ],
+  "core_philosophy": "Compact enterprise, monokrom, token-first. Warna hanya untuk data milik pengguna (status/prioritas/kalender) dan grafik. Tidak ada gradien, tanpa emoji, ikon hanya lucide-react.",
+  "ui_language": "Bahasa Indonesia (semua label, toast, dan pesan galat)",
+  "theme_strategy": "next-themes (terang/gelap) memakai token 2 lapis: --neutral-* (hue) → --background/--card/--muted/--sidebar-* (peran). Warna ditulis HANYA sebagai hsl(var(--token)); DILARANG hex atau kelas warna Tailwind mentah.",
+  "typography": {
+    "font": "Geist (sans) + Geist Mono untuk angka teknis",
+    "base": "14px",
+    "table_and_form": "13px",
+    "meta_and_hint": "12px",
+    "card_title": "16px (text-base)",
+    "page_title": "tidak ada H1 di halaman — judul diambil dari breadcrumb shell"
+  },
+  "color_palette": {
+    "neutral_light": { "background": "hsl(0 0% 100%)", "card": "hsl(0 0% 100%)", "sidebar": "hsl(0 0% 98%)", "muted": "hsl(0 0% 96%)", "border": "hsl(0 0% 90%)" },
+    "neutral_dark": { "background": "hsl(0 0% 4%)", "card": "hsl(0 0% 7%)", "sidebar": "hsl(0 0% 9%)", "muted": "hsl(0 0% 15%)", "border": "hsl(0 0% 20%)" },
+    "status_tokens": "--st-draft / --st-pending / --st-progress / --st-done / --st-overdue / --st-archived (dipakai StateChip)",
+    "priority_tokens": "--pr-urgent / --pr-high / --pr-medium / --pr-low (dipakai PriorityBadge dan grafik prioritas)",
+    "chart_tokens": "--chart-1 … --chart-5 untuk kategori; --ev-meeting (biru) & --success (hijau) untuk seri Tren Mingguan",
+    "note": "E10: grafik DIKECUALIKAN dari monokrom demi keterbacaan, tetapi tetap token-only"
+  },
+  "spacing_and_layout": {
+    "page": "space-y-6, tanpa header halaman terpisah",
+    "card_header_footer": "px-6 py-3 (Card) / px-6 py-4 (Dialog), latar bg-sidebar (FD14)",
+    "form": ".form-dense dengan --field-gap dan --item-gap",
+    "list_cards": "tinggi terkunci + isi scroll (FD15), bukan kartu yang memanjang"
+  },
+  "component_styling": {
+    "primitives": "shadcn/ui di frontend/src/components/ui — sudut rounded-xl (card) / rounded-lg (dialog), border 1px, tanpa shadow berat",
+    "composites": "DataTableCard, EditableCard, ConfirmDeleteDialog, StateChip, PriorityBadge, TicketStatusBadge, DeadlineBadge, DocumentManager, UserSelect, AvatarUpload",
+    "tables": "DataTableCard (mode klien atau server) 13px, aksi baris lewat dropdown ⋯ dengan ikon (Eye untuk Detail)",
+    "dialogs": "footer justify-between — Batal (ikon X) di kiri, aksi utama (ikon Save/Send) di kanan",
+    "buttons": "semua tombol WAJIB berikon lucide di kiri label, termasuk Batal/Tutup (FD13)"
+  },
+  "micro_interactions": "transisi properti spesifik (opacity/background-color), hover baris bg-muted/40, tanpa animasi berlebihan",
+  "iconography": "lucide-react saja (size-4 pada tombol, size-3.5 pada ikon aksi kecil). DILARANG emoji.",
+  "general_ui_ux_guidelines": [
+    "Setiap elemen interaktif dan informasi penting WAJIB punya data-testid kebab-case",
+    "Label aksi memakai konstanta ACTION dari src/constants/labels.js",
+    "Toast memakai helper notify (sonner)",
+    "Jalankan ./docs/design-guard.sh di folder frontend setelah setiap perubahan UI — harus exit 0"
+  ],
+  "instructions_to_main_agent": "Baca frontend/docs/FLOWDESK_EXCEPTIONS.md sebelum mengubah UI: file itu memuat aturan wajib FlowDesk (FD1–FD15) dan pengecualian resmi (E1–E11). Jangan menimpa gaya primitive per halaman; ubah primitive bila aturan berlaku menyeluruh, lalu catat di dokumen dan tambahkan pemeriksaan guard."
+}
