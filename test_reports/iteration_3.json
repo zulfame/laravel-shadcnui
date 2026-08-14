@@ -1,0 +1,52 @@
+{
+  "summary": "Iterasi 3 (Kelola Pengguna server-side, Simpan Profil, Ubah Kata Sandi, Hak Akses Menu) diuji end-to-end via Playwright pada preview URL. 11 dari 12 kriteria review LULUS secara fungsional (CRUD pengguna, validasi server per-field, unik username/email, min:8 kata sandi, dialog konfirmasi hapus, proteksi hapus diri, pencarian debounce, paginasi server, simpan profil yang persist + update sidebar, ubah kata sandi + toast + login ulang dengan sandi baru, backend menegakkan permission `users.view` = HTTP 403 untuk pengguna tanpa izin dan menu tersembunyi dari sidebar). Namun ditemukan 2 BUG PENTING pada komponen Select yang membuat sebagian data-testid yang dijanjikan tidak muncul dan filter status tidak bisa direset lewat UI. Kata sandi Zulfadli Rizal SUDAH DIKEMBALIKAN ke 'password' dan seed data uji (role/user 'Anggota Uji') sudah dihapus.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "resources/js/components/ui/Select.vue",
+        "issue": "Select membungkus reka-ui SelectRoot (headless, tanpa elemen DOM akar), sehingga `data-testid` yang di-set di <Select .../> HILANG di DOM. Akibatnya selector wajib review — `users-filter-status`, `users-page-size`, dan `user-form-role` — TIDAK dapat ditemukan (0 elemen). Solusi: teruskan attrs ke SelectTrigger (mis. tambahkan prop `testid`/`data-testid` pada Select lalu ikatkan ke SelectTrigger, atau pakai `<SelectTrigger v-bind=\"$attrs\">` dengan `inheritAttrs:false`).",
+        "selector": "[data-testid='users-filter-status'], [data-testid='users-page-size'], [data-testid='user-form-role']",
+        "priority": "HIGH"
+      },
+      {
+        "component": "resources/js/pages/Users.vue statusOptions",
+        "issue": "Opsi filter status memakai `{ value: '', label: 'Semua status' }`. reka-ui melempar error konsol setiap render (`<SelectItem /> must have a value prop that is not an empty string`) dan opsi 'Semua status' TIDAK ditampilkan di dropdown — filter status tidak bisa direset dari UI setelah dipilih Aktif/Nonaktif. Gunakan sentinel non-kosong (mis. 'all') di UI lalu petakan ke '' saat kirim ke server, atau sediakan tombol 'Bersihkan filter'.",
+        "selector": "Semua status option di [data-testid='users-filter-status']",
+        "priority": "HIGH"
+      },
+      {
+        "component": "resources/js/pages/Users.vue",
+        "issue": "Tabrakan data-testid: <div data-testid=\"users-page\"> pada wrapper halaman bertabrakan dengan indikator paginasi `${testid}-page` = `users-page` dari DataTableCard. Selector `[data-testid='users-page']` menjadi ambigu (dua elemen). Ganti wrapper ke mis. `users-page-view` atau `users-page-root`.",
+        "selector": "[data-testid='users-page']",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Perbaiki Select.vue agar meneruskan `data-testid` (dan atribut lain) ke SelectTrigger — perlu untuk users-filter-status, users-page-size, dan user-form-role sesuai spesifikasi review.",
+    "Hindari SelectItem value '' pada statusOptions Users.vue; gunakan sentinel (mis. 'all') dan kembalikan ke '' saat request. Ini juga menghilangkan error konsol di setiap render halaman /users.",
+    "Ganti data-testid wrapper halaman `users-page` di Users.vue agar tidak bentrok dengan indikator paginasi `users-page`."
+  ],
+  "critical_code_review_comments": [
+    "components/ui/Select.vue: karena SelectRoot reka-ui tidak render DOM node, atribut fallthrough Vue tidak sampai ke tombol. Tetapkan `inheritAttrs: false` dan bind `v-bind=\"$attrs\"` ke SelectTrigger, atau tambahkan prop `testid` khusus.",
+    "pages/Users.vue statusOptions: value kosong tidak valid pada reka-ui SelectItem; refaktor pemetaan status pada layer UI vs query."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (semua endpoint /users CRUD, /profile, /profile/password + permission gate 403 berfungsi sesuai harapan)",
+    "frontend": "~85% (fungsi inti CRUD/profile/password lulus; 2 selector kunci — users-filter-status & users-page-size — tidak ada di DOM sehingga pengujian sesuai spec harus pakai selector alternatif, dan filter status tidak bisa direset dari UI)"
+  },
+  "seed_data_creation": "Uji CRUD memakai user sementara 'test_pengguna_baru' (dibuat lalu dihapus dalam skrip). Uji hak akses: role 'Anggota Uji' (permissions: dashboard.view, profile.view) + user 'anggota_uji' (kata sandi 'password') dibuat via tinker LALU DIHAPUS setelah verifikasi. State DB dikembalikan ke seed awal.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "Super Admin — username: zulfame, kata sandi: password (SUDAH direset kembali ke 'password' setelah uji ubah sandi). Detail: /app/memory/test_credentials.md",
+  "context_for_next_testing_agent": "Setelah main agent memperbaiki Select.vue, verifikasi ulang bahwa selector [data-testid='users-filter-status'], [data-testid='users-page-size'], dan [data-testid='user-form-role'] muncul di DOM (page.locator(...).count() > 0). Pastikan juga opsi 'Semua status' bisa dipilih ulang (filter dapat direset), dan tidak ada lagi error konsol 'SelectItem must have a value prop that is not an empty string'. Tabrakan testid 'users-page' juga perlu diperiksa. Untuk uji, login: `zulfame` / `password`. Data seed: `php artisan migrate:fresh --seed --force`. Password Zulfadli Rizal dipastikan 'password' (dipulihkan via `bcrypt('password')`).",
+  "rca_of_the_issue": "Root cause bug Select: `components/ui/Select.vue` menampung reka-ui `SelectRoot` sebagai root template, tetapi SelectRoot adalah komponen provider tanpa DOM node — jadi atribut fallthrough (data-testid, dsb.) tidak punya tempat untuk menempel dan hilang. Untuk statusOptions, reka-ui SelectItem tidak mengizinkan value=\"\" (empty string) karena '' sudah dipakai untuk 'kosongkan pilihan' pada SelectRoot; nilai kosong dilempar error dan item tidak dirender. Kedua bug ini terisolasi pada komponen Select dan mudah diperbaiki tanpa mengubah kontrak controller."
+}

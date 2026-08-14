@@ -29,10 +29,12 @@ const page = usePage();
 const auth = computed(() => page.props.auth?.user ?? {});
 const branding = computed(() => page.props.branding ?? {});
 const isAdmin = computed(() => Boolean(auth.value.is_admin));
+const permissions = computed(() => auth.value.permissions ?? []);
+const can = (perm) => permissions.value.includes(perm);
 
-const areas = computed(() => getAreas(isAdmin.value));
+const areas = computed(() => getAreas(can));
 const areaId = ref(DEFAULT_AREA_ID);
-const activeArea = computed(() => getArea(areaId.value, isAdmin.value));
+const activeArea = computed(() => getArea(areaId.value, can));
 
 const pathname = computed(() => page.url.split('?')[0]);
 
@@ -57,7 +59,7 @@ const changeArea = (nextId) => {
     } catch (e) {
         /* penyimpanan tidak tersedia */
     }
-    const target = firstRouteOf(getArea(nextId, isAdmin.value));
+    const target = firstRouteOf(getArea(nextId, can));
     if (target && target !== pathname.value) router.visit(target);
 };
 

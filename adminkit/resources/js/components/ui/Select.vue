@@ -20,6 +20,10 @@ const props = defineProps({
     class: { type: null, default: '' },
 });
 defineEmits(['update:modelValue']);
+
+// SelectRoot reka-ui tidak merender DOM node, jadi atribut (mis. data-testid)
+// harus diteruskan manual ke trigger.
+defineOptions({ inheritAttrs: false });
 </script>
 
 <template>
@@ -28,6 +32,7 @@ defineEmits(['update:modelValue']);
         @update:model-value="$emit('update:modelValue', $event)"
     >
         <SelectTrigger
+            v-bind="$attrs"
             :class="
                 cn(
                     'flex h-[var(--ctl-h-sm)] w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-2.5 text-xs shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring',

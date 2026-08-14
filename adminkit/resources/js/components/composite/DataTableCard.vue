@@ -26,15 +26,19 @@ import TableHead from '@/components/ui/TableHead.vue';
 import TableHeader from '@/components/ui/TableHeader.vue';
 import TableRow from '@/components/ui/TableRow.vue';
 import EmptyState from '@/components/composite/EmptyState.vue';
+import Skeleton from '@/components/ui/Skeleton.vue';
 import { ACTION } from '@/constants/labels';
 
 /**
  * DataTableCard — tabel standar berbingkai kartu:
  * Card → toolbar dalam kotak muted → tabel padat 13px → footer paginasi.
  *
+ * Dua mode:
+ *   CLIENT (default) — cari/urut/paginasi dihitung di browser dari `rows`.
+ *   SERVER (`server`) — komponen hanya mengirim `update:*`; induk yang query.
+ *
  * `columns`: [{ key, label, align?, width?, sortable? }]
  * Sel kustom lewat slot bernama `cell-<key>` dengan payload { row, value }.
- * Placeholder pencarian DIKUNCI ke ACTION.search agar seragam di seluruh app.
  */
 const props = defineProps({
     title: { type: String, required: true },
@@ -47,56 +51,98 @@ const props = defineProps({
     emptyTitle: { type: String, default: '' },
     emptyDescription: { type: String, default: '' },
     showRefresh: { type: Boolean, default: true },
+    // ── mode server ──
+    server: { type: Boolean, default: false },
+    loading: { type: Boolean, default: false },
+    search: { type: String, default: '' },
+    sort: { type: Object, default: () => ({ key: '', dir: 'asc' }) },
+    meta: { type: Object, default: () => ({ page: 1, per_page: 10, total: 0, last_page: 1 }) },
 });
 
-const emit = defineEmits(['refresh']);
+const emit = defineEmits(['refresh', 'update:search', 'update:sort', 'update:page', 'update:perPage']);
 
-const search = ref('');
-const sortKey = ref('');
-const sortDir = ref('asc');
-const pageIndex = ref(0);
-const pageSize = ref(10);
+const localSearch = ref(props.search);
+const localSort = ref({ ...props.sort });
+const localPage = ref(0);
+const localPerPage = ref(props.meta.per_page ?? 10);
 
-const toggleSort = (key) => {
-    if (sortKey.value !== key) {
-        sortKey.value = key;
-        sortDir.value = 'asc';
-    } else if (sortDir.value === 'asc') {
-        sortDir.value = 'desc';
-    } else {
-        sortKey.value = '';
-    }
+watch(
+    () => props.search,
+    (v) => {
+        localSearch.value = v;
+    },
+);
+watch(
+    () => props.sort,
+    (v) => {
+        localSort.value = { ...v };
+    },
+);
+
+const setSearch = (value) => {
+    localSearch.value = value;
+    if (props.server) emit('update:search', value);
+    else localPage.value = 0;
 };
 
+const toggleSort = (key) => {
+    const current = localSort.value;
+    let next;
+    if (current.key !== key) next = { key, dir: 'asc' };
+    else if (current.dir === 'asc') next = { key, dir: 'desc' };
+    else next = props.server ? { key, dir: 'asc' } : { key: '', dir: 'asc' };
+
+    localSort.value = next;
+    if (props.server) emit('update:sort', next);
+};
+
+const setPerPage = (value) => {
+    localPerPage.value = Number(value);
+    if (props.server) emit('update:perPage', Number(value));
+    else localPage.value = 0;
+};
+
+const goPage = (index) => {
+    if (props.server) emit('update:page', index + 1);
+    else localPage.value = index;
+};
+
+// ── perhitungan mode client ──
 const filtered = computed(() => {
-    const q = search.value.trim().toLowerCase();
-    if (!q) return props.rows;
+    const q = localSearch.value.trim().toLowerCase();
+    if (props.server || !q) return props.rows;
     return props.rows.filter((row) =>
         props.columns.some((col) => String(row[col.key] ?? '').toLowerCase().includes(q)),
     );
 });
 
 const sorted = computed(() => {
-    if (!sortKey.value) return filtered.value;
-    const dir = sortDir.value === 'asc' ? 1 : -1;
+    if (props.server || !localSort.value.key) return filtered.value;
+    const dir = localSort.value.dir === 'asc' ? 1 : -1;
+    const key = localSort.value.key;
     return [...filtered.value].sort((a, b) => {
-        const x = a[sortKey.value];
-        const y = b[sortKey.value];
+        const x = a[key];
+        const y = b[key];
         if (typeof x === 'number' && typeof y === 'number') return (x - y) * dir;
         return String(x ?? '').localeCompare(String(y ?? ''), 'id') * dir;
     });
 });
 
-const pageCount = computed(() => Math.max(1, Math.ceil(sorted.value.length / pageSize.value)));
+const total = computed(() => (props.server ? (props.meta.total ?? 0) : sorted.value.length));
+const perPage = computed(() => (props.server ? (props.meta.per_page ?? 10) : localPerPage.value));
+const pageIndex = computed(() => (props.server ? (props.meta.page ?? 1) - 1 : localPage.value));
+const pageCount = computed(() =>
+    props.server ? Math.max(1, props.meta.last_page ?? 1) : Math.max(1, Math.ceil(total.value / perPage.value)),
+);
 const paged = computed(() =>
-    sorted.value.slice(pageIndex.value * pageSize.value, (pageIndex.value + 1) * pageSize.value),
+    props.server
+        ? props.rows
+        : sorted.value.slice(localPage.value * perPage.value, (localPage.value + 1) * perPage.value),
 );
 
-watch([search, pageSize], () => {
-    pageIndex.value = 0;
-});
+const hasFilter = computed(() => localSearch.value.trim().length > 0);
+const isEmptySource = computed(() => (props.server ? total.value === 0 && !hasFilter.value : props.rows.length === 0));
 
-const hasSearch = computed(() => search.value.trim().length > 0);
 const pageSizeOptions = [
     { value: 10, label: '10' },
     { value: 20, label: '20' },
@@ -120,30 +166,36 @@ const pageSizeOptions = [
                     :data-testid="`${props.testid}-refresh`"
                     @click="emit('refresh')"
                 >
-                    <RefreshCw class="size-4" /> {{ ACTION.refresh }}
+                    <RefreshCw class="size-4" :class="props.loading && 'animate-spin'" /> {{ ACTION.refresh }}
                 </Button>
             </div>
         </CardHeader>
 
         <CardContent class="space-y-4">
-            <div class="flex flex-col gap-2 rounded-lg border bg-muted/40 p-2 sm:flex-row sm:items-center sm:justify-between">
+            <div
+                class="flex flex-col gap-2 rounded-lg border bg-muted/40 p-2 sm:flex-row sm:items-center sm:justify-between"
+            >
                 <div class="relative w-full max-w-[15rem]">
-                    <Search class="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                    <Search
+                        class="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                        aria-hidden="true"
+                    />
                     <Input
-                        v-model="search"
+                        :model-value="localSearch"
                         :placeholder="ACTION.search"
                         class="h-[var(--ctl-h-sm)] pl-8 text-xs"
                         :data-testid="`${props.testid}-search`"
+                        @update:model-value="setSearch"
                     />
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <slot name="filters" />
                     <Button
-                        v-if="hasSearch"
+                        v-if="hasFilter"
                         variant="outline"
                         size="sm"
                         :data-testid="`${props.testid}-reset`"
-                        @click="search = ''"
+                        @click="setSearch('')"
                     >
                         <FilterX class="size-4" /> {{ ACTION.reset }}
                     </Button>
@@ -152,7 +204,7 @@ const pageSizeOptions = [
 
             <div class="rounded-md border">
                 <EmptyState
-                    v-if="props.rows.length === 0"
+                    v-if="isEmptySource"
                     variant="first-time"
                     :icon="props.emptyIcon"
                     :title="props.emptyTitle"
@@ -180,8 +232,8 @@ const pageSizeOptions = [
                                     @click="toggleSort(col.key)"
                                 >
                                     {{ col.label }}
-                                    <ArrowUp v-if="sortKey === col.key && sortDir === 'asc'" class="size-3.5" />
-                                    <ArrowDown v-else-if="sortKey === col.key" class="size-3.5" />
+                                    <ArrowUp v-if="localSort.key === col.key && localSort.dir === 'asc'" class="size-3.5" />
+                                    <ArrowDown v-else-if="localSort.key === col.key" class="size-3.5" />
                                     <ArrowUpDown v-else class="size-3.5 opacity-50" />
                                 </button>
                                 <span v-else>{{ col.label }}</span>
@@ -189,45 +241,57 @@ const pageSizeOptions = [
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow v-for="row in paged" :key="row[props.rowKey]">
-                            <TableCell
-                                v-for="col in props.columns"
-                                :key="col.key"
-                                :class="col.align === 'right' ? 'text-right' : ''"
-                            >
-                                <slot :name="`cell-${col.key}`" :row="row" :value="row[col.key]">
-                                    {{ row[col.key] ?? '\u2014' }}
-                                </slot>
-                            </TableCell>
-                        </TableRow>
-                        <TableRow v-if="paged.length === 0">
-                            <TableCell :colspan="props.columns.length" class="h-24 text-center text-muted-foreground">
-                                <div class="flex flex-col items-center gap-2" :data-testid="`${props.testid}-empty-filtered`">
-                                    <span>Tidak ada baris yang cocok dengan pencarian.</span>
-                                    <Button variant="outline" size="sm" @click="search = ''">
-                                        <FilterX class="size-4" /> {{ ACTION.reset }}
-                                    </Button>
+                        <TableRow v-if="props.loading" class="hover:bg-transparent">
+                            <TableCell :colspan="props.columns.length" class="py-3">
+                                <div class="space-y-2" :data-testid="`${props.testid}-loading`">
+                                    <Skeleton v-for="n in 5" :key="n" class="h-5 w-full" />
                                 </div>
                             </TableCell>
                         </TableRow>
+                        <template v-else>
+                            <TableRow v-for="row in paged" :key="row[props.rowKey]">
+                                <TableCell
+                                    v-for="col in props.columns"
+                                    :key="col.key"
+                                    :class="col.align === 'right' ? 'text-right' : ''"
+                                >
+                                    <slot :name="`cell-${col.key}`" :row="row" :value="row[col.key]">
+                                        {{ row[col.key] ?? '\u2014' }}
+                                    </slot>
+                                </TableCell>
+                            </TableRow>
+                            <TableRow v-if="paged.length === 0">
+                                <TableCell
+                                    :colspan="props.columns.length"
+                                    class="h-24 text-center text-muted-foreground"
+                                >
+                                    <div
+                                        class="flex flex-col items-center gap-2"
+                                        :data-testid="`${props.testid}-empty-filtered`"
+                                    >
+                                        <span>Tidak ada baris yang cocok dengan pencarian.</span>
+                                        <Button variant="outline" size="sm" @click="setSearch('')">
+                                            <FilterX class="size-4" /> {{ ACTION.reset }}
+                                        </Button>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        </template>
                     </TableBody>
                 </Table>
             </div>
 
-            <div
-                v-if="props.rows.length > 0"
-                class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-            >
+            <div v-if="!isEmptySource" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-2 text-xs text-muted-foreground">
                     <Select
-                        v-model="pageSize"
+                        :model-value="perPage"
                         :options="pageSizeOptions"
                         class="w-[70px]"
                         :data-testid="`${props.testid}-page-size`"
-                        @update:model-value="pageSize = Number($event)"
+                        @update:model-value="setPerPage"
                     />
                     <span :data-testid="`${props.testid}-total`">
-                        dari {{ sorted.length.toLocaleString('id-ID') }} baris
+                        dari {{ total.toLocaleString('id-ID') }} baris
                     </span>
                 </div>
                 <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -242,7 +306,7 @@ const pageSizeOptions = [
                             aria-label="Halaman sebelumnya"
                             :disabled="pageIndex === 0"
                             :data-testid="`${props.testid}-prev`"
-                            @click="pageIndex -= 1"
+                            @click="goPage(pageIndex - 1)"
                         >
                             <ChevronLeft class="size-4" />
                         </Button>
@@ -253,7 +317,7 @@ const pageSizeOptions = [
                             aria-label="Halaman berikutnya"
                             :disabled="pageIndex + 1 >= pageCount"
                             :data-testid="`${props.testid}-next`"
-                            @click="pageIndex += 1"
+                            @click="goPage(pageIndex + 1)"
                         >
                             <ChevronRight class="size-4" />
                         </Button>

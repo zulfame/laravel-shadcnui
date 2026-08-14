@@ -1,13 +1,9 @@
-import { LayoutDashboard, LayoutGrid, ShieldCheck } from 'lucide-vue-next';
+import { LayoutDashboard, LayoutGrid, ShieldCheck, UserRound, Users2 } from 'lucide-vue-next';
 
 /**
  * Konfigurasi navigasi terpusat.
- *
- * Sidebar dibagi menjadi AREA (dapat ditukar dari header sidebar):
- *   - `member` — pekerjaan harian untuk semua pengguna.
- *   - `admin`  — pengelolaan sistem (khusus role admin).
- *
- * Menu ditambahkan bertahap: fase ini hanya Dashboard.
+ * `perm` = izin yang wajib dimiliki agar item muncul. Penyembunyian menu di
+ * sini hanya kosmetik — penegakan sesungguhnya ada di middleware backend.
  */
 export const AREAS = [
     {
@@ -19,7 +15,10 @@ export const AREAS = [
         sections: [
             {
                 label: 'Umum',
-                items: [{ title: 'Dashboard', href: '/', end: true, icon: LayoutDashboard }],
+                items: [
+                    { title: 'Dashboard', href: '/', end: true, icon: LayoutDashboard, perm: 'dashboard.view' },
+                    { title: 'Profil Pengguna', href: '/profile', icon: UserRound, perm: 'profile.view' },
+                ],
             },
         ],
     },
@@ -28,20 +27,31 @@ export const AREAS = [
         label: 'Administrator',
         description: 'Pengelolaan sistem',
         icon: ShieldCheck,
-        adminOnly: true,
-        sections: [],
+        adminOnly: false,
+        sections: [
+            {
+                label: 'Pengaturan',
+                items: [{ title: 'Kelola Pengguna', href: '/users', icon: Users2, perm: 'users.view' }],
+            },
+        ],
     },
 ];
 
 export const DEFAULT_AREA_ID = 'member';
 
-/** Area yang terlihat untuk pengguna saat ini. */
-export const getAreas = (isAdmin) => AREAS.filter((area) => !area.adminOnly || isAdmin);
+const filterSections = (area, can) =>
+    area.sections
+        .map((section) => ({ ...section, items: section.items.filter((i) => !i.perm || can(i.perm)) }))
+        .filter((section) => section.items.length > 0);
 
-/** Ambil area berdasarkan id, jatuh ke area default. */
-export const getArea = (areaId, isAdmin) => {
-    const areas = getAreas(isAdmin);
-    return areas.find((a) => a.id === areaId) || areas[0];
+/** Area yang terlihat untuk pengguna saat ini (item disaring per izin). */
+export const getAreas = (can = () => true) =>
+    AREAS.map((area) => ({ ...area, sections: filterSections(area, can) }));
+
+/** Ambil area berdasarkan id, jatuh ke area pertama yang punya menu. */
+export const getArea = (areaId, can) => {
+    const areas = getAreas(can);
+    return areas.find((a) => a.id === areaId) || areas.find((a) => a.sections.length > 0) || areas[0];
 };
 
 /** Rute pertama yang bisa dituju dari sebuah area. */
@@ -50,9 +60,10 @@ export const firstRouteOf = (area) => area?.sections?.[0]?.items?.[0]?.href || n
 const ROUTE_TRAILS = [
     [/^\/$/, ['Dashboard']],
     [/^\/profile$/, ['Profil Pengguna']],
+    [/^\/users$/, ['Kelola Pengguna']],
 ];
 
-const ADMIN_ROUTES = [];
+const ADMIN_ROUTES = [/^\/users/];
 
 /** Id area yang memiliki sebuah pathname. */
 export const areaIdOf = (pathname) =>

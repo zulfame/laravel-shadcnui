@@ -76,3 +76,26 @@ Seluruh data pada fase ini **DUMMY/MOCKED** (`app/Support/DemoData.php`). Belum 
 - Desain "Architectural Split" beserta `components/auth/AuthIllustration.vue` dan utilitas `.auth-*` **DIHAPUS** (tidak dipakai lagi).
 - Error login tampil sebagai `Alert variant="destructive"` (`data-testid="login-form-error"`), kata sandi memakai composite `PasswordInput` (`data-testid="login-password-input"` + `-toggle`).
 - Diverifikasi ulang: login via username/email/telepon, error kata sandi salah, toggle kata sandi, `body` font = Geist.
+
+## Selesai (2026-06-14, Kelola Pengguna + Profil + Hak Akses)
+### Kelola Pengguna (server-side)
+- `UserController@index` — pencarian (name/username/email/phone/office), filter status, pengurutan whitelist, `paginate()->withQueryString()`, `with('roles:id,name')` (anti N+1).
+- `store`/`update`/`destroy` + `StoreUserRequest` (unik username/email `ignore(id)`, `min:8`, kata sandi opsional saat ubah), proteksi hapus akun sendiri.
+- `DataTableCard` kini **dua mode**: CLIENT (default) & **SERVER** (`server` + `meta`/`search`/`sort` + emits `update:search|sort|page|perPage`), termasuk skeleton saat `loading`.
+- `pages/Users.vue`: debounce 350 ms, `router.get(..., { only: ['users','filters'], preserveState, preserveScroll, replace })`, dialog tambah/ubah (satu form), `ConfirmDeleteDialog`, filter status.
+- Seeder menambah 24 pengguna contoh via `UserFactory` (locale id_ID) agar paginasi & pencarian dapat dicoba.
+
+### Profil tersimpan ke database
+- `ProfileController@update` (`UpdateProfileRequest`) & `@updatePassword` (`UpdatePasswordRequest`, aturan `current_password` + `confirmed` + `Password::min(8)`), flash → toast.
+- `pages/Profile.vue` memakai `useForm` dengan error per field; nama di sidebar ikut berubah setelah simpan.
+
+### Hak akses menu
+- Izin: `dashboard.view`, `users.view`, `users.manage`, `profile.view` — semuanya dimiliki role Super Admin.
+- Middleware alias spatie (`role`, `permission`, `role_or_permission`) didaftarkan di `bootstrap/app.php`; setiap rute dilindungi `permission:*` → **otorisasi ditegakkan di backend (403)**, bukan hanya disembunyikan.
+- `navigation.js` memberi `perm` per item; `AppSidebar` menyaring memakai `auth.user.permissions`. Item "Kelola Pengguna" berada di area **Administrator**.
+
+### Hasil uji iterasi 3 (`/app/test_reports/iteration_3.json`)
+- Backend 100% (CRUD, profil, kata sandi, gate 403). Frontend awalnya ~85% karena 3 bug — **semuanya sudah diperbaiki & diverifikasi ulang**:
+  1. `Select.vue` tidak meneruskan atribut (SelectRoot tanpa DOM node) → `inheritAttrs: false` + `v-bind="$attrs"` pada `SelectTrigger`.
+  2. `SelectItem` dengan value `''` dilarang reka-ui → sentinel `'all'` di UI, dipetakan ke `''` saat query (filter status kini bisa direset; error konsol hilang).
+  3. Tabrakan `data-testid="users-page"` → wrapper halaman menjadi `users-page-view`.
