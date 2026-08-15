@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Profile\UpdateAvatarRequest;
 use App\Http\Requests\Profile\UpdatePasswordRequest;
 use App\Http\Requests\Profile\UpdateProfileRequest;
 use App\Models\ActivityLog;
@@ -42,12 +43,8 @@ class ProfileController extends Controller
     /**
      * Simpan foto profil ke disk `public` (storage/app/public/avatars).
      */
-    public function updateAvatar(Request $request): RedirectResponse
+    public function updateAvatar(UpdateAvatarRequest $request): RedirectResponse
     {
-        $request->validate([
-            'avatar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:1024'],
-        ], [], ['avatar' => 'foto profil']);
-
         $user = $request->user();
 
         FileStorage::delete($user->avatar);

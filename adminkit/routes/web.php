@@ -74,7 +74,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:appearance.view')->name('appearance');
 
     Route::middleware('permission:appearance.manage')->group(function () {
-        Route::put('/appearance/{section}', [AppearanceController::class, 'update'])->name('appearance.update');
+        Route::put('/appearance/identity', [AppearanceController::class, 'updateIdentity'])->name('appearance.identity');
+        Route::put('/appearance/seo', [AppearanceController::class, 'updateSeo'])->name('appearance.seo');
+        Route::put('/appearance/og', [AppearanceController::class, 'updateOg'])->name('appearance.og');
+        Route::put('/appearance/contact', [AppearanceController::class, 'updateContact'])->name('appearance.contact');
         Route::post('/appearance/asset/{key}', [AppearanceController::class, 'uploadAsset'])->name('appearance.asset');
         Route::delete('/appearance/asset/{key}', [AppearanceController::class, 'destroyAsset'])->name('appearance.asset.destroy');
     });

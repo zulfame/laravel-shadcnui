@@ -11,6 +11,7 @@ import Dialog from '@/components/ui/Dialog.vue';
 import DropdownMenuItem from '@/components/ui/DropdownMenuItem.vue';
 import Input from '@/components/ui/Input.vue';
 import Label from '@/components/ui/Label.vue';
+import PhoneInput from '@/components/ui/PhoneInput.vue';
 import Combobox from '@/components/ui/Combobox.vue';
 import Switch from '@/components/ui/Switch.vue';
 import ConfirmDeleteDialog from '@/components/composite/ConfirmDeleteDialog.vue';
@@ -21,6 +22,8 @@ import StateChip from '@/components/composite/StateChip.vue';
 import { ACTION } from '@/constants/labels';
 import { initialsOf } from '@/lib/utils';
 import { useServerTable } from '@/composables/useServerTable';
+import { all, email as emailRule, max, min, personName, phone, required, username } from '@/lib/validators';
+import { useLiveValidation } from '@/composables/useLiveValidation';
 
 const props = defineProps({
     users: { type: Object, required: true },
@@ -37,9 +40,8 @@ const columns = [
     { key: 'name', label: 'Nama' },
     { key: 'username', label: 'Nama Pengguna' },
     { key: 'email', label: 'Email' },
-    { key: 'phone', label: 'Telepon', sortable: false },
+    { key: 'phone', label: 'Nomor HP' },
     { key: 'role', label: 'Peranan', sortable: false },
-    { key: 'office', label: 'Kantor' },
     { key: 'status_label', label: 'Status', sortable: false },
     { key: 'last_login_at', label: 'Login Terakhir' },
     { key: 'actions', label: '', align: 'right', width: '48px', sortable: false },
@@ -75,7 +77,6 @@ const form = useForm({
     username: '',
     email: '',
     phone: '',
-    office: '',
     role: props.roleOptions[0]?.value ?? '',
     is_active: true,
     password: '',
@@ -97,7 +98,6 @@ const openEdit = (row) => {
         username: row.username,
         email: row.email,
         phone: row.phone ?? '',
-        office: row.office ?? '',
         role: row.role ?? props.roleOptions[0]?.value,
         is_active: row.is_active,
         password: '',
@@ -106,7 +106,24 @@ const openEdit = (row) => {
     dialogOpen.value = true;
 };
 
+const rules = {
+    name: all(required('nama'), min(3, 'Nama'), max(100, 'Nama'), personName('Nama')),
+    username: all(required('nama pengguna'), min(3, 'Nama pengguna'), max(50, 'Nama pengguna'), username('Nama pengguna')),
+    email: all(required('alamat email'), emailRule('Alamat email'), max(150, 'Alamat email')),
+    phone: phone('Nomor HP'),
+    role: required('peranan'),
+    password: (value) => {
+        if (editing.value) return value ? min(8, 'Kata sandi')(value) : '';
+
+        return all(required('kata sandi'), min(8, 'Kata sandi'))(value);
+    },
+};
+
+const check = useLiveValidation(form, rules);
+
 const submit = () => {
+    if (!check.validateAll()) return;
+
     const options = {
         preserveScroll: true,
         onSuccess: () => {
@@ -218,33 +235,58 @@ watch(dialogOpen, (open) => {
                 v-model:open="dialogOpen"
                 :title="editing ? 'Ubah pengguna' : 'Tambah pengguna'"
             >
-                <form id="user-form" class="form-dense grid gap-[var(--field-gap)] sm:grid-cols-2" @submit.prevent="submit">
+                <form id="user-form" class="form-dense grid gap-[var(--field-gap)] sm:grid-cols-2" novalidate @submit.prevent="submit">
                     <div class="space-y-[var(--item-gap)]">
                         <Label for="f-name">Nama</Label>
-                        <Input id="f-name" v-model="form.name" data-testid="user-form-name" />
-                        <p v-if="form.errors.name" class="text-xs font-medium text-destructive">{{ form.errors.name }}</p>
+                        <Input
+                            id="f-name"
+                            v-model="form.name"
+                            maxlength="100"
+                            data-testid="user-form-name"
+                            @blur="check.validate('name')"
+                        />
+                        <p v-if="form.errors.name" class="text-xs font-medium text-destructive" data-testid="user-form-name-error">
+                            {{ form.errors.name }}
+                        </p>
                     </div>
                     <div class="space-y-[var(--item-gap)]">
                         <Label for="f-username">Nama pengguna</Label>
-                        <Input id="f-username" v-model="form.username" data-testid="user-form-username" />
-                        <p v-if="form.errors.username" class="text-xs font-medium text-destructive">
+                        <Input
+                            id="f-username"
+                            v-model="form.username"
+                            maxlength="50"
+                            data-testid="user-form-username"
+                            @blur="check.validate('username')"
+                        />
+                        <p v-if="form.errors.username" class="text-xs font-medium text-destructive" data-testid="user-form-username-error">
                             {{ form.errors.username }}
                         </p>
                     </div>
                     <div class="space-y-[var(--item-gap)]">
                         <Label for="f-email">Email</Label>
-                        <Input id="f-email" v-model="form.email" data-testid="user-form-email" />
-                        <p v-if="form.errors.email" class="text-xs font-medium text-destructive">
+                        <Input
+                            id="f-email"
+                            v-model="form.email"
+                            type="email"
+                            maxlength="150"
+                            data-testid="user-form-email"
+                            @blur="check.validate('email')"
+                        />
+                        <p v-if="form.errors.email" class="text-xs font-medium text-destructive" data-testid="user-form-email-error">
                             {{ form.errors.email }}
                         </p>
                     </div>
                     <div class="space-y-[var(--item-gap)]">
-                        <Label for="f-phone">Telepon</Label>
-                        <Input id="f-phone" v-model="form.phone" data-testid="user-form-phone" />
-                    </div>
-                    <div class="space-y-[var(--item-gap)]">
-                        <Label for="f-office">Kantor</Label>
-                        <Input id="f-office" v-model="form.office" data-testid="user-form-office" />
+                        <Label for="f-phone">Nomor HP</Label>
+                        <PhoneInput
+                            id="f-phone"
+                            v-model="form.phone"
+                            testid="user-form-phone"
+                            @blur="check.validate('phone')"
+                        />
+                        <p v-if="form.errors.phone" class="text-xs font-medium text-destructive" data-testid="user-form-phone-error">
+                            {{ form.errors.phone }}
+                        </p>
                     </div>
                     <div class="space-y-[var(--item-gap)]">
                         <Label>Peranan</Label>
@@ -263,8 +305,9 @@ watch(dialogOpen, (open) => {
                             v-model="form.password"
                             :placeholder="editing ? 'Biarkan kosong bila tidak diubah' : 'Minimal 8 karakter'"
                             testid="user-form-password"
+                            @blur="check.validate('password')"
                         />
-                        <p v-if="form.errors.password" class="text-xs font-medium text-destructive">
+                        <p v-if="form.errors.password" class="text-xs font-medium text-destructive" data-testid="user-form-password-error">
                             {{ form.errors.password }}
                         </p>
                     </div>

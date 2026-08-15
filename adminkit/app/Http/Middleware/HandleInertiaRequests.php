@@ -27,7 +27,6 @@ class HandleInertiaRequests extends Middleware
                     'username' => $user->username,
                     'email' => $user->email,
                     'phone' => $user->phone,
-                    'office' => $user->office,
                     'avatar' => FileStorage::url($user->avatar),
                     'has_avatar' => (bool) $user->avatar,
                     'role' => $user->getRoleNames()->first(),

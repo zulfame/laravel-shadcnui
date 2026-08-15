@@ -91,10 +91,9 @@ const brandInitials = computed(() =>
                                 data-testid="area-switcher-trigger"
                             >
                                 <div
-                                    class="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg text-[11px] font-semibold text-primary-foreground"
-                                    :style="{ backgroundColor: branding.brand_color || 'hsl(var(--primary))' }"
+                                    class="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg bg-primary text-[11px] font-semibold text-primary-foreground"
                                 >
-                                    <img v-if="branding.logo_light" :src="branding.logo_light" alt="" class="size-full object-contain" />
+                                    <img v-if="branding.favicon" :src="branding.favicon" alt="" class="size-full object-contain" />
                                     <template v-else>{{ brandInitials }}</template>
                                 </div>
                                 <div class="grid flex-1 text-left text-sm leading-tight">

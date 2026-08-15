@@ -1,0 +1,20 @@
+{
+  "summary": "Verified 3 minor UI validation fixes from iteration 8: blur-based inline validation on /profile password change and /users add/edit dialog + toast-success data-testid. All 8 blur validation scenarios showed correct inline errors with the exact data-testids specified. Toast success confirmed on both user create and profile save flows. Backend regression skipped (iteration 8 backend 100%).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "seed_data_creation": "Created test user 'testqa762632' via /users dialog to verify save flow; deleted afterwards via php artisan tinker (\\App\\Models\\User::where('username','like','testqa%')->delete()). Zulfame password unchanged.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "zulfame / password (from /app/memory/test_credentials.md)",
+  "context_for_next_testing_agent": "Iteration 9 verified: (1) /profile Ubah Kata Sandi blur validations all fire correctly at [data-testid=profile-password-{current,new,confirm}-error]. Exact messages: 'Kolom kata sandi saat ini wajib diisi.', 'Kata sandi baru minimal 8 karakter.', 'Konfirmasi kata sandi tidak cocok.'. (2) /users Tambah dialog blur validations all fire correctly at [data-testid=user-form-{name,username,email,phone,password}-error]. (3) User save works end-to-end: filled valid fields (name, username, email=testqa*@example.test, phone=081234567890, password=password123, default role Staf) → clicked [data-testid=user-form-save] → [data-testid=toast-success] appeared and DB confirmed row created (id=30). (4) Profile save regression: clicked [data-testid=profile-save] with unchanged valid data → [data-testid=toast-success] appeared. (5) Note: user is defaulted to Member Area (Dashboard+Profil sidebar) after login; /appearance and /storage-settings are in Administrator area and require area switch — regression of those pages was not executed in this iteration but backend tests iteration 8 covered them 100%. (6) Login rate limit is real (5 failed attempts) — after several test runs cache:clear on adminkit may be needed to reset throttles. (7) 5 unrelated console 403 errors observed (likely favicon/manifest asset probing), no functional impact.",
+  "rca_of_the_issue": "N/A — all fixes verified working as intended."
+}

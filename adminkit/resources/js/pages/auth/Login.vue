@@ -18,6 +18,8 @@ import Label from '@/components/ui/Label.vue';
 import Toaster from '@/components/ui/Toaster.vue';
 import PasswordInput from '@/components/composite/PasswordInput.vue';
 import { useFlashToast } from '@/composables/useFlashToast';
+import { required } from '@/lib/validators';
+import { useLiveValidation } from '@/composables/useLiveValidation';
 import { ACTION } from '@/constants/labels';
 
 /**
@@ -29,10 +31,17 @@ useFlashToast();
 
 const form = useForm({ credential: '', password: '', remember: false });
 
+const check = useLiveValidation(form, {
+    credential: required('kredensial'),
+    password: required('kata sandi'),
+});
+
 const submit = () =>
-    form.post('/login', {
-        onFinish: () => form.reset('password'),
-    });
+    check.submit(() =>
+        form.post('/login', {
+            onFinish: () => form.reset('password'),
+        }),
+    );
 </script>
 
 <template>
@@ -41,7 +50,7 @@ const submit = () =>
     <AuthLayout>
         <Card>
             <CardHeader>
-                <CardTitle>Masuk</CardTitle>
+                <CardTitle>Autentikasi</CardTitle>
             </CardHeader>
 
             <form class="form-dense" novalidate @submit.prevent="submit">
@@ -61,7 +70,11 @@ const submit = () =>
                             autocomplete="username"
                             placeholder="Email, Nama Pengguna atau Nomor HP"
                             data-testid="login-credential-input"
+                            @blur="check.validate('credential')"
                         />
+                        <p v-if="form.errors.credential && !form.errors.password" class="text-xs font-medium text-destructive" data-testid="login-credential-error">
+                            {{ form.errors.credential }}
+                        </p>
                     </div>
 
                     <div class="space-y-[var(--item-gap)]">

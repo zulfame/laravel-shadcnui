@@ -50,15 +50,14 @@ const highlights = [
                 <span
                     class="flex size-9 items-center justify-center overflow-hidden rounded-md bg-primary-foreground/10 text-xs font-semibold ring-1 ring-inset ring-primary-foreground/20"
                 >
-                    <img v-if="branding.logo_dark || branding.logo_light" :src="branding.logo_dark || branding.logo_light" alt="" class="size-full object-contain" />
-                    <template v-else>{{ brandInitials }}</template>
+                    {{ brandInitials }}
                 </span>
                 <span class="flex flex-col">
                     <span class="text-sm font-semibold tracking-tight" data-testid="auth-brand-name">
                         {{ branding.app_name || 'AdminKit' }}
                     </span>
                     <span class="text-xs text-primary-foreground/60">
-                        {{ branding.tagline || branding.company }}
+                        {{ branding.tagline }}
                     </span>
                 </span>
             </div>
@@ -102,20 +101,19 @@ const highlights = [
             <div class="w-full max-w-md">
                 <div class="mb-8 flex items-center gap-2.5 lg:hidden" data-testid="auth-brand-mobile">
                     <span class="flex size-9 items-center justify-center overflow-hidden rounded-md bg-primary text-xs font-semibold text-primary-foreground">
-                        <img v-if="branding.logo_light || branding.logo_dark" :src="branding.logo_light || branding.logo_dark" alt="" class="size-full object-contain" />
-                        <template v-else>{{ brandInitials }}</template>
+                        {{ brandInitials }}
                     </span>
                     <span class="flex flex-col">
                         <span class="text-sm font-semibold tracking-tight">{{ branding.app_name || 'AdminKit' }}</span>
                         <span class="text-xs text-muted-foreground">
-                            {{ branding.tagline || branding.company }}
+                            {{ branding.tagline }}
                         </span>
                     </span>
                 </div>
 
                 <slot />
 
-                <div class="mt-8 space-y-1 text-center text-xs text-muted-foreground" data-testid="auth-footer">
+                <div class="mt-8 text-center text-xs text-muted-foreground" data-testid="auth-footer">
                     <p v-if="branding.support_email">
                         Butuh bantuan?
                         <a
@@ -126,7 +124,6 @@ const highlights = [
                             {{ branding.support_email }}
                         </a>
                     </p>
-                    <p>{{ branding.footer_text || '© AdminKit' }}</p>
                 </div>
             </div>
         </main>

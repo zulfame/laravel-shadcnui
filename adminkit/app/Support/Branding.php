@@ -14,19 +14,14 @@ class Branding
 {
     public const CACHE_KEY = 'adminkit.branding';
 
-    /** Kunci bertipe aset berkas (disimpan sebagai path pada disk `public`). */
-    public const ASSETS = ['logo_light', 'logo_dark', 'favicon', 'thumbnail', 'og_image'];
+    /** Kunci bertipe aset berkas (disimpan sebagai path pada disk aktif). */
+    public const ASSETS = ['favicon', 'og_image'];
 
     public const DEFAULTS = [
         'app_name' => 'AdminKit',
         'tagline' => 'Admin Panel Starter Kit',
         'brand_initials' => 'AK',
-        'company' => 'AdminKit',
-        'app_url' => '',
-        'timezone' => 'Asia/Jakarta',
         'language' => 'id',
-        'date_format' => 'DD/MM/YYYY',
-        'brand_color' => '#0F0F0F',
         'meta_description' => 'Starter kit panel admin: compact, monokrom, dan siap dikembangkan.',
         'meta_keywords' => 'admin panel, laravel, inertia, vue',
         'canonical_url' => '',
@@ -35,10 +30,7 @@ class Branding
         'og_description' => '',
         'support_email' => 'dukungan@adminkit.test',
         'footer_text' => '',
-        'logo_light' => null,
-        'logo_dark' => null,
         'favicon' => null,
-        'thumbnail' => null,
         'og_image' => null,
     ];
 
@@ -56,7 +48,7 @@ class Branding
 
             $values['search_indexable'] = (bool) ($values['search_indexable'] ?? false);
             $values['footer_text'] = $values['footer_text']
-                ?: '© '.date('Y').' '.$values['company'].'. All Rights Reserved.';
+                ?: '© '.date('Y').' '.$values['app_name'].'. All Rights Reserved.';
             $values['og_title'] = $values['og_title'] ?: $values['app_name'].': '.$values['tagline'];
             $values['og_description'] = $values['og_description'] ?: $values['meta_description'];
 

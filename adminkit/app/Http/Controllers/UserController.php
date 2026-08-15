@@ -15,7 +15,7 @@ use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
-    private const SORTABLE = ['name', 'username', 'email', 'office', 'last_login_at'];
+    private const SORTABLE = ['name', 'username', 'email', 'phone', 'last_login_at'];
 
     public function index(Request $request): Response
     {
@@ -31,7 +31,6 @@ class UserController extends Controller
                 ->orWhere('username', 'like', "%{$search}%")
                 ->orWhere('email', 'like', "%{$search}%")
                 ->orWhere('phone', 'like', "%{$search}%")
-                ->orWhere('office', 'like', "%{$search}%")
             ))
             ->when($status !== '', fn ($q) => $q->where('is_active', $status === 'aktif'))
             ->orderBy($sort, $dir)
@@ -46,7 +45,6 @@ class UserController extends Controller
                     'username' => $u->username,
                     'email' => $u->email,
                     'phone' => $u->phone,
-                    'office' => $u->office,
                     'role' => $u->roles->first()?->name,
                     'is_active' => $u->is_active,
                     'status_label' => $u->is_active ? 'Aktif' : 'Nonaktif',

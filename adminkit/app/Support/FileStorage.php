@@ -41,7 +41,19 @@ class FileStorage
 
     public static function store(UploadedFile $file, string $folder): string
     {
-        return self::disk()->putFile($folder, $file);
+        return self::disk()->putFile(self::prefix($folder), $file);
+    }
+
+    /** Prefix folder dengan `s3_path` bila driver s3 memakainya. */
+    private static function prefix(string $folder): string
+    {
+        if (self::driver() !== 's3') {
+            return $folder;
+        }
+
+        $path = trim((string) (StorageController::values()['s3_path'] ?? ''), '/');
+
+        return $path === '' ? $folder : "{$path}/{$folder}";
     }
 
     public static function delete(?string $path): void

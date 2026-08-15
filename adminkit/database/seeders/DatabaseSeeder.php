@@ -32,7 +32,6 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Zulfadli Rizal',
                 'username' => 'zulfame',
                 'phone' => '082320099971',
-                'office' => 'Pamanukan',
                 'is_active' => true,
                 'email_verified_at' => now(),
                 'password' => Hash::make('password'),
@@ -60,6 +59,7 @@ class DatabaseSeeder extends Seeder
             's3_secret' => 'xLapXGeuT8+YSzDa03ba2PkQw65IDFcIwgo5HoOy',
             's3_region' => 'idn',
             's3_bucket' => 'bpr-assets',
+            's3_path' => '',
             's3_path_style' => '1',
             's3_public_url' => '',
         ];

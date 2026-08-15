@@ -74,7 +74,7 @@ export const firstRouteOf = (area) => area?.sections?.[0]?.items?.[0]?.href || n
 
 const ROUTE_TRAILS = [
     [/^\/$/, ['Dashboard']],
-    [/^\/profile$/, ['Profil']],
+    [/^\/profile$/, ['Profil Pengguna']],
     [/^\/users$/, ['Pengguna']],
     [/^\/roles$/, ['Peranan']],
     [/^\/appearance$/, ['Penampilan']],

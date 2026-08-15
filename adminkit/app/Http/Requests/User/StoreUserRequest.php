@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\User;
 
+use App\Support\Rules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -12,14 +13,13 @@ class StoreUserRequest extends FormRequest
         $id = $this->route('user')?->id;
 
         return [
-            'name' => ['required', 'string', 'max:100'],
-            'username' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('users', 'username')->ignore($id)],
-            'email' => ['required', 'email', 'max:150', Rule::unique('users', 'email')->ignore($id)],
-            'phone' => ['nullable', 'string', 'max:25'],
-            'office' => ['nullable', 'string', 'max:100'],
+            'name' => Rules::personName(),
+            'username' => Rules::username($id),
+            'email' => Rules::email($id),
+            'phone' => Rules::phone(),
             'role' => ['required', 'string', Rule::exists('roles', 'name')],
             'is_active' => ['boolean'],
-            'password' => [$id ? 'nullable' : 'required', 'string', 'min:8'],
+            'password' => Rules::password($id === null),
         ];
     }
 
@@ -28,10 +28,15 @@ class StoreUserRequest extends FormRequest
         return [
             'name' => 'nama',
             'username' => 'nama pengguna',
-            'phone' => 'telepon',
-            'office' => 'kantor',
+            'email' => 'alamat email',
+            'phone' => 'nomor HP',
             'role' => 'peranan',
             'password' => 'kata sandi',
         ];
+    }
+
+    public function messages(): array
+    {
+        return Rules::messages();
     }
 }

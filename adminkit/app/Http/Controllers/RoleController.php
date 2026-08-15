@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Enums\RoleName;
 use App\Http\Requests\Role\StoreRoleRequest;
+use App\Http\Requests\Role\SyncMatrixRequest;
 use App\Models\ActivityLog;
 use App\Support\Modules;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -64,13 +64,9 @@ class RoleController extends Controller
     /**
      * Simpan seluruh matriks izin sekaligus (satu tombol Simpan).
      */
-    public function syncMatrix(Request $request): RedirectResponse
+    public function syncMatrix(SyncMatrixRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'matrix' => ['required', 'array'],
-            'matrix.*' => ['array'],
-            'matrix.*.*' => ['string'],
-        ]);
+        $validated = $request->validated();
 
         DB::transaction(function () use ($validated) {
             foreach ($validated['matrix'] as $roleId => $permissions) {

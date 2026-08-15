@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 8: Verified Form Request validation and UI live validation across AdminKit (Laravel 12 + Vue 3 + Inertia). Backend suite (26 pytest cases) passed 26/26 covering /login empty→422, phone regex (letters/short rejected, +6282..., 0823... accepted), username uppercase rejected, email format, name required, password confirmed/short/current, storage path/endpoint/URL validators, appearance app_name/canonical_url/support_email, users store validation, and regression on /roles, /activity, /profile, /users (no 'Kantor' in HTML). Frontend Playwright end-to-end: login card shows 'Autentikasi' + 'Butuh bantuan? info@bprbangunarta.co.id' + no copyright under card; /profile shows 'Profil Pengguna', labels Nama Lengkap/Nama Pengguna/Alamat Email/Nomor HP, no 'Kantor'; PhoneInput strips non-digits both on /profile and users dialog (typing 'abc123' -> '123'); inline errors present for profile-phone (too short), profile-name (empty on blur), profile-email (invalid), profile-username (uppercase); password mismatch and wrong-current show inline; /users has no 'Kantor' column or dialog field; /appearance no 'Aset Merek'/'Warna Merek' card, removed Perusahaan/Zona Waktu/Bahasa/Format Tanggal/URL Aplikasi, favicon uploader present in Identitas Aplikasi, SEO/Open Graph/Kontak/Footer intact, app-name/canonical-url/support-email inline errors work; /storage-settings column order Driver aktif|Endpoint, Bucket|Path, Access Key ID|Secret, Region|URL Publik verified positionally; s3-path invalid 'folder spasi!' → inline error, valid 'adminkit' saved and persisted after reload; s3-endpoint 'example.com' inline error; Uji Koneksi button works; /roles /activity / not blank; 0 JS pageerrors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Profile / Ubah Kata Sandi", "issue": "Live UI validation missing for 'kata sandi baru' too-short (<8) on blur — data-testid=profile-password-new-error tidak muncul di UI tanpa submit. Server-side validation OK (422), tetapi UX live-check yang dijanjikan pada permintaan (validasi cepat di UI) belum aktif untuk field ini.", "selector": "[data-testid=profile-password-new-error]", "priority": "LOW"},
+      {"component": "UserFormDialog / user-form-username", "issue": "Uppercase 'TESTUP' pada nama pengguna tidak memicu error inline saat blur (data-testid=user-form-username-error). Backend menolak (422) tetapi UX live-validation tidak menampilkan pesan sebelum submit — bertolak belakang dengan requirement 'nama pengguna dengan spasi/huruf besar ditolak dengan pesan inline'.", "selector": "[data-testid=user-form-username-error]", "priority": "MEDIUM"},
+      {"component": "Profile save toast", "issue": "Setelah simpan profil valid, tidak ditemukan node dengan role=status / [data-sonner-toast] / .toast. Kemungkinan toast dirender dengan selector lain atau tidak muncul. Perlu konfirmasi testid komponen toast sukses.", "selector": "[data-sonner-toast], [role=status]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Tambahkan live UI validation untuk field password baru (min 8) di /profile — hook ke composables/useLiveValidation supaya profile-password-new-error muncul saat blur/typing.",
+    "Aktifkan live UI validation untuk user-form-username (lowercase + alpha_dash) di dialog Tambah/Ubah pengguna sehingga user-form-username-error muncul pada blur.",
+    "Verifikasi selector/rendering toast sukses setelah simpan profil (tidak terdeteksi via role=status / data-sonner-toast). Konsider tambahkan data-testid=toast-success."
+  ],
+  "critical_code_review_comments": [
+    "9 console errors 403 saat memuat resource di dashboard/appearance/storage — tidak menyebabkan halaman blank atau error 500, tapi resource 403 sebaiknya diaudit (kemungkinan preload/ping endpoint yang butuh peran khusus)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py"
+  ],
+  "success_rate": {"backend": "100% (26/26)", "frontend": "~92% (3 minor UI validation/UX misses)"},
+  "seed_data_creation": "Created & deleted test user 'test_user_qa8' via /users POST during backend test then removed via Tinker; also saved storage path='adminkit' (kembali ke nilai yang sama sesuai requirement).",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "zulfame / password (Super Admin)",
+  "context_for_next_testing_agent": "Backend tests di /app/backend/tests/backend_test.py; pytest.ini fixed -n 2 loadscope tapi login rate-limit (5/kredensial+IP/60s) memaksa client fixture di-scope 'session' + jalankan '-n 0'. Sebelum tiap run backend: 'cd /app/adminkit && php artisan cache:clear' untuk reset RateLimiter. Peran valid Spatie: 'Staf', 'Super Admin'. Rute password profil = PUT /profile/password. Rute update profile = PUT /profile. Rute appearance sub-tabs: PUT /appearance/{identity,seo,og,contact}. Storage = PUT /storage-settings. Users = POST /users (StoreUserRequest juga dipakai untuk update via param route). Kolom DB 'office' sudah didrop. Untuk UI: PhoneInput.vue melakukan sanitasi digit — sudah bekerja di kedua tempat.",
+  "rca_of_the_issue": "Live UI validation kurang lengkap: composables/useLiveValidation.js belum diikat ke seluruh field. Untuk user-form-username & password-new perlu penambahan validator lowercase/alpha_dash dan Password::min(8) cermin di validators.js dan hook blur di komponen dialog."
+}

@@ -13,7 +13,10 @@ class StoreRoleRequest extends FormRequest
         $id = $this->route('role')?->id;
 
         return [
-            'name' => ['required', 'string', 'max:50', Rule::unique('roles', 'name')->ignore($id)],
+            'name' => [
+                'required', 'string', 'min:3', 'max:50', 'regex:/^[\pL\pM0-9 .\-]+$/u',
+                Rule::unique('roles', 'name')->ignore($id),
+            ],
             'permissions' => ['array'],
             'permissions.*' => ['string', Rule::in(Modules::permissions())],
         ];
@@ -24,6 +27,13 @@ class StoreRoleRequest extends FormRequest
         return [
             'name' => 'nama peranan',
             'permissions' => 'izin',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'name.regex' => 'Nama peranan hanya boleh huruf, angka, spasi, titik, dan tanda hubung.',
         ];
     }
 }

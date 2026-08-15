@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StorageSetting\UpdateStorageRequest;
 use App\Models\ActivityLog;
 use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -21,6 +21,7 @@ class StorageController extends Controller
         's3_secret' => '',
         's3_region' => '',
         's3_bucket' => '',
+        's3_path' => '',
         's3_path_style' => '1',
         's3_public_url' => '',
     ];
@@ -42,6 +43,7 @@ class StorageController extends Controller
                 's3_secret_set' => filled($values['s3_secret']),
                 's3_region' => $values['s3_region'],
                 's3_bucket' => $values['s3_bucket'],
+                's3_path' => $values['s3_path'],
                 's3_path_style' => (bool) $values['s3_path_style'],
                 's3_public_url' => $values['s3_public_url'],
             ],
@@ -52,29 +54,15 @@ class StorageController extends Controller
         ]);
     }
 
-    public function update(Request $request): RedirectResponse
+    public function update(UpdateStorageRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'storage_driver' => ['required', 'in:local,s3'],
-            's3_endpoint' => ['nullable', 'url', 'max:200'],
-            's3_key' => ['nullable', 'string', 'max:200'],
-            's3_secret' => ['nullable', 'string', 'max:200'],
-            's3_region' => ['nullable', 'string', 'max:50'],
-            's3_bucket' => ['nullable', 'string', 'max:100'],
-            's3_path_style' => ['boolean'],
-            's3_public_url' => ['nullable', 'url', 'max:200'],
-        ], [], [
-            's3_endpoint' => 'endpoint',
-            's3_key' => 'access key',
-            's3_secret' => 'secret key',
-            's3_region' => 'region',
-            's3_bucket' => 'bucket',
-        ]);
+        $data = $request->validated();
 
         // Secret kosong = jangan ubah nilai yang sudah tersimpan.
         if (blank($data['s3_secret'] ?? null)) {
             unset($data['s3_secret']);
         }
+        $data['s3_path'] = trim((string) ($data['s3_path'] ?? ''), '/');
         $data['s3_path_style'] = ($data['s3_path_style'] ?? false) ? '1' : '0';
 
         Setting::putMany($data);

@@ -134,6 +134,20 @@ Backlog kualitas: Pest feature test (auth, CRUD, otorisasi), ESLint + Prettier, 
 - **Badge lebih solid**: `.state-chip` kini isian penuh `hsl(var(--chip))` dengan teks kontras `hsl(var(--background))`; varian `secondary` pada `Badge` menjadi solid (`bg-foreground/85 text-background`), varian lembut lama tetap tersedia sebagai `muted`.
 - Terverifikasi di tema terang & gelap tanpa error console.
 
+## Selesai (2026-06-15, standar validasi + revisi 4 halaman sesuai referensi)
+### Standar validasi (global, WAJIB dipakai untuk form baru)
+- `app/Support/Rules.php` = SATU sumber aturan per tipe kolom: `personName()`, `username($ignoreId)`, `email($ignoreId)`, `phone()` (regex `^\+?[0-9]{9,15}$`), `password()`, `text($max)`, `url()`, `slug()`, `path()`, `date()` + `messages()` (pesan Indonesia).
+- SETIAP form punya Form Request: `Profile/UpdateProfileRequest|UpdatePasswordRequest|UpdateAvatarRequest`, `User/StoreUserRequest`, `Role/StoreRoleRequest|SyncMatrixRequest`, `Appearance/UpdateIdentityRequest|UpdateSeoRequest|UpdateOgRequest|UpdateContactRequest|UploadAssetRequest`, `StorageSetting/UpdateStorageRequest`, `ActivityLog/DestroyRangeRequest`. Tidak ada lagi `$request->validate()` inline di controller.
+- Frontend: `resources/js/lib/validators.js` (cermin aturan backend) + `composables/useLiveValidation.js` (validasi saat blur & sebelum submit, pesan ditulis ke `form.errors`) + `components/ui/PhoneInput.vue` (menolak non-digit, boleh 1 tanda `+`, maks 15 digit). `PasswordInput` meneruskan event `blur`.
+
+### Perubahan halaman (mengikuti gambar referensi user)
+- **Login**: judul kartu `Autentikasi`; footer konten hanya "Butuh bantuan? {email dukungan}" (baris copyright dihapus); validasi cepat kolom kredensial & kata sandi.
+- **Profil**: judul/breadcrumb `Profil Pengguna`; label `Nama Lengkap`, `Nama Pengguna`, `Alamat Email`, `Nomor HP`; kolom **Kantor dihapus**.
+- **Penampilan**: card **Aset Merek DIHAPUS** (logo terang/gelap, thumbnail, warna merek) — favicon dipindah ke card `Identitas Aplikasi`; kolom Perusahaan/Zona Waktu/Bahasa/Format Tanggal/URL Aplikasi dihapus; card SEO, Open Graph, Kontak & Footer tetap. Rute per bagian: `PUT /appearance/{identity,seo,og,contact}`.
+- **Penyimpanan**: urutan kolom Driver aktif | Endpoint · Bucket | **Path (baru)** · Access Key ID | Secret · Region | URL Publik. `s3_path` dipakai `FileStorage` sebagai prefix folder di S3.
+- **Kolom `office` dihapus di semua tempat** termasuk kolom DB (migrasi `2026_08_15_030000_drop_office_from_users_table`), tabel & dialog Pengguna, seeder/factory, share Inertia.
+- Uji iterasi 8: backend 26/26 lolos (validasi telepon huruf ditolak, username huruf besar ditolak, path/endpoint/URL, dll). Iterasi 9: frontend 100% (validasi blur + toast).
+
 ## Revisi (2026-06-15, Badge dikembalikan ke shadcn/ui asli)
 Atas permintaan user: **semua style badge kustom DIHAPUS**.
 - `Badge.vue` = cva shadcn/ui asli (`default`, `secondary`, `destructive`, `outline`); hanya padding disesuaikan compact (`px-2 py-0.5 text-xs`). Tidak ada palet warna, tidak ada variant `chip`/`muted`.

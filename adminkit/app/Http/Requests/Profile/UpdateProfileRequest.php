@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\Profile;
 
+use App\Support\Rules;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateProfileRequest extends FormRequest
 {
@@ -12,21 +12,25 @@ class UpdateProfileRequest extends FormRequest
         $id = $this->user()->id;
 
         return [
-            'name' => ['required', 'string', 'max:100'],
-            'username' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('users', 'username')->ignore($id)],
-            'email' => ['required', 'email', 'max:150', Rule::unique('users', 'email')->ignore($id)],
-            'phone' => ['nullable', 'string', 'max:25'],
-            'office' => ['nullable', 'string', 'max:100'],
+            'name' => Rules::personName(),
+            'username' => Rules::username($id),
+            'email' => Rules::email($id),
+            'phone' => Rules::phone(),
         ];
     }
 
     public function attributes(): array
     {
         return [
-            'name' => 'nama',
+            'name' => 'nama lengkap',
             'username' => 'nama pengguna',
-            'phone' => 'telepon',
-            'office' => 'kantor',
+            'email' => 'alamat email',
+            'phone' => 'nomor HP',
         ];
+    }
+
+    public function messages(): array
+    {
+        return Rules::messages();
     }
 }

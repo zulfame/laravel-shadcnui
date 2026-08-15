@@ -11,7 +11,7 @@ const props = defineProps({
     testid: { type: String, default: undefined },
     class: { type: null, default: '' },
 });
-defineEmits(['update:modelValue']);
+const emit = defineEmits(['update:modelValue', 'blur']);
 
 const visible = ref(false);
 </script>
@@ -26,7 +26,8 @@ const visible = ref(false);
             autocomplete="off"
             :class="cn('pr-9', props.class)"
             :data-testid="props.testid"
-            @update:model-value="$emit('update:modelValue', $event)"
+            @update:model-value="emit('update:modelValue', $event)"
+            @blur="emit('blur')"
         />
         <button
             type="button"

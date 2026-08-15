@@ -14,10 +14,13 @@ import CardHeader from '@/components/ui/CardHeader.vue';
 import CardTitle from '@/components/ui/CardTitle.vue';
 import Input from '@/components/ui/Input.vue';
 import Label from '@/components/ui/Label.vue';
+import PhoneInput from '@/components/ui/PhoneInput.vue';
 import PasswordInput from '@/components/composite/PasswordInput.vue';
 import Separator from '@/components/ui/Separator.vue';
 import { ACTION } from '@/constants/labels';
 import { initialsOf } from '@/lib/utils';
+import { all, email, max, min, personName, phone, required, sameAs, username } from '@/lib/validators';
+import { useLiveValidation } from '@/composables/useLiveValidation';
 
 const page = usePage();
 const user = computed(() => page.props.auth?.user ?? {});
@@ -27,8 +30,16 @@ const profile = useForm({
     username: user.value.username ?? '',
     email: user.value.email ?? '',
     phone: user.value.phone ?? '',
-    office: user.value.office ?? '',
 });
+
+const profileRules = {
+    name: all(required('nama lengkap'), min(3, 'Nama lengkap'), max(100, 'Nama lengkap'), personName('Nama lengkap')),
+    username: all(required('nama pengguna'), min(3, 'Nama pengguna'), max(50, 'Nama pengguna'), username('Nama pengguna')),
+    email: all(required('alamat email'), email('Alamat email'), max(150, 'Alamat email')),
+    phone: phone('Nomor HP'),
+};
+
+const profileCheck = useLiveValidation(profile, profileRules);
 
 const password = useForm({
     current_password: '',
@@ -36,13 +47,24 @@ const password = useForm({
     password_confirmation: '',
 });
 
-const saveProfile = () => profile.put('/profile', { preserveScroll: true });
+const passwordRules = {
+    current_password: required('kata sandi saat ini'),
+    password: all(required('kata sandi baru'), min(8, 'Kata sandi baru')),
+    password_confirmation: all(required('konfirmasi kata sandi'), sameAs('password', 'Konfirmasi kata sandi')),
+};
+
+const passwordCheck = useLiveValidation(password, passwordRules);
+
+const saveProfile = () =>
+    profileCheck.submit(() => profile.put('/profile', { preserveScroll: true }));
 
 const savePassword = () =>
-    password.put('/profile/password', {
-        preserveScroll: true,
-        onSuccess: () => password.reset(),
-    });
+    passwordCheck.submit(() =>
+        password.put('/profile/password', {
+            preserveScroll: true,
+            onSuccess: () => password.reset(),
+        }),
+    );
 
 /* ── Foto profil ─────────────────────────────────────────────────────── */
 const fileInput = ref(null);
@@ -64,19 +86,18 @@ const onAvatarChange = (event) => {
     });
 };
 
-const removeAvatar = () =>
-    avatarForm.delete('/profile/avatar', { preserveScroll: true });
+const removeAvatar = () => avatarForm.delete('/profile/avatar', { preserveScroll: true });
 </script>
 
 <template>
-    <Head title="Profil" />
+    <Head title="Profil Pengguna" />
     <AppLayout>
         <div class="space-y-6" data-testid="profile-page">
             <Card>
                 <CardHeader>
                     <CardTitle>Informasi Diri</CardTitle>
                 </CardHeader>
-                <form class="form-dense" @submit.prevent="saveProfile">
+                <form class="form-dense" novalidate @submit.prevent="saveProfile">
                     <CardContent class="space-y-4">
                         <div class="flex items-center justify-between gap-4">
                             <div class="flex items-center gap-3">
@@ -141,33 +162,56 @@ const removeAvatar = () =>
 
                         <div class="grid gap-[var(--field-gap)] sm:grid-cols-2">
                             <div class="space-y-[var(--item-gap)]">
-                                <Label for="p-name">Nama</Label>
-                                <Input id="p-name" v-model="profile.name" data-testid="profile-name" />
-                                <p v-if="profile.errors.name" class="text-xs font-medium text-destructive">
+                                <Label for="p-name">Nama Lengkap</Label>
+                                <Input
+                                    id="p-name"
+                                    v-model="profile.name"
+                                    maxlength="100"
+                                    data-testid="profile-name"
+                                    @blur="profileCheck.validate('name')"
+                                />
+                                <p v-if="profile.errors.name" class="text-xs font-medium text-destructive" data-testid="profile-name-error">
                                     {{ profile.errors.name }}
                                 </p>
                             </div>
                             <div class="space-y-[var(--item-gap)]">
                                 <Label for="p-username">Nama Pengguna</Label>
-                                <Input id="p-username" v-model="profile.username" data-testid="profile-username" />
-                                <p v-if="profile.errors.username" class="text-xs font-medium text-destructive">
+                                <Input
+                                    id="p-username"
+                                    v-model="profile.username"
+                                    maxlength="50"
+                                    data-testid="profile-username"
+                                    @blur="profileCheck.validate('username')"
+                                />
+                                <p v-if="profile.errors.username" class="text-xs font-medium text-destructive" data-testid="profile-username-error">
                                     {{ profile.errors.username }}
                                 </p>
                             </div>
                             <div class="space-y-[var(--item-gap)]">
-                                <Label for="p-email">Email</Label>
-                                <Input id="p-email" v-model="profile.email" data-testid="profile-email" />
-                                <p v-if="profile.errors.email" class="text-xs font-medium text-destructive">
+                                <Label for="p-email">Alamat Email</Label>
+                                <Input
+                                    id="p-email"
+                                    v-model="profile.email"
+                                    type="email"
+                                    maxlength="150"
+                                    data-testid="profile-email"
+                                    @blur="profileCheck.validate('email')"
+                                />
+                                <p v-if="profile.errors.email" class="text-xs font-medium text-destructive" data-testid="profile-email-error">
                                     {{ profile.errors.email }}
                                 </p>
                             </div>
                             <div class="space-y-[var(--item-gap)]">
-                                <Label for="p-phone">Telepon</Label>
-                                <Input id="p-phone" v-model="profile.phone" data-testid="profile-phone" />
-                            </div>
-                            <div class="space-y-[var(--item-gap)]">
-                                <Label for="p-office">Kantor</Label>
-                                <Input id="p-office" v-model="profile.office" data-testid="profile-office" />
+                                <Label for="p-phone">Nomor HP</Label>
+                                <PhoneInput
+                                    id="p-phone"
+                                    v-model="profile.phone"
+                                    testid="profile-phone"
+                                    @blur="profileCheck.validate('phone')"
+                                />
+                                <p v-if="profile.errors.phone" class="text-xs font-medium text-destructive" data-testid="profile-phone-error">
+                                    {{ profile.errors.phone }}
+                                </p>
                             </div>
                         </div>
                     </CardContent>
@@ -183,7 +227,7 @@ const removeAvatar = () =>
                 <CardHeader>
                     <CardTitle>Ubah Kata Sandi</CardTitle>
                 </CardHeader>
-                <form class="form-dense" @submit.prevent="savePassword">
+                <form class="form-dense" novalidate @submit.prevent="savePassword">
                     <CardContent class="grid gap-[var(--field-gap)] sm:grid-cols-2">
                         <div class="space-y-[var(--item-gap)]">
                             <Label for="pw-current">Kata Sandi Saat Ini</Label>
@@ -191,8 +235,9 @@ const removeAvatar = () =>
                                 id="pw-current"
                                 v-model="password.current_password"
                                 testid="profile-password-current"
+                                @blur="passwordCheck.validate('current_password')"
                             />
-                            <p v-if="password.errors.current_password" class="text-xs font-medium text-destructive">
+                            <p v-if="password.errors.current_password" class="text-xs font-medium text-destructive" data-testid="profile-password-current-error">
                                 {{ password.errors.current_password }}
                             </p>
                         </div>
@@ -204,8 +249,9 @@ const removeAvatar = () =>
                                 v-model="password.password"
                                 placeholder="Minimal 8 karakter"
                                 testid="profile-password-new"
+                                @blur="passwordCheck.validate('password')"
                             />
-                            <p v-if="password.errors.password" class="text-xs font-medium text-destructive">
+                            <p v-if="password.errors.password" class="text-xs font-medium text-destructive" data-testid="profile-password-new-error">
                                 {{ password.errors.password }}
                             </p>
                         </div>
@@ -215,7 +261,11 @@ const removeAvatar = () =>
                                 id="pw-confirm"
                                 v-model="password.password_confirmation"
                                 testid="profile-password-confirm"
+                                @blur="passwordCheck.validate('password_confirmation')"
                             />
+                            <p v-if="password.errors.password_confirmation" class="text-xs font-medium text-destructive" data-testid="profile-password-confirm-error">
+                                {{ password.errors.password_confirmation }}
+                            </p>
                         </div>
                     </CardContent>
                     <CardFooter class="justify-end">

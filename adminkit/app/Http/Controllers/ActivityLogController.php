@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ActivityLog\DestroyRangeRequest;
 use App\Models\ActivityLog;
 use App\Support\TableQuery;
 use Illuminate\Http\RedirectResponse;
@@ -53,12 +54,9 @@ class ActivityLogController extends Controller
     /**
      * Hapus log pada rentang tanggal tertentu (inklusif).
      */
-    public function destroyRange(Request $request): RedirectResponse
+    public function destroyRange(DestroyRangeRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'date_from' => ['required', 'date'],
-            'date_to' => ['required', 'date', 'after_or_equal:date_from'],
-        ], [], ['date_from' => 'tanggal awal', 'date_to' => 'tanggal akhir']);
+        $data = $request->validated();
 
         $deleted = ActivityLog::query()
             ->whereDate('created_at', '>=', $data['date_from'])

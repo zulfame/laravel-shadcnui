@@ -1,11 +1,9 @@
 <script setup>
 import { computed } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import { Info, Save } from 'lucide-vue-next';
+import { Save } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
-import Alert from '@/components/ui/Alert.vue';
-import AlertDescription from '@/components/ui/AlertDescription.vue';
 import Button from '@/components/ui/Button.vue';
 import Card from '@/components/ui/Card.vue';
 import CardContent from '@/components/ui/CardContent.vue';
@@ -14,17 +12,15 @@ import CardHeader from '@/components/ui/CardHeader.vue';
 import CardTitle from '@/components/ui/CardTitle.vue';
 import Input from '@/components/ui/Input.vue';
 import Label from '@/components/ui/Label.vue';
-import Combobox from '@/components/ui/Combobox.vue';
 import Switch from '@/components/ui/Switch.vue';
 import Textarea from '@/components/ui/Textarea.vue';
 import AssetUploader from '@/components/composite/AssetUploader.vue';
 import { ACTION } from '@/constants/labels';
+import { all, email as emailRule, max, required, url as urlRule } from '@/lib/validators';
+import { useLiveValidation } from '@/composables/useLiveValidation';
 
 const props = defineProps({
     settings: { type: Object, required: true },
-    timezones: { type: Array, default: () => [] },
-    languages: { type: Array, default: () => [] },
-    dateFormats: { type: Array, default: () => [] },
 });
 
 const s = props.settings;
@@ -33,14 +29,13 @@ const identity = useForm({
     app_name: s.app_name ?? '',
     tagline: s.tagline ?? '',
     brand_initials: s.brand_initials ?? '',
-    company: s.company ?? '',
-    timezone: s.timezone ?? 'Asia/Jakarta',
-    language: s.language ?? 'id',
-    date_format: s.date_format ?? 'DD/MM/YYYY',
-    app_url: s.app_url ?? '',
 });
 
-const brand = useForm({ brand_color: s.brand_color ?? '#0F0F0F' });
+const identityCheck = useLiveValidation(identity, {
+    app_name: all(required('nama aplikasi'), max(60, 'Nama aplikasi')),
+    tagline: max(100, 'Tagline'),
+    brand_initials: max(4, 'Inisial brand'),
+});
 
 const seo = useForm({
     meta_description: s.meta_description ?? '',
@@ -49,18 +44,35 @@ const seo = useForm({
     search_indexable: Boolean(s.search_indexable),
 });
 
+const seoCheck = useLiveValidation(seo, {
+    meta_description: max(300, 'Meta description'),
+    meta_keywords: max(200, 'Meta keywords'),
+    canonical_url: all(urlRule('Canonical URL'), max(200, 'Canonical URL')),
+});
+
 const og = useForm({ og_title: s.og_title ?? '', og_description: s.og_description ?? '' });
+
+const ogCheck = useLiveValidation(og, {
+    og_title: max(120, 'OG title'),
+    og_description: max(300, 'OG description'),
+});
 
 const contact = useForm({ support_email: s.support_email ?? '', footer_text: s.footer_text ?? '' });
 
-const save = (form, section) => form.put(`/appearance/${section}`, { preserveScroll: true });
+const contactCheck = useLiveValidation(contact, {
+    support_email: all(emailRule('Email dukungan'), max(150, 'Email dukungan')),
+    footer_text: max(200, 'Teks footer'),
+});
+
+const save = (form, check, section) =>
+    check.submit(() => form.put(`/appearance/${section}`, { preserveScroll: true }));
 
 const previewInitials = computed(
     () => (identity.brand_initials || identity.app_name || 'AK').slice(0, 3).toUpperCase(),
 );
 const previewHost = computed(() => {
     try {
-        return new URL(seo.canonical_url || identity.app_url).host.toUpperCase();
+        return new URL(seo.canonical_url).host.toUpperCase();
     } catch (e) {
         return (identity.app_name || 'ADMINKIT').toUpperCase();
     }
@@ -76,31 +88,54 @@ const previewHost = computed(() => {
                 <CardHeader>
                     <CardTitle>Identitas Aplikasi</CardTitle>
                 </CardHeader>
-                <form class="form-dense" @submit.prevent="save(identity, 'identity')">
+                <form class="form-dense" novalidate @submit.prevent="save(identity, identityCheck, 'identity')">
                     <CardContent class="space-y-[var(--field-gap)]">
                         <div class="grid gap-[var(--field-gap)] lg:grid-cols-4">
                             <div class="space-y-[var(--item-gap)]">
                                 <Label for="app_name">Nama Aplikasi</Label>
-                                <Input id="app_name" v-model="identity.app_name" data-testid="app-name-input" />
-                                <p v-if="identity.errors.app_name" class="text-xs font-medium text-destructive">
+                                <Input
+                                    id="app_name"
+                                    v-model="identity.app_name"
+                                    maxlength="60"
+                                    data-testid="app-name-input"
+                                    @blur="identityCheck.validate('app_name')"
+                                />
+                                <p v-if="identity.errors.app_name" class="text-xs font-medium text-destructive" data-testid="app-name-error">
                                     {{ identity.errors.app_name }}
                                 </p>
                             </div>
                             <div class="space-y-[var(--item-gap)]">
                                 <Label for="tagline">Tagline / Sub Judul</Label>
-                                <Input id="tagline" v-model="identity.tagline" data-testid="tagline-input" />
+                                <Input
+                                    id="tagline"
+                                    v-model="identity.tagline"
+                                    maxlength="100"
+                                    data-testid="tagline-input"
+                                    @blur="identityCheck.validate('tagline')"
+                                />
+                                <p v-if="identity.errors.tagline" class="text-xs font-medium text-destructive">
+                                    {{ identity.errors.tagline }}
+                                </p>
                             </div>
                             <div class="space-y-[var(--item-gap)]">
                                 <Label for="initials">Inisial Brand</Label>
-                                <Input id="initials" v-model="identity.brand_initials" maxlength="4" data-testid="initials-input" />
+                                <Input
+                                    id="initials"
+                                    v-model="identity.brand_initials"
+                                    maxlength="4"
+                                    data-testid="initials-input"
+                                    @blur="identityCheck.validate('brand_initials')"
+                                />
+                                <p v-if="identity.errors.brand_initials" class="text-xs font-medium text-destructive">
+                                    {{ identity.errors.brand_initials }}
+                                </p>
                             </div>
                             <!-- Pratinjau identitas -->
                             <div class="flex items-center gap-2.5 rounded-lg border bg-muted/30 px-3 py-2" data-testid="brand-preview">
                                 <span
-                                    class="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md text-[11px] font-semibold text-primary-foreground"
-                                    :style="{ backgroundColor: brand.brand_color }"
+                                    class="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary text-[11px] font-semibold text-primary-foreground"
                                 >
-                                    <img v-if="props.settings.logo_light_url" :src="props.settings.logo_light_url" alt="" class="size-full object-contain" />
+                                    <img v-if="props.settings.favicon_url" :src="props.settings.favicon_url" alt="" class="size-full object-contain" />
                                     <template v-else>{{ previewInitials }}</template>
                                 </span>
                                 <span class="min-w-0">
@@ -111,47 +146,14 @@ const previewHost = computed(() => {
                         </div>
 
                         <div class="grid gap-[var(--field-gap)] lg:grid-cols-4">
-                            <div class="space-y-[var(--item-gap)]">
-                                <Label for="company">Perusahaan</Label>
-                                <Input id="company" v-model="identity.company" data-testid="company-input" />
-                            </div>
-                            <div class="space-y-[var(--item-gap)]">
-                                <Label>Zona Waktu</Label>
-                                <Combobox
-                                    v-model="identity.timezone"
-                                    :options="props.timezones"
-                                    class="h-[var(--ctl-h)] text-[13px]"
-                                    data-testid="timezone-select"
-                                />
-                            </div>
-                            <div class="space-y-[var(--item-gap)]">
-                                <Label>Bahasa</Label>
-                                <Combobox
-                                    v-model="identity.language"
-                                    :options="props.languages"
-                                    class="h-[var(--ctl-h)] text-[13px]"
-                                    data-testid="language-select"
-                                />
-                            </div>
-                            <div class="space-y-[var(--item-gap)]">
-                                <Label>Format Tanggal</Label>
-                                <Combobox
-                                    v-model="identity.date_format"
-                                    :options="props.dateFormats"
-                                    class="h-[var(--ctl-h)] text-[13px]"
-                                    data-testid="date-format-select"
-                                />
-                            </div>
-                        </div>
-
-                        <div class="grid gap-[var(--field-gap)] lg:grid-cols-4">
-                            <div class="space-y-[var(--item-gap)]">
-                                <Label for="app_url">URL Aplikasi</Label>
-                                <Input id="app_url" v-model="identity.app_url" placeholder="https://" data-testid="app-url-input" />
-                                <p v-if="identity.errors.app_url" class="text-xs font-medium text-destructive">
-                                    {{ identity.errors.app_url }}
-                                </p>
-                            </div>
+                            <AssetUploader
+                                label="Favicon"
+                                hint="Ikon persegi (PNG/ICO/SVG), 32–512 px. Maksimal 256 KB."
+                                asset-key="favicon"
+                                accept="image/png,image/x-icon,image/svg+xml"
+                                :url="props.settings.favicon_url"
+                                class="lg:col-span-2"
+                            />
                         </div>
                     </CardContent>
                     <CardFooter class="justify-end">
@@ -162,103 +164,48 @@ const previewHost = computed(() => {
                 </form>
             </Card>
 
-            <!-- Aset Merek -->
-            <Card>
-                <CardHeader>
-                    <CardTitle>Aset Merek</CardTitle>
-                </CardHeader>
-                <form class="form-dense" @submit.prevent="save(brand, 'brand')">
-                    <CardContent class="space-y-[var(--field-gap)]">
-                        <div class="grid gap-[var(--field-gap)] lg:grid-cols-3">
-                            <AssetUploader
-                                label="Logo (latar terang)"
-                                hint="Dipakai pada latar terang. Maks 600 KB."
-                                asset-key="logo_light"
-                                :url="props.settings.logo_light_url"
-                            />
-                            <AssetUploader
-                                label="Logo (latar gelap)"
-                                hint="Dipakai pada latar gelap, mis. panel masuk."
-                                asset-key="logo_dark"
-                                :url="props.settings.logo_dark_url"
-                                dark
-                            />
-                            <AssetUploader
-                                label="Favicon"
-                                hint="Ikon persegi (PNG/ICO/SVG), 32–512 px. Maks 256 KB."
-                                asset-key="favicon"
-                                accept="image/png,image/x-icon,image/svg+xml"
-                                :url="props.settings.favicon_url"
-                            />
-                            <AssetUploader
-                                label="Thumbnail"
-                                hint="Cadangan gambar pratinjau bila OG Image kosong."
-                                asset-key="thumbnail"
-                                :url="props.settings.thumbnail_url"
-                            />
-                            <div class="space-y-[var(--item-gap)]">
-                                <Label for="brand_color">Warna Merek</Label>
-                                <div class="flex items-center gap-2">
-                                    <input
-                                        id="brand_color_picker"
-                                        v-model="brand.brand_color"
-                                        type="color"
-                                        class="h-[var(--ctl-h)] w-10 cursor-pointer rounded-md border border-input bg-transparent p-1"
-                                        data-testid="brand-color-picker"
-                                    />
-                                    <Input
-                                        id="brand_color"
-                                        v-model="brand.brand_color"
-                                        class="max-w-[9rem] font-mono"
-                                        data-testid="brand-color-input"
-                                    />
-                                </div>
-                                <p class="text-xs text-muted-foreground">
-                                    Antarmuka tetap monokrom; warna ini hanya identitas merek.
-                                </p>
-                                <p v-if="brand.errors.brand_color" class="text-xs font-medium text-destructive">
-                                    {{ brand.errors.brand_color }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <Alert>
-                            <Info aria-hidden="true" />
-                            <AlertDescription>
-                                Nilai teks disimpan di tabel <span class="font-mono text-xs">settings</span>, berkas
-                                aset di disk <span class="font-mono text-xs">public</span> — keduanya ikut terbawa
-                                saat pencadangan.
-                            </AlertDescription>
-                        </Alert>
-                    </CardContent>
-                    <CardFooter class="justify-end">
-                        <Button size="sm" type="submit" :disabled="brand.processing" data-testid="brand-save">
-                            <Save class="size-4" /> {{ brand.processing ? ACTION.saving : ACTION.save }}
-                        </Button>
-                    </CardFooter>
-                </form>
-            </Card>
-
             <!-- SEO & Metadata -->
             <Card>
                 <CardHeader>
                     <CardTitle>SEO &amp; Metadata</CardTitle>
                 </CardHeader>
-                <form class="form-dense" @submit.prevent="save(seo, 'seo')">
+                <form class="form-dense" novalidate @submit.prevent="save(seo, seoCheck, 'seo')">
                     <CardContent class="space-y-[var(--field-gap)]">
                         <div class="space-y-[var(--item-gap)]">
                             <Label for="meta_description">Meta Description</Label>
-                            <Textarea id="meta_description" v-model="seo.meta_description" data-testid="meta-description-input" />
+                            <Textarea
+                                id="meta_description"
+                                v-model="seo.meta_description"
+                                maxlength="300"
+                                data-testid="meta-description-input"
+                                @blur="seoCheck.validate('meta_description')"
+                            />
+                            <p v-if="seo.errors.meta_description" class="text-xs font-medium text-destructive">
+                                {{ seo.errors.meta_description }}
+                            </p>
                         </div>
                         <div class="grid gap-[var(--field-gap)] sm:grid-cols-2">
                             <div class="space-y-[var(--item-gap)]">
                                 <Label for="meta_keywords">Meta Keywords</Label>
-                                <Input id="meta_keywords" v-model="seo.meta_keywords" data-testid="meta-keywords-input" />
+                                <Input
+                                    id="meta_keywords"
+                                    v-model="seo.meta_keywords"
+                                    maxlength="200"
+                                    data-testid="meta-keywords-input"
+                                    @blur="seoCheck.validate('meta_keywords')"
+                                />
                             </div>
                             <div class="space-y-[var(--item-gap)]">
                                 <Label for="canonical_url">Canonical URL</Label>
-                                <Input id="canonical_url" v-model="seo.canonical_url" placeholder="https://" data-testid="canonical-url-input" />
-                                <p v-if="seo.errors.canonical_url" class="text-xs font-medium text-destructive">
+                                <Input
+                                    id="canonical_url"
+                                    v-model="seo.canonical_url"
+                                    placeholder="https://"
+                                    maxlength="200"
+                                    data-testid="canonical-url-input"
+                                    @blur="seoCheck.validate('canonical_url')"
+                                />
+                                <p v-if="seo.errors.canonical_url" class="text-xs font-medium text-destructive" data-testid="canonical-url-error">
                                     {{ seo.errors.canonical_url }}
                                 </p>
                             </div>
@@ -287,16 +234,28 @@ const previewHost = computed(() => {
                 <CardHeader>
                     <CardTitle>Pratinjau Tautan (Open Graph)</CardTitle>
                 </CardHeader>
-                <form class="form-dense" @submit.prevent="save(og, 'og')">
+                <form class="form-dense" novalidate @submit.prevent="save(og, ogCheck, 'og')">
                     <CardContent class="space-y-[var(--field-gap)]">
                         <div class="grid gap-[var(--field-gap)] sm:grid-cols-2">
                             <div class="space-y-[var(--item-gap)]">
                                 <Label for="og_title">OG Title</Label>
-                                <Input id="og_title" v-model="og.og_title" data-testid="og-title-input" />
+                                <Input
+                                    id="og_title"
+                                    v-model="og.og_title"
+                                    maxlength="120"
+                                    data-testid="og-title-input"
+                                    @blur="ogCheck.validate('og_title')"
+                                />
                             </div>
                             <div class="space-y-[var(--item-gap)]">
                                 <Label for="og_description">OG Description</Label>
-                                <Input id="og_description" v-model="og.og_description" data-testid="og-description-input" />
+                                <Input
+                                    id="og_description"
+                                    v-model="og.og_description"
+                                    maxlength="300"
+                                    data-testid="og-description-input"
+                                    @blur="ogCheck.validate('og_description')"
+                                />
                             </div>
                         </div>
 
@@ -311,8 +270,8 @@ const previewHost = computed(() => {
                         <div class="w-full max-w-sm overflow-hidden rounded-lg border" data-testid="og-preview">
                             <div class="flex h-36 items-center justify-center bg-muted/50">
                                 <img
-                                    v-if="props.settings.og_image_url || props.settings.thumbnail_url"
-                                    :src="props.settings.og_image_url || props.settings.thumbnail_url"
+                                    v-if="props.settings.og_image_url"
+                                    :src="props.settings.og_image_url"
                                     alt=""
                                     class="size-full object-cover"
                                 />
@@ -342,18 +301,31 @@ const previewHost = computed(() => {
                 <CardHeader>
                     <CardTitle>Kontak &amp; Footer</CardTitle>
                 </CardHeader>
-                <form class="form-dense" @submit.prevent="save(contact, 'contact')">
+                <form class="form-dense" novalidate @submit.prevent="save(contact, contactCheck, 'contact')">
                     <CardContent class="grid gap-[var(--field-gap)] sm:grid-cols-2">
                         <div class="space-y-[var(--item-gap)]">
                             <Label for="support_email">Email Dukungan</Label>
-                            <Input id="support_email" v-model="contact.support_email" data-testid="support-email-input" />
-                            <p v-if="contact.errors.support_email" class="text-xs font-medium text-destructive">
+                            <Input
+                                id="support_email"
+                                v-model="contact.support_email"
+                                type="email"
+                                maxlength="150"
+                                data-testid="support-email-input"
+                                @blur="contactCheck.validate('support_email')"
+                            />
+                            <p v-if="contact.errors.support_email" class="text-xs font-medium text-destructive" data-testid="support-email-error">
                                 {{ contact.errors.support_email }}
                             </p>
                         </div>
                         <div class="space-y-[var(--item-gap)]">
                             <Label for="footer_text">Teks Hak Cipta / Footer</Label>
-                            <Input id="footer_text" v-model="contact.footer_text" data-testid="footer-text-input" />
+                            <Input
+                                id="footer_text"
+                                v-model="contact.footer_text"
+                                maxlength="200"
+                                data-testid="footer-text-input"
+                                @blur="contactCheck.validate('footer_text')"
+                            />
                         </div>
                     </CardContent>
                     <CardFooter class="justify-end">
