@@ -239,3 +239,10 @@ Atas permintaan user: **semua style badge kustom DIHAPUS**.
 - Impor `.xlsx`/`.xls`: `/users/import` (kolom sesuai template) & `/roles/import` (nama peranan di kolom pertama). `mimes:xlsx,xls` di `ImportUserRequest` (maks 2 MB) & `ImportRoleRequest` (maks 1 MB) — CSV kini ditolak.
 - **Template contoh** baru: `GET /users/import/template`, `GET /roles/import/template` (berisi 2 baris teladan). Dialog impor punya tombol **Template** (kiri, `mr-auto`) dan deskripsinya tidak lagi menyebut daftar kolom.
 - Uji: `tests/Feature/ExcelIoTest.php` — 4 lolos (5 unduhan menghasilkan xlsx terbaca, impor pengguna & peranan dari xlsx, berkas CSV ditolak). Screenshot dialog Impor Pengguna diverifikasi.
+
+## Selesai (2026-06-15, halaman error bertema + fix 419 di iframe preview)
+- **Halaman error senada design system**: `resources/js/pages/Error.vue` (header brand + ModeToggle, chip ikon + kode status, judul besar, deskripsi, tombol Kembali Ke Dasbor/Masuk + Muat Ulang, meta Alamat & Kode Referensi, email dukungan). Katalog status: 401, 403, 404, 419, 429, 500, 503.
+- Dirender lewat `$exceptions->respond()` di `bootstrap/app.php` (dilewati untuk permintaan JSON; 5xx tetap memakai halaman debug Laravel saat `APP_DEBUG=true`) + `Route::fallback()` di `routes/web.php` agar 404 melewati grup `web` sehingga sesi & prop Inertia (branding, auth) tersedia.
+- **Bug**: `AuthenticationException` (belum masuk) sebelumnya tercatat sebagai "Kegagalan sistem" level danger di audit trail → kini diabaikan.
+- **Bug 419 di panel Preview (iframe)**: cookie sesi `SameSite=Lax` diblokir pada konteks lintas situs → token CSRF hilang. Fix: `SESSION_SAME_SITE=none` + `SESSION_SECURE_COOKIE=true` di `.env`. Diverifikasi login berhasil dari dalam iframe lintas domain.
+- Uji: `tests/Feature/ErrorPageTest.php` 3 lolos (404 & 403 → komponen Inertia `Error`, permintaan JSON tetap JSON) + screenshot terang/gelap.

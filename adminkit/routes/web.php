@@ -10,6 +10,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\StorageController;
 use App\Http\Controllers\UserController;
 use App\Support\DemoData;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -41,11 +42,11 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('permission:profile.view')->group(function () {
         Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])
-        ->name('notifications.read-all');
-    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])
-        ->name('notifications.read');
+            ->name('notifications.read-all');
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])
+            ->name('notifications.read');
 
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile');
+        Route::get('/profile', [ProfileController::class, 'edit'])->name('profile');
         Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
         Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
         Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar');
@@ -126,4 +127,16 @@ Route::middleware('auth')->group(function () {
         Route::put('/storage-settings', [StorageController::class, 'update'])->name('storage.update');
         Route::post('/storage-settings/test', [StorageController::class, 'test'])->name('storage.test');
     });
+});
+
+// Alamat tak dikenal: 404 dirender lewat grup web agar sesi & prop Inertia ikut tersedia.
+Route::fallback(function (Request $request) {
+    if ($request->expectsJson()) {
+        return response()->json(['message' => 'Not Found.'], 404);
+    }
+
+    return Inertia::render('Error', [
+        'status' => 404,
+        'path' => '/'.ltrim($request->path(), '/'),
+    ])->toResponse($request)->setStatusCode(404);
 });
