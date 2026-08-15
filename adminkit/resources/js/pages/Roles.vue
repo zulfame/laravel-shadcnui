@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button.vue';
 import Dialog from '@/components/ui/Dialog.vue';
 import DropdownMenuItem from '@/components/ui/DropdownMenuItem.vue';
 import DropdownMenuSeparator from '@/components/ui/DropdownMenuSeparator.vue';
+import Combobox from '@/components/ui/Combobox.vue';
 import Input from '@/components/ui/Input.vue';
 import Label from '@/components/ui/Label.vue';
 import ConfirmDeleteDialog from '@/components/composite/ConfirmDeleteDialog.vue';
@@ -33,15 +34,33 @@ const columns = [
 /* ── Dialog Tambah / Ubah Peranan ────────────────────────────────────── */
 const dialogOpen = ref(false);
 const editing = ref(null);
-const form = useForm({ name: '' });
+const form = useForm({ name: '', copy_from: '' });
 
 const check = useLiveValidation(form, {
     name: all(required('nama peranan'), min(3, 'Nama Peranan'), max(50, 'Nama Peranan')),
 });
 
+const copyOptions = computed(() => [
+    { value: '', label: 'Tanpa Salinan' },
+    ...props.roles.map((role) => ({
+        value: role.id,
+        label: `${role.name} · ${role.permissions_count} izin`,
+    })),
+]);
+
+const copySource = computed(() =>
+    props.roles.find((role) => String(role.id) === String(form.copy_from)),
+);
+
+const copyHint = computed(() =>
+    copySource.value
+        ? `${copySource.value.permissions_count} izin dari ${copySource.value.name} akan disalin ke peranan baru.`
+        : 'Opsional — peranan baru dibuat tanpa hak akses bila dibiarkan kosong.',
+);
+
 const openCreate = () => {
     editing.value = null;
-    form.defaults({ name: '' });
+    form.defaults({ name: '', copy_from: '' });
     form.reset();
     form.clearErrors();
     dialogOpen.value = true;
@@ -49,7 +68,7 @@ const openCreate = () => {
 
 const openEdit = (role) => {
     editing.value = role;
-    form.defaults({ name: role.name });
+    form.defaults({ name: role.name, copy_from: '' });
     form.reset();
     form.clearErrors();
     dialogOpen.value = true;
@@ -209,6 +228,23 @@ const confirmDelete = () =>
                         />
                         <p v-if="form.errors.name" class="text-xs font-medium text-destructive" data-testid="role-form-name-error">
                             {{ form.errors.name }}
+                        </p>
+                    </div>
+
+                    <div v-if="!editing" class="space-y-[var(--item-gap)]">
+                        <Label>Salin Hak Akses Dari</Label>
+                        <Combobox
+                            v-model="form.copy_from"
+                            :options="copyOptions"
+                            placeholder="Tanpa Salinan"
+                            search-placeholder="Cari peranan…"
+                            data-testid="role-form-copy-from"
+                        />
+                        <p class="text-xs text-muted-foreground" data-testid="role-form-copy-hint">
+                            {{ copyHint }}
+                        </p>
+                        <p v-if="form.errors.copy_from" class="text-xs font-medium text-destructive" data-testid="role-form-copy-error">
+                            {{ form.errors.copy_from }}
                         </p>
                     </div>
                 </form>

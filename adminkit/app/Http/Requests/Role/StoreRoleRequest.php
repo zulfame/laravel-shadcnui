@@ -16,12 +16,14 @@ class StoreRoleRequest extends FormRequest
                 'required', 'string', 'min:3', 'max:50', 'regex:/^[\pL\pM0-9 .\-]+$/u',
                 Rule::unique('roles', 'name')->ignore($id),
             ],
+            // Hanya dipakai saat membuat peranan baru: salin hak akses peranan lain.
+            'copy_from' => ['nullable', 'integer', Rule::exists('roles', 'id')],
         ];
     }
 
     public function attributes(): array
     {
-        return ['name' => 'nama peranan'];
+        return ['name' => 'nama peranan', 'copy_from' => 'peranan sumber'];
     }
 
     public function messages(): array

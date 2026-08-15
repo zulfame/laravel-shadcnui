@@ -146,12 +146,23 @@ class RoleController extends Controller
         $data = $request->validated();
         $role = Role::create(['name' => $data['name'], 'guard_name' => 'web']);
 
+        $copied = 0;
+        $source = null;
+
+        if (! empty($data['copy_from'])) {
+            $source = Role::with('permissions:id,name')->find($data['copy_from']);
+            $names = $source->permissions->pluck('name')->all();
+            $role->syncPermissions($names);
+            $copied = count($names);
+        }
+
         ActivityLog::record(
             "Menambah peranan {$role->name}",
             'Peranan',
             'success',
             $role,
             ActivityLog::snapshotOf($role),
+            $source ? ['hak_akses_disalin_dari' => $source->name, 'jumlah_izin' => $copied] : [],
         );
 
         Notify::toPermission(
@@ -163,7 +174,9 @@ class RoleController extends Controller
             level: 'success',
         );
 
-        return back()->with('success', "Peranan {$role->name} ditambahkan.");
+        return back()->with('success', $source
+            ? "Peranan {$role->name} ditambahkan dengan {$copied} izin dari {$source->name}."
+            : "Peranan {$role->name} ditambahkan.");
     }
 
     public function update(StoreRoleRequest $request, Role $role): RedirectResponse

@@ -266,3 +266,8 @@ Atas permintaan user: **semua style badge kustom DIHAPUS**.
 ## Selesai (2026-06-16, dokumentasi diperbarui)
 - README dirapikan: blok Fitur "Manajemen Pengguna"/"Perizinan" yang duplikat & rusak diperbaiki; ditambah halaman error bertema, struktur sidebar baru (Profil tidak lagi jadi menu), drag & drop urutan entitas matriks, tabel Telescope di skema DB, rute `PUT /roles/entity-order` + `/telescope` + `Route::fallback`, env penting (`SESSION_SAME_SITE`, `FILESYSTEM_DISK`, `TELESCOPE_*`), perintah uji (`ExcelIoTest`, `ErrorPageTest`), dan 4 entri baru Pemecahan Masalah.
 - **Berkas contoh env bernama `env.example` (tanpa titik, sengaja, agar ter-push ke GitHub) — JANGAN dihapus/ubah nama.** Disinkronkan dengan kunci baru: `SESSION_SAME_SITE`, `SESSION_SECURE_COOKIE`, `AWS_ENDPOINT`, `AWS_URL`, `AWS_PATH`, `TELESCOPE_ENABLED`, `TELESCOPE_ALLOWED_EMAILS`. Perintah di README kini `cp env.example .env`.
+
+## Selesai (2026-06-16, Salin Hak Akses saat membuat peranan)
+- Dialog **Tambah Peranan** kini punya Combobox opsional **Salin Hak Akses Dari** (`data-testid=role-form-copy-from`) berisi daftar peranan + jumlah izinnya, plus teks bantuan dinamis (`role-form-copy-hint`). Hanya muncul saat membuat (tidak pada Ubah).
+- Backend: `StoreRoleRequest` menerima `copy_from` (`nullable|integer|exists:roles,id`); `RoleController::store()` menyalin `syncPermissions()` dari peranan sumber, mencatat konteks audit (`hak_akses_disalin_dari`, `jumlah_izin`), dan flash sukses menyebut jumlah izin + nama sumber.
+- Terverifikasi end-to-end: menyalin dari Super Admin → 12 izin tersalin (dikonfirmasi di halaman detail peranan baru). Peranan uji dibersihkan.

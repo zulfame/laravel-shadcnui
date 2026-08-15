@@ -81,6 +81,7 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 **Peranan**
 - CRUD peranan, peranan `Super Admin` terkunci dari perubahan/penghapusan.
 - **Impor peranan dari Excel** (nama peranan pada kolom pertama, baris judul diabaikan, duplikat dilewati).
+- **Salin Hak Akses**: pada dialog *Tambah Peranan* ada pilihan **Salin Hak Akses Dari** (opsional) — seluruh izin peranan sumber langsung disalin ke peranan baru; jumlah izin ditampilkan di daftar pilihan dan pada teks bantuan.
 - **Matriks hak akses** di halaman detail peranan: izin dikelompokkan per entitas, toggle "pilih semua" per entitas dan global, pencarian izin, penghitung izin terpilih (Super Admin bersifat read-only).
 
 **Audit Trail**
@@ -328,6 +329,7 @@ const submit = () => check.submit(() => form.post('/users'));
 - Halaman detail peranan (`/roles/{id}`) menampilkan seluruh izin yang dikelompokkan per **entitas** (bagian sebelum titik) dengan checkbox per aksi, toggle "pilih semua" per entitas, toggle global, pencarian izin, dan penghitung izin terpilih.
 - Disimpan lewat `PUT /roles/{role}/permissions` → `syncPermissions()`; peranan `Super Admin` bersifat **read-only** (kontrol disabled dan server menolak 403).
 - Perubahan dicatat di audit trail sebagai diff daftar izin lama → baru dan memicu notifikasi bertarget `roles.view`.
+- Saat membuat peranan, field opsional `copy_from` (id peranan sumber, divalidasi `Rule::exists`) menyalin seluruh izin peranan tersebut; peranan sumber dan jumlah izin dicatat pada konteks audit trail.
 - **Kartu entitas dapat digeser** (drag & drop HTML5, ikon `GripVertical`) untuk menyusun urutan tampilnya. Urutan bersifat **global** (berlaku untuk semua peranan), tersimpan otomatis ke `settings.permission_entity_order` lewat `PUT /roles/entity-order` (`SaveEntityOrderRequest`, izin `roles.manage`), dan dipakai `RoleController::matrix()`; entitas baru menyusul di belakang. Drag dinonaktifkan selama kolom pencarian izin terisi.
 
 ### Generator izin standar
