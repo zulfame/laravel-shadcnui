@@ -134,6 +134,11 @@ Backlog kualitas: Pest feature test (auth, CRUD, otorisasi), ESLint + Prettier, 
 - **Badge lebih solid**: `.state-chip` kini isian penuh `hsl(var(--chip))` dengan teks kontras `hsl(var(--background))`; varian `secondary` pada `Badge` menjadi solid (`bg-foreground/85 text-background`), varian lembut lama tetap tersedia sebagai `muted`.
 - Terverifikasi di tema terang & gelap tanpa error console.
 
+## Perbaikan (2026-06-15, kontras teks chip status/level)
+- **Bug**: pada tema terang, badge LEVEL/STATUS (StateChip) berlatar warna solid tapi teksnya gelap → hampir tak terbaca. RCA: class komponen `.state-chip` kalah spesifisitas dengan utility `text-foreground` dari `Badge variant="outline"` (layer utilities selalu menang atas layer components).
+- **Fix**: `Badge` mendapat variant `chip` (`bg-[hsl(var(--chip))] text-[hsl(var(--background))]`, semua utility → deterministik); `StateChip` memakai `variant="chip"`; blok CSS `.state-chip` dihapus (tak ada kode mati).
+- Terverifikasi testing agent (iterasi 6, frontend 100%): terang `Info` teks putih di atas biru, gelap `Info` teks gelap di atas biru muda; halaman Pengguna ikut benar; tanpa error console.
+
 ## Selesai (2026-06-15, palet Badge ala referensi Tabler)
 - `Badge.vue` kini punya **dua mode**: (1) semantik lama (`default`/`secondary`/`destructive`/`muted`/`outline`) — pemakaian existing TIDAK berubah; (2) **palet** lewat prop `color` (blue, azure, indigo, purple, pink, red, orange, yellow, lime, green, teal, cyan, dark, light) dengan gaya `variant="solid|light|outline"`.
 - Token palet `--bdg-*` ditambahkan di `app.css` untuk light & dark, plus kelas komponen `.bdg-solid` / `.bdg-light` / `.bdg-outline` (hue via `--bdg`) dan pengecualian kontras `.bdg-c-dark` / `.bdg-c-light`.

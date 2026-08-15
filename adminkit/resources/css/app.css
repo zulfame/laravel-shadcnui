@@ -211,16 +211,9 @@
     }
 }
 
-/* Badge status/prioritas berwarna: isian SOLID + teks kontras.
-   Hue di-set lewat inline `--chip` agar tetap token-based. */
+/* Badge berwarna (palet & chip status): hue di-set lewat CSS variable agar
+   tetap token-based, bukan warna mentah. */
 @layer components {
-    .state-chip {
-        background-color: hsl(var(--chip));
-        color: hsl(var(--background));
-        border-color: hsl(var(--chip));
-        font-weight: 500;
-    }
-
     /* Badge berwarna: hue di-set lewat `--bdg` (token, bukan warna mentah). */
     .bdg-solid {
         background-color: hsl(var(--bdg));

@@ -23,6 +23,8 @@ const badgeVariants = cva(
                 secondary: 'border-transparent bg-foreground/85 text-background shadow-sm dark:bg-foreground/90',
                 destructive: 'border-transparent bg-destructive text-destructive-foreground shadow',
                 muted: 'border-transparent bg-secondary text-secondary-foreground',
+                // Chip status/prioritas: hue lewat `--chip`, teks selalu kontras.
+                chip: 'border-transparent bg-[hsl(var(--chip))] text-[hsl(var(--background))] font-medium',
                 outline: 'text-foreground',
             },
         },

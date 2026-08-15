@@ -12,8 +12,8 @@ const props = defineProps({
 
 <template>
     <Badge
-        variant="outline"
-        class="state-chip whitespace-nowrap font-medium"
+        variant="chip"
+        class="whitespace-nowrap"
         :style="{ '--chip': `var(${props.chip})` }"
         :data-testid="props.testid"
     >
