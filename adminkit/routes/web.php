@@ -67,6 +67,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/activity', [ActivityLogController::class, 'index'])
         ->middleware('permission:activity.view')->name('activity.index');
 
+    Route::delete('/activity', [ActivityLogController::class, 'destroyRange'])
+        ->middleware('permission:activity.manage')->name('activity.destroy');
+
     Route::get('/appearance', [AppearanceController::class, 'edit'])
         ->middleware('permission:appearance.view')->name('appearance');
 

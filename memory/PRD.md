@@ -127,3 +127,16 @@ Sengaja TIDAK diterapkan (dengan alasan):
 - **TypeScript & Pinia** — lihat keputusan sebelumnya (kesetiaan ke FlowDesk; belum ada state lintas halaman).
 
 Backlog kualitas: Pest feature test (auth, CRUD, otorisasi), ESLint + Prettier, PHPStan/Larastan.
+
+## Selesai (2026-06-15, filter tanggal log + hapus log + badge solid)
+- **Filter rentang tanggal** di Log Aktivitas memakai `DatePicker` (Dari/Sampai tanggal, `whereDate` inklusif di server) + tombol "Semua tanggal" untuk mereset.
+- **Hapus log berdasarkan rentang tanggal**: tombol "Hapus Log" → dialog berisi dua DatePicker + ringkasan rentang; validasi `after_or_equal`; penghapusan itu sendiri ikut tercatat sebagai log (level danger). Izin baru **`activity.manage`** (rute `DELETE /activity`), sudah disinkron ke role Super Admin lewat seeder.
+- **Badge lebih solid**: `.state-chip` kini isian penuh `hsl(var(--chip))` dengan teks kontras `hsl(var(--background))`; varian `secondary` pada `Badge` menjadi solid (`bg-foreground/85 text-background`), varian lembut lama tetap tersedia sebagai `muted`.
+- Terverifikasi di tema terang & gelap tanpa error console.
+
+## Selesai (2026-06-15, palet Badge ala referensi Tabler)
+- `Badge.vue` kini punya **dua mode**: (1) semantik lama (`default`/`secondary`/`destructive`/`muted`/`outline`) — pemakaian existing TIDAK berubah; (2) **palet** lewat prop `color` (blue, azure, indigo, purple, pink, red, orange, yellow, lime, green, teal, cyan, dark, light) dengan gaya `variant="solid|light|outline"`.
+- Token palet `--bdg-*` ditambahkan di `app.css` untuk light & dark, plus kelas komponen `.bdg-solid` / `.bdg-light` / `.bdg-outline` (hue via `--bdg`) dan pengecualian kontras `.bdg-c-dark` / `.bdg-c-light`.
+- Dukungan ikon: container `gap-1` + `[&>svg]:size-3` (cukup `<Star />` di dalam Badge).
+- Catatan penting: nama kelas `bdg-c-*` HARUS literal di JS (map `neutralInkMap`), karena kelas dinamis dibuang oleh purge Tailwind (bug ini sudah terjadi & diperbaiki).
+- Verifikasi: warna terhitung benar di kedua tema, halaman Pengguna (badge peran/status) tetap normal.

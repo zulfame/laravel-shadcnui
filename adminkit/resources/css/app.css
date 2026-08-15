@@ -98,6 +98,22 @@
         --pr-low: 220 9% 46%;
         --ev-meeting: 217 91% 55%;
 
+        /* ── Badge palette (opt-in via prop `color` pada Badge) ── */
+        --bdg-blue: 212 72% 45%;
+        --bdg-azure: 205 70% 57%;
+        --bdg-indigo: 230 82% 59%;
+        --bdg-purple: 288 60% 52%;
+        --bdg-pink: 339 63% 52%;
+        --bdg-red: 0 65% 53%;
+        --bdg-orange: 24 94% 50%;
+        --bdg-yellow: 39 98% 48%;
+        --bdg-lime: 80 78% 40%;
+        --bdg-green: 129 58% 44%;
+        --bdg-teal: 162 88% 35%;
+        --bdg-cyan: 188 78% 41%;
+        --bdg-dark: 222 34% 17%;
+        --bdg-light: 210 20% 93%;
+
         /* Sidebar semantics (monochrome-first) */
         --sidebar-background: var(--neutral-50);
         --sidebar-foreground: var(--neutral-700);
@@ -153,6 +169,21 @@
         --pr-low: 220 9% 65%;
         --ev-meeting: 213 94% 68%;
 
+        --bdg-blue: 212 80% 60%;
+        --bdg-azure: 205 78% 66%;
+        --bdg-indigo: 230 85% 68%;
+        --bdg-purple: 288 66% 64%;
+        --bdg-pink: 339 72% 63%;
+        --bdg-red: 0 76% 63%;
+        --bdg-orange: 24 94% 58%;
+        --bdg-yellow: 39 96% 57%;
+        --bdg-lime: 80 62% 50%;
+        --bdg-green: 129 52% 52%;
+        --bdg-teal: 162 62% 44%;
+        --bdg-cyan: 188 62% 50%;
+        --bdg-dark: 220 14% 82%;
+        --bdg-light: 0 0% 24%;
+
         --sidebar-background: var(--neutral-900);
         --sidebar-foreground: var(--neutral-100);
         --sidebar-primary: var(--neutral-50);
@@ -180,13 +211,47 @@
     }
 }
 
-/* Badge status/prioritas berwarna: tint lembut + teks & garis sewarna.
+/* Badge status/prioritas berwarna: isian SOLID + teks kontras.
    Hue di-set lewat inline `--chip` agar tetap token-based. */
 @layer components {
     .state-chip {
-        background-color: hsl(var(--chip) / 0.12);
-        color: hsl(var(--chip));
-        border-color: hsl(var(--chip) / 0.32);
+        background-color: hsl(var(--chip));
+        color: hsl(var(--background));
+        border-color: hsl(var(--chip));
+        font-weight: 500;
+    }
+
+    /* Badge berwarna: hue di-set lewat `--bdg` (token, bukan warna mentah). */
+    .bdg-solid {
+        background-color: hsl(var(--bdg));
+        color: hsl(var(--bdg-fg, var(--neutral-0)));
+        border-color: transparent;
+    }
+    .bdg-light {
+        background-color: hsl(var(--bdg) / 0.14);
+        color: hsl(var(--bdg-ink, var(--bdg)));
+        border-color: transparent;
+    }
+    .bdg-outline {
+        background-color: transparent;
+        color: hsl(var(--bdg-ink, var(--bdg)));
+        border-color: hsl(var(--bdg) / 0.55);
+    }
+
+    /* Pengecualian kontras untuk warna netral. */
+    .bdg-c-light {
+        --bdg-fg: var(--neutral-900);
+        --bdg-ink: var(--neutral-600);
+    }
+    .bdg-c-dark {
+        --bdg-ink: var(--foreground);
+    }
+    .dark .bdg-c-light {
+        --bdg-fg: var(--neutral-50);
+        --bdg-ink: var(--neutral-300);
+    }
+    .dark .bdg-c-dark {
+        --bdg-fg: var(--neutral-900);
     }
 }
 

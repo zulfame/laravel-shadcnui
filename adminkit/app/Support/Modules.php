@@ -20,7 +20,7 @@ class Modules
         'roles' => ['label' => 'Kelola Peranan', 'abilities' => ['view', 'manage']],
         'appearance' => ['label' => 'Penampilan', 'abilities' => ['view', 'manage']],
         'storage' => ['label' => 'Penyimpanan', 'abilities' => ['view', 'manage']],
-        'activity' => ['label' => 'Log Aktivitas', 'abilities' => ['view']],
+        'activity' => ['label' => 'Log Aktivitas', 'abilities' => ['view', 'manage']],
         'profile' => ['label' => 'Profil Pengguna', 'abilities' => ['view']],
     ];
 
