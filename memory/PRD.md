@@ -246,3 +246,12 @@ Atas permintaan user: **semua style badge kustom DIHAPUS**.
 - **Bug**: `AuthenticationException` (belum masuk) sebelumnya tercatat sebagai "Kegagalan sistem" level danger di audit trail → kini diabaikan.
 - **Bug 419 di panel Preview (iframe)**: cookie sesi `SameSite=Lax` diblokir pada konteks lintas situs → token CSRF hilang. Fix: `SESSION_SAME_SITE=none` + `SESSION_SECURE_COOKIE=true` di `.env`. Diverifikasi login berhasil dari dalam iframe lintas domain.
 - Uji: `tests/Feature/ErrorPageTest.php` 3 lolos (404 & 403 → komponen Inertia `Error`, permintaan JSON tetap JSON) + screenshot terang/gelap.
+
+## Selesai (2026-06-16, sidebar diringkas + modul Penyimpanan dihapus + urutan entitas dapat digeser)
+- **Menu Profil dihapus** dari sidebar (area Member hanya Dashboard); halaman `/profile` tetap ada & diakses lewat dropdown footer sidebar.
+- **Modul Penyimpanan DIHAPUS total**: `StorageController`, `Requests/StorageSetting/`, `pages/Storage.vue`, rute `/storage-settings*`, izin `storage.view|manage` (dihapus lewat seeder), dan setelan `s3_*`/`storage_driver` di tabel `settings`. `App\Support\FileStorage` kini **100% dari .env**: `FILESYSTEM_DISK`, `AWS_*` + tambahan `AWS_ENDPOINT`, `AWS_URL`, `AWS_PATH` (dipakai sebagai `root` disk s3 di `config/filesystems.php`).
+- **Urutan menu Administrator**: Perizinan → Peranan → Pengguna → **Penampilan** → Audit Trail.
+- **Kartu entitas pada matriks hak akses dapat digeser** (HTML5 drag & drop, tanpa dependensi baru; ikon `GripVertical`, ring saat drop). Urutan disimpan global di `settings.permission_entity_order` lewat `PUT /roles/entity-order` (`SaveEntityOrderRequest`, izin `roles.manage`) dan dipakai `RoleController::matrix()`; entitas baru menyusul di belakang. Diverifikasi: urutan tetap setelah reload.
+- **BUG LOGIN diperbaiki**: `LoginRequest::authenticate()` sebelumnya menebak kolom dari format masukan, sehingga **username numerik** (`309011221`) dianggap nomor telepon → selalu gagal. Sekarang pengguna dicari sekaligus pada `email`/`username`/`phone`, lalu `Auth::attempt(['id' => ...])`.
+- Kredensial seeder saat ini: username `309011221`, kata sandi `1` (lihat `/app/memory/test_credentials.md`) — `php artisan db:seed` MENIMPA kata sandi.
+- Catatan: `tests/Feature/ExampleTest.php` (bawaan Laravel) gagal karena `/` butuh sesi — bukan regresi.

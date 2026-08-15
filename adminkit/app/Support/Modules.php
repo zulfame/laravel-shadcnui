@@ -20,7 +20,6 @@ class Modules
         'permissions' => ['label' => 'Perizinan', 'abilities' => ['view', 'manage']],
         'roles' => ['label' => 'Kelola Peranan', 'abilities' => ['view', 'manage']],
         'appearance' => ['label' => 'Penampilan', 'abilities' => ['view', 'manage']],
-        'storage' => ['label' => 'Penyimpanan', 'abilities' => ['view', 'manage']],
         'activity' => ['label' => 'Audit Trail', 'abilities' => ['view', 'manage']],
         'profile' => ['label' => 'Profil Pengguna', 'abilities' => ['view']],
     ];

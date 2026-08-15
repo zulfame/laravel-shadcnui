@@ -1,6 +1,6 @@
 # CODEX — AdminKit Starter Kit
 
-Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 3 + Inertia.js + TailwindCSS 3 di atas SQLite, lengkap dengan autentikasi, hak akses berbasis peranan, audit trail, pengaturan penampilan, dan pengaturan penyimpanan (S3).
+Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 3 + Inertia.js + TailwindCSS 3 di atas SQLite, lengkap dengan autentikasi, hak akses berbasis peranan, audit trail, pengaturan penampilan, dan object storage (S3) yang dikonfigurasi lewat `.env`.
 
 > Design system mengikuti **FlowDesk** (compact, monokrom) dengan komponen porting **shadcn/ui** dan dukungan **dark mode**.
 
@@ -22,7 +22,7 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 - [Notifikasi](#notifikasi)
 - [Aksi Massal (Bulk Action)](#aksi-massal-bulk-action)
 - [Pengaturan Penampilan (Branding)](#pengaturan-penampilan-branding)
-- [Pengaturan Penyimpanan (S3)](#pengaturan-penyimpanan-s3)
+- [Object Storage (S3)](#object-storage-s3)
 - [Design System & Konvensi UI](#design-system--konvensi-ui)
 - [Tabel Server-side](#tabel-server-side)
 - [Rute](#rute)
@@ -41,7 +41,7 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 | Styling | TailwindCSS 3, komponen porting shadcn/ui, `lucide-vue-next` |
 | Basis Data | SQLite (mudah diganti MySQL/PostgreSQL) |
 | Hak Akses | `spatie/laravel-permission` |
-| Penyimpanan | Disk `public` (lokal) atau S3 via `league/flysystem-aws-s3-v3` |
+| Penyimpanan | Disk `public` (lokal) atau S3 via `league/flysystem-aws-s3-v3`, dipilih oleh `FILESYSTEM_DISK` |
 | Kualitas Kode | Laravel Pint, Prettier |
 
 ---
@@ -97,7 +97,6 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 
 **Pengaturan**
 - **Penampilan**: identitas aplikasi (nama, tagline, inisial brand), logo terang/gelap, favicon, SEO & metadata (termasuk Open Graph), kontak & footer.
-- **Penyimpanan**: pilih driver `local`/`s3`, kredensial S3, prefix path, path-style endpoint, dan **Uji Koneksi**.
 
 **UI**
 - Dark mode, sidebar dapat di-collapse (mode ikon), breadcrumb otomatis, toast, dialog, combobox dengan pencarian, date picker.
@@ -408,14 +407,25 @@ Backend memakai Form Request (`BulkUserRequest`, `BulkRoleRequest`) dengan valid
 
 ---
 
-## Pengaturan Penyimpanan (S3)
+## Object Storage (S3)
 
-- Halaman `/storage-settings` mengatur `storage_driver` (`local`/`s3`), endpoint, bucket, **path** (prefix folder), access key, secret, region, URL publik, dan path-style endpoint.
-- Semua unggahan melewati `App\Support\FileStorage`:
-  - Nilai path yang disimpan **berawalan disk**, mis. `local:branding/x.png` atau `s3:adminkit/branding/x.png`, sehingga berkas lama tetap dapat diakses walau driver aktif diganti.
-  - `FileStorage::url()` membangun URL publik (memakai `s3_public_url` bila diisi).
-- Secret **tidak pernah** dikirim balik ke antarmuka; biarkan kosong bila tidak ingin menggantinya.
-- Tombol **Uji Koneksi** menulis lalu menghapus berkas percobaan.
+Tidak ada halaman pengaturan penyimpanan — **semua kredensial diambil dari `.env`**:
+
+```
+FILESYSTEM_DISK=s3          # local (default) atau s3
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_DEFAULT_REGION=
+AWS_BUCKET=
+AWS_ENDPOINT=               # untuk S3-compatible (mis. https://nos.wjv-1.neo.id)
+AWS_URL=                    # URL publik bila berbeda dari endpoint/bucket
+AWS_PATH=                   # prefix folder opsional, mis. adminkit
+AWS_USE_PATH_STYLE_ENDPOINT=false
+```
+
+- Semua unggahan melewati `App\Support\FileStorage` (`store`, `delete`, `url`).
+- Nilai path yang disimpan **berawalan disk**, mis. `local:branding/x.png` atau `s3:branding/x.png`, sehingga berkas lama tetap dapat diakses walau `FILESYSTEM_DISK` diganti.
+- Setelah mengubah `.env`, jalankan `php artisan config:clear`.
 
 ---
 
@@ -489,8 +499,6 @@ Nilai `'all'` dipakai sebagai sentinel filter "semua" karena `reka-ui` melarang 
 | GET | `/appearance` | Pengaturan penampilan |
 | PUT | `/appearance/{identity\|seo\|contact}` | Simpan per bagian |
 | POST/DELETE | `/appearance/asset/{key}` | Unggah/hapus aset merek |
-| GET/PUT | `/storage-settings` | Pengaturan penyimpanan |
-| POST | `/storage-settings/test` | Uji koneksi S3 |
 
 ---
 

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Models\ActivityLog;
+use App\Models\User;
 use App\Support\Notify;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
@@ -44,20 +45,24 @@ class LoginRequest extends FormRequest
 
     /**
      * Coba autentikasi: kredensial dapat berupa email, username, atau telepon.
+     * Kolom TIDAK ditebak dari format masukan (username numerik pernah salah
+     * dianggap nomor telepon) — pengguna dicari pada ketiga kolom sekaligus,
+     * lalu kata sandi diverifikasi oleh guard lewat `Auth::attempt`.
      */
     public function authenticate(): void
     {
         $this->ensureIsNotRateLimited();
 
         $credential = trim((string) $this->input('credential'));
-        $field = match (true) {
-            filter_var($credential, FILTER_VALIDATE_EMAIL) !== false => 'email',
-            preg_match('/^[0-9+()\-\s]{6,}$/', $credential) === 1 => 'phone',
-            default => 'username',
-        };
 
-        $attempted = Auth::attempt(
-            [$field => $credential, 'password' => $this->input('password'), 'is_active' => true],
+        $userId = User::query()
+            ->where('email', $credential)
+            ->orWhere('username', $credential)
+            ->orWhere('phone', $credential)
+            ->value('id');
+
+        $attempted = $userId !== null && Auth::attempt(
+            ['id' => $userId, 'password' => $this->input('password'), 'is_active' => true],
             $this->boolean('remember')
         );
 
@@ -77,7 +82,7 @@ class LoginRequest extends FormRequest
                 'Percobaan masuk gagal',
                 'Keamanan',
                 'danger',
-                context: ['kredensial' => $credential, 'jenis_kolom' => $field],
+                context: ['kredensial' => $credential, 'pengguna_ditemukan' => $userId !== null],
                 statusCode: 422,
             );
 

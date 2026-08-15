@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Enums\RoleName;
 use App\Http\Requests\Role\BulkRoleRequest;
 use App\Http\Requests\Role\ImportRoleRequest;
+use App\Http\Requests\Role\SaveEntityOrderRequest;
 use App\Http\Requests\Role\StoreRoleRequest;
 use App\Http\Requests\Role\SyncRolePermissionsRequest;
 use App\Models\ActivityLog;
+use App\Models\Setting;
 use App\Support\Excel;
 use App\Support\Notify;
 use Illuminate\Http\RedirectResponse;
@@ -67,9 +69,13 @@ class RoleController extends Controller
     /**
      * Izin dikelompokkan per entitas (bagian sebelum titik) beserta aksinya —
      * dipakai sebagai matriks hak akses di halaman detail peranan.
+     * Urutan entitas mengikuti setelan `permission_entity_order` (dapat digeser
+     * di antarmuka); entitas baru diletakkan setelahnya secara alfabetis.
      */
     private function matrix(): array
     {
+        $order = self::entityOrder();
+
         return Permission::orderBy('name')->pluck('name')
             ->groupBy(fn (string $name) => str($name)->before('.')->value())
             ->map(fn ($names, $entity) => [
@@ -79,7 +85,30 @@ class RoleController extends Controller
                     'label' => str($name)->after('.')->replace('_', ' ')->title()->value(),
                 ])->values()->all(),
             ])
+            ->sortBy(function (array $group) use ($order) {
+                $index = array_search($group['entity'], $order, true);
+
+                return $index === false ? count($order) : $index;
+            })
             ->values()->all();
+    }
+
+    /** Urutan entitas yang tersimpan. */
+    private static function entityOrder(): array
+    {
+        $stored = Setting::find('permission_entity_order')?->value;
+
+        return is_array($decoded = json_decode((string) $stored, true)) ? $decoded : [];
+    }
+
+    /** Simpan urutan kartu entitas pada matriks hak akses. */
+    public function saveEntityOrder(SaveEntityOrderRequest $request): RedirectResponse
+    {
+        Setting::putMany([
+            'permission_entity_order' => json_encode(array_values($request->validated()['order'])),
+        ]);
+
+        return back();
     }
 
     /** Simpan matriks hak akses satu peranan. */

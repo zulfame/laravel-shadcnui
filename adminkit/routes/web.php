@@ -7,7 +7,6 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoleController;
-use App\Http\Controllers\StorageController;
 use App\Http\Controllers\UserController;
 use App\Support\DemoData;
 use Illuminate\Http\Request;
@@ -91,6 +90,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permission:roles.manage')->group(function () {
         Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
         Route::post('/roles/import', [RoleController::class, 'import'])->name('roles.import');
+        Route::put('/roles/entity-order', [RoleController::class, 'saveEntityOrder'])
+            ->name('roles.entity-order');
         Route::get('/roles/import/template', [RoleController::class, 'importTemplate'])
             ->name('roles.import.template');
         Route::post('/roles/bulk-destroy', [RoleController::class, 'bulkDestroy'])->name('roles.bulk-destroy');
@@ -120,13 +121,6 @@ Route::middleware('auth')->group(function () {
         Route::delete('/appearance/asset/{key}', [AppearanceController::class, 'destroyAsset'])->name('appearance.asset.destroy');
     });
 
-    Route::get('/storage-settings', [StorageController::class, 'edit'])
-        ->middleware('permission:storage.view')->name('storage');
-
-    Route::middleware('permission:storage.manage')->group(function () {
-        Route::put('/storage-settings', [StorageController::class, 'update'])->name('storage.update');
-        Route::post('/storage-settings/test', [StorageController::class, 'test'])->name('storage.test');
-    });
 });
 
 // Alamat tak dikenal: 404 dirender lewat grup web agar sesi & prop Inertia ikut tersedia.

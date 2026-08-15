@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, Lock, Save } from 'lucide-vue-next';
+import { ArrowLeft, GripVertical, Lock, Save } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
 import Badge from '@/components/ui/Badge.vue';
@@ -25,10 +25,21 @@ const props = defineProps({
 const form = useForm({ permissions: [...props.role.permissions] });
 const search = ref('');
 
+/* ── Urutan kartu entitas (dapat digeser) ─────────────────────────────── */
+const entityOrder = ref(props.matrix.map((g) => g.entity));
+const dragIndex = ref(null);
+const dragOverIndex = ref(null);
+
+const ordered = computed(() =>
+    entityOrder.value
+        .map((entity) => props.matrix.find((g) => g.entity === entity))
+        .filter(Boolean),
+);
+
 const groups = computed(() => {
     const term = search.value.trim().toLowerCase();
 
-    return props.matrix
+    return ordered.value
         .map((group) => ({
             ...group,
             abilities: term
@@ -39,6 +50,35 @@ const groups = computed(() => {
         }))
         .filter((group) => group.abilities.length);
 });
+
+const draggable = computed(() => search.value.trim() === '');
+
+const onDragStart = (index, event) => {
+    dragIndex.value = index;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', String(index));
+};
+
+const onDragEnter = (index) => {
+    if (dragIndex.value === null || dragIndex.value === index) return;
+
+    const next = [...entityOrder.value];
+    next.splice(index, 0, next.splice(dragIndex.value, 1)[0]);
+    entityOrder.value = next;
+    dragIndex.value = index;
+    dragOverIndex.value = index;
+};
+
+const onDragEnd = () => {
+    dragIndex.value = null;
+    dragOverIndex.value = null;
+
+    router.put(
+        '/roles/entity-order',
+        { order: entityOrder.value },
+        { preserveScroll: true, preserveState: true },
+    );
+};
 
 const has = (name) => form.permissions.includes(name);
 
@@ -111,16 +151,33 @@ const save = () => form.put(`/roles/${props.role.id}/permissions`, { preserveScr
                     <p v-if="props.role.locked" class="mb-3 text-xs text-muted-foreground" data-testid="role-locked-note">
                         Peranan Super Admin selalu memiliki seluruh hak akses dan tidak dapat diubah.
                     </p>
+                    <p v-if="draggable" class="mb-3 text-xs text-muted-foreground" data-testid="role-matrix-drag-hint">
+                        Geser kartu entitas untuk menyusun urutannya — urutan tersimpan otomatis.
+                    </p>
 
                     <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-testid="role-permission-matrix">
                         <section
-                            v-for="group in groups"
+                            v-for="(group, index) in groups"
                             :key="group.entity"
-                            class="overflow-hidden rounded-lg border"
+                            class="overflow-hidden rounded-lg border transition-shadow"
+                            :class="dragOverIndex === index ? 'ring-1 ring-ring' : ''"
+                            :draggable="draggable"
                             :data-testid="`permission-group-${group.entity}`"
+                            @dragstart="onDragStart(index, $event)"
+                            @dragenter.prevent="onDragEnter(index)"
+                            @dragover.prevent
+                            @dragend="onDragEnd"
                         >
                             <header class="flex items-center justify-between gap-3 border-b bg-muted/40 px-3 py-2">
-                                <span class="truncate font-mono text-xs font-semibold">{{ group.entity }}</span>
+                                <span class="flex min-w-0 items-center gap-2">
+                                    <GripVertical
+                                        v-if="draggable"
+                                        class="size-3.5 shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing"
+                                        :data-testid="`permission-group-${group.entity}-handle`"
+                                        aria-hidden="true"
+                                    />
+                                    <span class="truncate font-mono text-xs font-semibold">{{ group.entity }}</span>
+                                </span>
                                 <Switch
                                     :model-value="groupChecked(group)"
                                     :disabled="props.role.locked"

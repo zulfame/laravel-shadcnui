@@ -1,12 +1,10 @@
 import {
-    HardDrive,
     KeyRound,
     LayoutDashboard,
     LayoutGrid,
     Palette,
     ScrollText,
     ShieldCheck,
-    UserRound,
     Users2,
 } from 'lucide-vue-next';
 
@@ -27,7 +25,6 @@ export const AREAS = [
                 label: 'Umum',
                 items: [
                     { title: 'Dashboard', href: '/', end: true, icon: LayoutDashboard, perm: 'dashboard.view' },
-                    { title: 'Profil', href: '/profile', icon: UserRound, perm: 'profile.view' },
                 ],
             },
         ],
@@ -42,11 +39,10 @@ export const AREAS = [
             {
                 label: 'Pengaturan',
                 items: [
-                    { title: 'Penampilan', href: '/appearance', icon: Palette, perm: 'appearance.view' },
-                    { title: 'Penyimpanan', href: '/storage-settings', icon: HardDrive, perm: 'storage.view' },
                     { title: 'Perizinan', href: '/permissions', icon: KeyRound, perm: 'permissions.view' },
                     { title: 'Peranan', href: '/roles', icon: ShieldCheck, perm: 'roles.view' },
                     { title: 'Pengguna', href: '/users', icon: Users2, perm: 'users.view' },
+                    { title: 'Penampilan', href: '/appearance', icon: Palette, perm: 'appearance.view' },
                     { title: 'Audit Trail', href: '/audit-trail', icon: ScrollText, perm: 'activity.view' },
                 ],
             },
@@ -82,12 +78,11 @@ const ROUTE_TRAILS = [
     [/^\/roles$/, ['Peranan']],
     [/^\/roles\/\d+$/, ['Peranan', 'Detail']],
     [/^\/appearance$/, ['Penampilan']],
-    [/^\/storage-settings$/, ['Penyimpanan']],
     [/^\/audit-trail$/, ['Audit Trail']],
     [/^\/audit-trail\/\d+$/, ['Audit Trail', 'Detail']],
 ];
 
-const ADMIN_ROUTES = [/^\/users/, /^\/permissions/, /^\/roles/, /^\/appearance/, /^\/storage-settings/, /^\/audit-trail/];
+const ADMIN_ROUTES = [/^\/users/, /^\/permissions/, /^\/roles/, /^\/appearance/, /^\/audit-trail/];
 
 /** Id area yang memiliki sebuah pathname. */
 export const areaIdOf = (pathname) =>

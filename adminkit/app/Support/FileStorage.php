@@ -2,14 +2,14 @@
 
 namespace App\Support;
 
-use App\Http\Controllers\StorageController;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 /**
  * Satu pintu untuk seluruh unggahan berkas (avatar, aset merek).
- * Driver mengikuti setelan di halaman Penyimpanan: `local` atau `s3`.
+ * Driver mengikuti konfigurasi .env (`FILESYSTEM_DISK=local|s3`) beserta
+ * kredensial `AWS_*` pada `config/filesystems.php`.
  *
  * Nilai yang disimpan di DB memakai awalan disk, mis. `s3:branding/x.png`,
  * sehingga berkas lama tetap dapat diakses meski driver aktif berganti.
@@ -18,35 +18,19 @@ class FileStorage
 {
     public static function driver(): string
     {
-        return StorageController::values()['storage_driver'] ?? 'local';
+        return config('filesystems.default') === 's3' ? 's3' : 'local';
     }
 
     public static function disk(?string $driver = null): Filesystem
     {
-        if (($driver ?? self::driver()) !== 's3') {
-            return Storage::disk('public');
-        }
-
-        $v = StorageController::values();
-
-        return Storage::build([
-            'driver' => 's3',
-            'key' => $v['s3_key'],
-            'secret' => $v['s3_secret'],
-            'region' => $v['s3_region'],
-            'bucket' => $v['s3_bucket'],
-            'endpoint' => $v['s3_endpoint'],
-            'use_path_style_endpoint' => (bool) $v['s3_path_style'],
-            'visibility' => 'public',
-            'throw' => true,
-        ]);
+        return Storage::disk(($driver ?? self::driver()) === 's3' ? 's3' : 'public');
     }
 
     public static function store(UploadedFile $file, string $folder): string
     {
         $driver = self::driver();
 
-        return $driver.':'.self::disk($driver)->putFile(self::prefix($folder, $driver), $file);
+        return $driver.':'.self::disk($driver)->putFile($folder, $file);
     }
 
     public static function delete(?string $value): void
@@ -73,10 +57,11 @@ class FileStorage
             return Storage::url($path);
         }
 
-        $v = StorageController::values();
-        $base = $v['s3_public_url'] ?: rtrim($v['s3_endpoint'], '/').'/'.$v['s3_bucket'];
+        $config = config('filesystems.disks.s3');
+        $base = $config['url'] ?: rtrim((string) $config['endpoint'], '/').'/'.$config['bucket'];
+        $prefix = trim((string) ($config['root'] ?? ''), '/');
 
-        return rtrim($base, '/').'/'.ltrim($path, '/');
+        return rtrim($base, '/').'/'.($prefix === '' ? '' : $prefix.'/').ltrim($path, '/');
     }
 
     /** Pisahkan awalan disk; nilai lama tanpa awalan memakai driver aktif. */
@@ -89,17 +74,5 @@ class FileStorage
         }
 
         return [self::driver(), $value];
-    }
-
-    /** Prefix folder dengan `s3_path` bila driver s3 memakainya. */
-    private static function prefix(string $folder, string $driver): string
-    {
-        if ($driver !== 's3') {
-            return $folder;
-        }
-
-        $path = trim((string) (StorageController::values()['s3_path'] ?? ''), '/');
-
-        return $path === '' ? $folder : "{$path}/{$folder}";
     }
 }
