@@ -1,0 +1,21 @@
+{
+  "summary": "Full backend + frontend test for the new Perizinan module. Backend pytest: 24/24 PASSED (index/filter/sort/pagination, CRUD with format+duplicate validation, 403 lock on core update+delete, bulk-destroy skips core & 422 on empty ids, audit trail records Perizinan module, regression on /roles /users /audit-trail /appearance /storage-settings /profile). Frontend Playwright (as zulfame): Perizinan sidebar item sits ABOVE Peranan (top 177 < 213 at desktop), /permissions loads with [data-testid=permissions-page-view] and breadcrumb 'Perizinan'. Entity filter contains dynamic options {activity, appearance, dashboard, permissions, profile, roles, storage, users}; URL ?entity=roles returns roles-only rows. Add dialog inline validation: 'Projects.View' -> permission-form-name-error visible; 'projects' -> error; 'qa_ui.view' -> saved & visible. Edit qa_ui.view -> qa_ui.manage works. Delete qa_ui.manage removes row (toast 'Izin qa_ui.manage dihapus'). Locked row users.view has lock icon and NO permissions-actions-* button (menu absent). Bulk: selected qa_a.view + qa_b.view + users.view -> permissions-bulk-count shows '3 baris dipilih' -> bulk-delete confirm -> toast '1 dilewati', qa rows gone, users.view preserved. Audit trail search 'qa_a' shows 'Perizinan' module rows. Mobile 390x844 no horizontal overflow (0px). Branding preserved ('Dashboard · CODEX'). 0 console errors. Cleanup: all qa_* permissions removed.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AuditTrail purge dialog title 'Hapus log aktivitas' still Sentence case (carried over from iteration_19). Not part of Perizinan scope."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "100% (24/24)", "frontend": "100% (all critical flows)"},
+  "seed_data_creation": "Ephemeral: qa_ui.view/qa_ui.manage, qa_a.view, qa_b.view, qa_audit.view, qa_module.view/qa_module.manage — all created and deleted within test lifecycle. No user data touched.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "zulfame / password (Super Admin) per /app/memory/test_credentials.md",
+  "context_for_next_testing_agent": "Modul Perizinan lengkap dan bekerja end-to-end. Sidebar order (Perizinan di atas Peranan), lock protection (isLocked via Modules::permissions()), validation regex ^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$, bulk-destroy skip-core, audit + notifikasi bertarget — semua verified. Untuk uji ke depan: pengujian sisi 'user Staf tanpa permissions.view' tidak dilakukan (butuh membuat user QA + sign in ganda); backend middleware permission:permissions.view sudah lengkap di routes/web.php sehingga penegakan dijamin oleh Spatie.",
+  "rca_of_the_issue": "N/A — no issues found in Perizinan module. Backend 24/24 pass; frontend flows end-to-end pass."
+}

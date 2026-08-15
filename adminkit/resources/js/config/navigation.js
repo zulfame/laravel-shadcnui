@@ -1,5 +1,6 @@
 import {
     HardDrive,
+    KeyRound,
     LayoutDashboard,
     LayoutGrid,
     Palette,
@@ -43,6 +44,7 @@ export const AREAS = [
                 items: [
                     { title: 'Penampilan', href: '/appearance', icon: Palette, perm: 'appearance.view' },
                     { title: 'Penyimpanan', href: '/storage-settings', icon: HardDrive, perm: 'storage.view' },
+                    { title: 'Perizinan', href: '/permissions', icon: KeyRound, perm: 'permissions.view' },
                     { title: 'Peranan', href: '/roles', icon: ShieldCheck, perm: 'roles.view' },
                     { title: 'Pengguna', href: '/users', icon: Users2, perm: 'users.view' },
                     { title: 'Audit Trail', href: '/audit-trail', icon: ScrollText, perm: 'activity.view' },
@@ -76,6 +78,7 @@ const ROUTE_TRAILS = [
     [/^\/$/, ['Dashboard']],
     [/^\/profile$/, ['Profil Pengguna']],
     [/^\/users$/, ['Pengguna']],
+    [/^\/permissions$/, ['Perizinan']],
     [/^\/roles$/, ['Peranan']],
     [/^\/roles\/\d+$/, ['Peranan', 'Detail']],
     [/^\/appearance$/, ['Penampilan']],
@@ -84,7 +87,7 @@ const ROUTE_TRAILS = [
     [/^\/audit-trail\/\d+$/, ['Audit Trail', 'Detail']],
 ];
 
-const ADMIN_ROUTES = [/^\/users/, /^\/roles/, /^\/appearance/, /^\/storage-settings/, /^\/audit-trail/];
+const ADMIN_ROUTES = [/^\/users/, /^\/permissions/, /^\/roles/, /^\/appearance/, /^\/storage-settings/, /^\/audit-trail/];
 
 /** Id area yang memiliki sebuah pathname. */
 export const areaIdOf = (pathname) =>

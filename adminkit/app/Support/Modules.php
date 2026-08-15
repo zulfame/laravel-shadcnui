@@ -17,6 +17,7 @@ class Modules
     public const MAP = [
         'dashboard' => ['label' => 'Dashboard', 'abilities' => ['view']],
         'users' => ['label' => 'Kelola Pengguna', 'abilities' => ['view', 'manage']],
+        'permissions' => ['label' => 'Perizinan', 'abilities' => ['view', 'manage']],
         'roles' => ['label' => 'Kelola Peranan', 'abilities' => ['view', 'manage']],
         'appearance' => ['label' => 'Penampilan', 'abilities' => ['view', 'manage']],
         'storage' => ['label' => 'Penyimpanan', 'abilities' => ['view', 'manage']],

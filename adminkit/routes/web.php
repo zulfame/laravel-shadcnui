@@ -4,6 +4,7 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\AppearanceController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\StorageController;
@@ -59,6 +60,19 @@ Route::middleware('auth')->group(function () {
         Route::post('/users/bulk', [UserController::class, 'bulk'])->name('users.bulk');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+    });
+
+    Route::middleware('permission:permissions.view')->group(function () {
+        Route::get('/permissions', [PermissionController::class, 'index'])->name('permissions.index');
+    });
+
+    Route::middleware('permission:permissions.manage')->group(function () {
+        Route::post('/permissions', [PermissionController::class, 'store'])->name('permissions.store');
+        Route::post('/permissions/bulk-destroy', [PermissionController::class, 'bulkDestroy'])
+            ->name('permissions.bulk-destroy');
+        Route::put('/permissions/{permission}', [PermissionController::class, 'update'])->name('permissions.update');
+        Route::delete('/permissions/{permission}', [PermissionController::class, 'destroy'])
+            ->name('permissions.destroy');
     });
 
     Route::middleware('permission:roles.view')->group(function () {

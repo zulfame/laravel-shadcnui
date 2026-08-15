@@ -1,1481 +1,274 @@
-"""Backend tests for AdminKit (Laravel) — iteration 8.
+"""Backend tests for AdminKit — Modul Perizinan (Laravel + Inertia).
 
-Focus on:
-- Form Request validation (phone regex, username lowercase/alpha_dash, url, path)
-- Endpoints changed in latest iteration: /profile, /users, /appearance/identity, /appearance/contact,
-  /storage-settings, /roles, /activity
+Login as zulfame (Super Admin) via session cookies + XSRF-TOKEN header.
+Only creates data with prefix 'qa' and cleans up after.
 """
 import os
 import re
-from pathlib import Path
+from urllib.parse import unquote
 
 import pytest
 import requests
 from dotenv import dotenv_values
 
-frontend_env = dotenv_values("/app/frontend/.env")
-BASE_URL = (
-    os.environ.get("REACT_APP_BACKEND_URL")
-    or frontend_env.get("REACT_APP_BACKEND_URL")
-).rstrip("/")
+env = dotenv_values("/app/adminkit/.env")
+BASE_URL = (os.environ.get("APP_URL") or env.get("APP_URL") or "https://inertia-admin-panel.preview.emergentagent.com").rstrip("/")
+USERNAME = "zulfame"
+PASSWORD = "password"
 
 
-# ---------- Fixtures ----------
-@pytest.fixture(scope="session")
-def creds():
-    p = Path("/app/memory/test_credentials.md").read_text()
-    email = re.search(r"`([\w.]+@[\w.]+)`", p).group(1)
-    username = re.search(r"`(zulfame)`", p).group(1)
-    return {"username": username, "email": email, "password": "password"}
+def _xsrf(session):
+    tok = session.cookies.get("XSRF-TOKEN")
+    assert tok, "XSRF-TOKEN cookie missing"
+    return unquote(tok)
 
 
-@pytest.fixture(scope="session")
-def client(creds):
-    """Session cookie + XSRF header (Laravel web guard)."""
-    s = requests.Session()
-    # Fetch login page to get XSRF-TOKEN cookie
-    r = s.get(f"{BASE_URL}/login", timeout=30)
-    assert r.status_code == 200, r.status_code
-    xsrf = s.cookies.get("XSRF-TOKEN")
-    assert xsrf, "XSRF-TOKEN cookie not set"
-    s.headers.update({
-        "X-XSRF-TOKEN": requests.utils.unquote(xsrf),
+def _inertia_headers(session):
+    v = getattr(session, "_inertia_version", "")
+    return {
+        "X-XSRF-TOKEN": _xsrf(session),
+        "X-Inertia": "true",
+        "X-Inertia-Version": v,
         "X-Requested-With": "XMLHttpRequest",
         "Accept": "application/json",
-        "Referer": f"{BASE_URL}/login",
-    })
-    # Login via POST /login
+        "Content-Type": "application/json",
+        "Referer": f"{BASE_URL}/",
+    }
+
+
+@pytest.fixture(scope="session")
+def session():
+    s = requests.Session()
+    r = s.get(f"{BASE_URL}/login", timeout=30)
+    assert r.status_code == 200
+
+    m = re.search(r'"version":"([^"]+)"', r.text)
+    version = m.group(1) if m else ""
+    s._inertia_version = version
+
+    headers = _inertia_headers(s)
+    headers["Referer"] = f"{BASE_URL}/login"
     r = s.post(
         f"{BASE_URL}/login",
-        json={"credential": creds["username"], "password": creds["password"]},
-        timeout=30,
+        json={"credential": USERNAME, "password": PASSWORD, "remember": False},
+        headers=headers, timeout=30, allow_redirects=False,
     )
-    assert r.status_code in (200, 204, 302), f"login failed {r.status_code}: {r.text[:300]}"
-    # Refresh XSRF (rotates on login)
-    xsrf = s.cookies.get("XSRF-TOKEN")
-    if xsrf:
-        s.headers["X-XSRF-TOKEN"] = requests.utils.unquote(xsrf)
-    s.headers["Referer"] = f"{BASE_URL}/"
-    # Fetch inertia version from a page (HTML) to reuse for XHR-Inertia calls
-    r_home = s.get(f"{BASE_URL}/users", headers={"Accept": "text/html"}, timeout=30)
-    m = re.search(r'data-page="([^"]+)"', r_home.text)
-    version = ""
-    if m:
-        import html as _html, json as _json
-        try:
-            version = _json.loads(_html.unescape(m.group(1))).get("version", "")
-        except Exception:
-            version = ""
-    s.headers["_INERTIA_VERSION"] = version  # stash for tests
+    assert r.status_code in (200, 302, 303), f"Login failed: {r.status_code} {r.text[:400]}"
+
+    # Verify authed
+    v = s._inertia_version
+    r = s.get(f"{BASE_URL}/permissions", headers={"X-Inertia": "true", "X-Inertia-Version": v, "Accept": "application/json"}, timeout=30)
+    assert r.status_code == 200, f"Auth verification failed: {r.status_code} — {r.text[:300]}"
     return s
 
 
-def _inertia_headers(client):
-    return {"Accept": "text/html"}
+def _get(session, path):
+    v = getattr(session, "_inertia_version", "")
+    return session.get(f"{BASE_URL}{path}", headers={"X-Inertia": "true", "X-Inertia-Version": v, "Accept": "application/json"}, timeout=30)
 
 
-def _inertia_json(response):
-    """Parse Inertia data-page JSON from a text/html Inertia response.
-
-    Layout uses: <script data-page="app" type="application/json">{...json...}</script>
-    """
-    import json as _json
-    m = re.search(r'data-page="app"[^>]*>(\{.*?\})</script>', response.text, re.DOTALL)
-    if not m:
-        return None
-    return _json.loads(m.group(1))
+def _post(session, path, payload):
+    return session.post(f"{BASE_URL}{path}", json=payload, headers=_inertia_headers(session), timeout=30, allow_redirects=False)
 
 
-# ---------- Login validation ----------
-class TestLogin:
-    def test_login_empty_returns_422(self):
-        s = requests.Session()
-        s.get(f"{BASE_URL}/login")
-        xsrf = requests.utils.unquote(s.cookies.get("XSRF-TOKEN"))
-        r = s.post(
-            f"{BASE_URL}/login",
-            json={"credential": "", "password": ""},
-            headers={
-                "X-XSRF-TOKEN": xsrf,
-                "X-Requested-With": "XMLHttpRequest",
-                "Accept": "application/json",
-                "Referer": f"{BASE_URL}/login",
-            },
-            timeout=30,
-        )
-        assert r.status_code == 422, r.status_code
-        j = r.json()
-        assert "credential" in j.get("errors", {})
-        assert "password" in j.get("errors", {})
-
-    def test_login_success(self, creds):
-        s = requests.Session()
-        s.get(f"{BASE_URL}/login")
-        xsrf = requests.utils.unquote(s.cookies.get("XSRF-TOKEN"))
-        r = s.post(
-            f"{BASE_URL}/login",
-            json={"credential": creds["username"], "password": creds["password"]},
-            headers={
-                "X-XSRF-TOKEN": xsrf,
-                "X-Requested-With": "XMLHttpRequest",
-                "Accept": "application/json",
-                "Referer": f"{BASE_URL}/login",
-            },
-            timeout=30,
-            allow_redirects=False,
-        )
-        assert r.status_code in (200, 204, 302), r.status_code
+def _put(session, path, payload):
+    return session.put(f"{BASE_URL}{path}", json=payload, headers=_inertia_headers(session), timeout=30, allow_redirects=False)
 
 
-# ---------- Profile validation ----------
-class TestProfilePhone:
-    def _put(self, client, payload):
-        return client.put(
-            f"{BASE_URL}/profile",
-            json=payload,
-            timeout=30,
-            allow_redirects=False,
-        )
+def _delete(session, path):
+    return session.delete(f"{BASE_URL}{path}", headers=_inertia_headers(session), timeout=30, allow_redirects=False)
 
-    def _base(self, creds):
-        return {
-            "name": "Zulfadli Rizal",
-            "username": creds["username"],
-            "email": creds["email"],
-        }
 
-    def test_phone_letters_rejected(self, client, creds):
-        p = self._base(creds) | {"phone": "abcdefghij"}
-        r = self._put(client, p)
-        assert r.status_code == 422, f"expected 422 got {r.status_code}: {r.text[:300]}"
-        assert "phone" in r.json().get("errors", {})
+def _rows(session, query=""):
+    r = _get(session, f"/permissions{query}")
+    assert r.status_code == 200
+    return r.json()["props"]["permissions"]["data"]
 
-    def test_phone_too_short_rejected(self, client, creds):
-        p = self._base(creds) | {"phone": "0812"}
-        r = self._put(client, p)
+
+def _find(session, name):
+    for row in _rows(session, f"?search={name}&per_page=100"):
+        if row["name"] == name:
+            return row
+    return None
+
+
+# ---------- INDEX / FILTERS ----------
+class TestPermissionsIndex:
+    def test_page_loads_with_expected_props(self, session):
+        r = _get(session, "/permissions")
+        assert r.status_code == 200
+        props = r.json()["props"]
+        assert "permissions" in props and "entityOptions" in props
+        entities = {o["value"] for o in props["entityOptions"]}
+        for e in ["activity", "appearance", "dashboard", "permissions", "profile", "roles", "storage", "users"]:
+            assert e in entities, f"missing entity: {e}"
+
+    def test_search_users(self, session):
+        rows = _rows(session, "?search=users")
+        assert len(rows) >= 2
+        assert all("users" in row["name"] for row in rows)
+
+    def test_filter_by_entity(self, session):
+        rows = _rows(session, "?entity=roles")
+        assert len(rows) >= 1
+        assert all(row["name"].startswith("roles.") for row in rows)
+
+    def test_sort_guard_name(self, session):
+        r = _get(session, "/permissions?sort=guard_name&dir=desc")
+        assert r.status_code == 200
+        f = r.json()["props"]["filters"]
+        assert f["sort"] == "guard_name" and f["dir"] == "desc"
+
+    def test_sort_name_asc(self, session):
+        r = _get(session, "/permissions?sort=name&dir=asc&per_page=5")
+        assert r.status_code == 200
+        names = [row["name"] for row in r.json()["props"]["permissions"]["data"]]
+        assert names == sorted(names)
+
+    def test_pagination(self, session):
+        r = _get(session, "/permissions?per_page=25")
+        assert r.status_code == 200
+        meta = r.json()["props"]["permissions"]["meta"]
+        assert meta["per_page"] in (10, 25)  # TableQuery may clamp
+        assert "page" in meta and "last_page" in meta and "total" in meta
+
+
+# ---------- CRUD ----------
+class TestPermissionCRUD:
+    def test_create_valid(self, session):
+        # Ensure clean state
+        existing = _find(session, "qa_module.view")
+        if existing and not existing["locked"]:
+            _delete(session, f"/permissions/{existing['id']}")
+
+        r = _post(session, "/permissions", {"name": "qa_module.view"})
+        assert r.status_code in (200, 302, 303), f"got {r.status_code}: {r.text[:300]}"
+        row = _find(session, "qa_module.view")
+        assert row and row["locked"] is False
+        assert row["entity"] == "qa_module" and row["ability"] == "view"
+
+    def test_duplicate_returns_422(self, session):
+        r = _post(session, "/permissions", {"name": "users.view"})
         assert r.status_code == 422
-        assert "phone" in r.json().get("errors", {})
 
-    def test_phone_valid_plus(self, client, creds):
-        p = self._base(creds) | {"phone": "+6282320099971"}
-        r = self._put(client, p)
-        assert r.status_code in (200, 204, 302), f"{r.status_code}: {r.text[:300]}"
-
-    def test_phone_valid_local(self, client, creds):
-        p = self._base(creds) | {"phone": "082320099971"}
-        r = self._put(client, p)
-        assert r.status_code in (200, 204, 302)
-
-    def test_username_uppercase_rejected(self, client, creds):
-        p = self._base(creds) | {"username": "ZULFA", "phone": creds.get("phone", "082320099971")}
-        r = self._put(client, p)
+    def test_uppercase_returns_422(self, session):
+        r = _post(session, "/permissions", {"name": "Projects.View"})
         assert r.status_code == 422
-        assert "username" in r.json().get("errors", {})
 
-    def test_email_invalid_rejected(self, client, creds):
-        p = self._base(creds) | {"email": "abc"}
-        r = self._put(client, p)
+    def test_no_dot_returns_422(self, session):
+        r = _post(session, "/permissions", {"name": "projects"})
         assert r.status_code == 422
-        assert "email" in r.json().get("errors", {})
 
-    def test_name_empty_rejected(self, client, creds):
-        p = self._base(creds) | {"name": ""}
-        r = self._put(client, p)
+    def test_update_own(self, session):
+        row = _find(session, "qa_module.view") or _find(session, "qa_module.manage")
+        if not row:
+            _post(session, "/permissions", {"name": "qa_module.view"})
+            row = _find(session, "qa_module.view")
+        r = _put(session, f"/permissions/{row['id']}", {"name": "qa_module.manage"})
+        assert r.status_code in (200, 302, 303), f"got {r.status_code}: {r.text[:300]}"
+        assert _find(session, "qa_module.manage") is not None
+        assert _find(session, "qa_module.view") is None
+
+    def test_delete_own(self, session):
+        row = _find(session, "qa_module.manage")
+        if not row:
+            _post(session, "/permissions", {"name": "qa_module.manage"})
+            row = _find(session, "qa_module.manage")
+        r = _delete(session, f"/permissions/{row['id']}")
+        assert r.status_code in (200, 302, 303)
+        assert _find(session, "qa_module.manage") is None
+
+
+# ---------- LOCK PROTECTION ----------
+class TestCoreLock:
+    def test_index_marks_locked(self, session):
+        row = _find(session, "users.view")
+        assert row and row["locked"] is True
+
+    def test_update_core_403(self, session):
+        row = _find(session, "users.view")
+        r = _put(session, f"/permissions/{row['id']}", {"name": "users.viewx"})
+        assert r.status_code == 403, f"expected 403, got {r.status_code}"
+        assert _find(session, "users.view") is not None
+
+    def test_delete_core_403(self, session):
+        row = _find(session, "permissions.manage")
+        assert row and row["locked"]
+        r = _delete(session, f"/permissions/{row['id']}")
+        assert r.status_code == 403
+        assert _find(session, "permissions.manage") is not None
+
+
+# ---------- BULK ----------
+class TestBulkDestroy:
+    def test_skips_core_deletes_others(self, session):
+        for name in ["qa_a.view", "qa_b.view"]:
+            if not _find(session, name):
+                _post(session, "/permissions", {"name": name})
+        a = _find(session, "qa_a.view")
+        b = _find(session, "qa_b.view")
+        core = _find(session, "users.view")
+        assert a and b and core and core["locked"]
+
+        r = _post(session, "/permissions/bulk-destroy", {"ids": [a["id"], b["id"], core["id"]]})
+        assert r.status_code in (200, 302, 303), f"got {r.status_code}: {r.text[:300]}"
+
+        assert _find(session, "qa_a.view") is None
+        assert _find(session, "qa_b.view") is None
+        assert _find(session, "users.view") is not None  # core preserved
+
+    def test_empty_ids_returns_422(self, session):
+        r = _post(session, "/permissions/bulk-destroy", {})
         assert r.status_code == 422
-        assert "name" in r.json().get("errors", {})
 
 
-# ---------- Profile password ----------
-class TestProfilePassword:
-    URL = "/profile/password"
+# ---------- AUDIT TRAIL ----------
+class TestAuditTrail:
+    def test_audit_records_permission_actions(self, session):
+        # Create then delete a permission to generate audit rows
+        if not _find(session, "qa_audit.view"):
+            _post(session, "/permissions", {"name": "qa_audit.view"})
+        row = _find(session, "qa_audit.view")
+        assert row
+        _delete(session, f"/permissions/{row['id']}")
 
-    def test_confirm_mismatch(self, client):
-        r = client.put(f"{BASE_URL}{self.URL}", json={
-            "current_password": "password",
-            "password": "newpassword12",
-            "password_confirmation": "different",
-        }, allow_redirects=False, timeout=30)
-        assert r.status_code == 422
-        assert "password" in r.json().get("errors", {})
-
-    def test_short_new_password(self, client):
-        r = client.put(f"{BASE_URL}{self.URL}", json={
-            "current_password": "password",
-            "password": "abc",
-            "password_confirmation": "abc",
-        }, allow_redirects=False, timeout=30)
-        assert r.status_code == 422
-        assert "password" in r.json().get("errors", {})
-
-    def test_wrong_current_password(self, client):
-        r = client.put(f"{BASE_URL}{self.URL}", json={
-            "current_password": "wrong-current-pass",
-            "password": "newpassword12",
-            "password_confirmation": "newpassword12",
-        }, allow_redirects=False, timeout=30)
-        assert r.status_code == 422
-        assert "current_password" in r.json().get("errors", {})
-
-
-# ---------- Storage settings ----------
-class TestStorageSettings:
-    URL = "/storage-settings"
-
-    def _base(self):
-        return {
-            "storage_driver": "local",
-            "s3_endpoint": "",
-            "s3_bucket": "",
-            "s3_path": "",
-            "s3_key": "",
-            "s3_secret": "",
-            "s3_region": "",
-            "s3_public_url": "",
-            "s3_path_style": True,
-        }
-
-    def test_invalid_path_rejected(self, client):
-        p = self._base() | {"s3_path": "folder spasi!"}
-        r = client.put(f"{BASE_URL}{self.URL}", json=p, allow_redirects=False, timeout=30)
-        assert r.status_code == 422, r.text[:300]
-        assert "s3_path" in r.json().get("errors", {})
-
-    def test_endpoint_without_http_rejected_when_s3(self, client):
-        p = self._base() | {
-            "storage_driver": "s3",
-            "s3_endpoint": "example.com",
-            "s3_bucket": "adminkit",
-            "s3_region": "ap-southeast-1",
-            "s3_key": "AKIA",
-        }
-        r = client.put(f"{BASE_URL}{self.URL}", json=p, allow_redirects=False, timeout=30)
-        assert r.status_code == 422
-        assert "s3_endpoint" in r.json().get("errors", {})
-
-    def test_valid_path_saved(self, client):
-        p = self._base() | {"s3_path": "adminkit"}
-        r = client.put(f"{BASE_URL}{self.URL}", json=p, allow_redirects=False, timeout=30)
-        assert r.status_code in (200, 204, 302), r.text[:300]
+        r = _get(session, "/audit-trail?search=qa_audit")
+        assert r.status_code == 200
+        j = r.json()["props"]
+        # find activities/logs table (structure: {logs|activities: {data: [...]}})
+        container = None
+        for key in ("logs", "activities"):
+            if isinstance(j.get(key), dict) and "data" in j[key]:
+                container = j[key]
+                break
+        assert container is not None, f"no audit container in props keys={list(j.keys())}"
+        acts = container["data"]
+        found_add = found_del = False
+        for act in acts:
+            desc = ((act.get("description") or act.get("action") or "")).lower()
+            module = (act.get("module") or "").lower()
+            if "qa_audit" in desc and module == "perizinan":
+                if "menambah" in desc:
+                    found_add = True
+                if "menghapus" in desc:
+                    found_del = True
+        assert found_add, f"audit 'Menambah' entry not found in {len(acts)} rows"
+        assert found_del, "audit 'Menghapus' entry not found"
 
 
-# ---------- Appearance ----------
-class TestAppearance:
-    def test_identity_empty_app_name_rejected(self, client):
-        r = client.put(f"{BASE_URL}/appearance/identity", json={
-            "app_name": "",
-            "tagline": "hello",
-            "brand_initials": "AK",
-        }, allow_redirects=False, timeout=30)
-        assert r.status_code == 422
-        assert "app_name" in r.json().get("errors", {})
-
-    def test_identity_valid(self, client):
-        r = client.put(f"{BASE_URL}/appearance/identity", json={
-            "app_name": "AdminKit",
-            "tagline": "Admin panel",
-            "brand_initials": "AK",
-        }, allow_redirects=False, timeout=30)
-        assert r.status_code in (200, 204, 302), r.text[:300]
-
-    def test_seo_canonical_url_without_http_rejected(self, client):
-        r = client.put(f"{BASE_URL}/appearance/seo", json={
-            "meta_title": "Title",
-            "meta_description": "Desc",
-            "canonical_url": "example.com",
-        }, allow_redirects=False, timeout=30)
-        assert r.status_code == 422
-        assert "canonical_url" in r.json().get("errors", {})
-
-    def test_contact_invalid_email_rejected(self, client):
-        r = client.put(f"{BASE_URL}/appearance/contact", json={
-            "support_email": "notemail",
-            "footer_text": "footer",
-        }, allow_redirects=False, timeout=30)
-        assert r.status_code == 422
-        assert "support_email" in r.json().get("errors", {})
-
-
-# ---------- Users ----------
-class TestUsers:
-    def test_create_user_uppercase_username_rejected(self, client):
-        r = client.post(f"{BASE_URL}/users", json={
-            "name": "Test User",
-            "username": "TESTUSER",
-            "email": "TEST_user1@example.com",
-            "phone": "081234567890",
-            "role": "admin",
-            "password": "password12",
-            "is_active": True,
-        }, allow_redirects=False, timeout=30)
-        assert r.status_code == 422
-        assert "username" in r.json().get("errors", {})
-
-    def test_create_user_phone_letters_rejected(self, client):
-        r = client.post(f"{BASE_URL}/users", json={
-            "name": "Test User",
-            "username": "testuser2",
-            "email": "TEST_user2@example.com",
-            "phone": "abcdefghij",
-            "role": "admin",
-            "password": "password12",
-            "is_active": True,
-        }, allow_redirects=False, timeout=30)
-        assert r.status_code == 422
-        assert "phone" in r.json().get("errors", {})
-
-    def test_create_user_valid_then_delete(self, client):
-        # cleanup first
-        r0 = client.get(f"{BASE_URL}/users?search=test_user_qa8", headers={"Accept": "text/html"}, timeout=30)
-        for u in _inertia_json(r0)["props"]["users"]["data"]:
-            if u["username"] == "test_user_qa8":
-                client.delete(f"{BASE_URL}/users/{u['id']}", allow_redirects=False, timeout=30)
-        payload = {
-            "name": "Test User",
-            "username": "test_user_qa8",
-            "email": "TEST_qa8@example.com",
-            "phone": "081234567890",
-            "role": "Staf",
-            "password": "password12",
-            "is_active": True,
-        }
-        r = client.post(f"{BASE_URL}/users", json=payload, allow_redirects=False, timeout=30)
-        assert r.status_code in (200, 201, 204, 302), f"{r.status_code}: {r.text[:300]}"
-
-        # Fetch users list and find the created user, then cleanup
-        r2 = client.get(f"{BASE_URL}/users?search=test_user_qa8", headers={"Accept": "text/html"}, timeout=30)
-        data = _inertia_json(r2)["props"]["users"]["data"]
-        assert any(u["username"] == "test_user_qa8" for u in data)
-        for u in data:
-            if u["username"] == "test_user_qa8":
-                client.delete(f"{BASE_URL}/users/{u['id']}", allow_redirects=False, timeout=30)
-
-
-# ---------- Regression: roles + activity ----------
+# ---------- REGRESSION on other endpoints ----------
 class TestRegression:
-    def test_roles_page_loads(self, client):
-        r = client.get(f"{BASE_URL}/roles", headers={"Accept": "text/html"}, timeout=30)
+    @pytest.mark.parametrize("path", ["/roles", "/users", "/audit-trail", "/appearance", "/storage-settings", "/profile"])
+    def test_endpoint_ok(self, session, path):
+        r = _get(session, path)
         assert r.status_code == 200
 
-    def test_activity_page_loads(self, client):
-        # Iteration 12: /activity renamed to /audit-trail
-        r_old = client.get(f"{BASE_URL}/activity", headers={"Accept": "text/html"}, timeout=30, allow_redirects=False)
-        assert r_old.status_code in (404, 405), f"expected old /activity to be gone, got {r_old.status_code}"
-        r = client.get(f"{BASE_URL}/audit-trail", headers={"Accept": "text/html"}, timeout=30)
-        assert r.status_code == 200
-        d = _inertia_json(r)
-        assert d["component"] == "AuditTrail"
 
-    def test_profile_page_loads(self, client):
-        r = client.get(f"{BASE_URL}/profile", headers={"Accept": "text/html"}, timeout=30)
-        assert r.status_code == 200
-        # 'Kantor' label should not be present on profile page HTML/Inertia data
-        assert ">Kantor<" not in r.text, "Kolom 'Kantor' masih ada di halaman Profil"
-
-    def test_users_page_no_kantor(self, client):
-        r = client.get(f"{BASE_URL}/users", headers={"Accept": "text/html"}, timeout=30)
-        assert r.status_code == 200
-        # 'Kantor' as a form label/column header should be gone (kata 'Kantor' boleh
-        # muncul di nama peranan seperti 'Kepala Kantor Kas').
-        assert ">Kantor<" not in r.text, "Kolom 'Kantor' masih ada di halaman Pengguna"
-
-
-# ---------- Iteration 10: routes removed + relaxed identity + role show ----------
-class TestIteration10Routes:
-    def test_roles_matrix_route_removed(self, client):
-        # PUT /roles/matrix should NOT exist anymore
-        r = client.put(f"{BASE_URL}/roles/matrix", json={}, allow_redirects=False, timeout=30)
-        assert r.status_code in (404, 405), f"expected 404/405 got {r.status_code}"
-
-    def test_appearance_og_route_removed(self, client):
-        r = client.put(f"{BASE_URL}/appearance/og", json={}, allow_redirects=False, timeout=30)
-        assert r.status_code in (404, 405), f"expected 404/405 got {r.status_code}"
-
-    def test_role_show_page_loads(self, client):
-        # Find Staf role id
-        r = client.get(f"{BASE_URL}/roles", headers=_inertia_headers(client), timeout=30)
-        assert r.status_code == 200
-        data = _inertia_json(r)
-        roles = data["props"]["roles"]
-        staf = next((x for x in roles if x["name"] == "Staf"), None)
-        assert staf, "Staf role not found"
-        r2 = client.get(f"{BASE_URL}/roles/{staf['id']}", headers=_inertia_headers(client), timeout=30)
-        assert r2.status_code == 200
-        d2 = _inertia_json(r2)
-        assert d2["component"] == "RoleDetail"
-        assert d2["props"]["role"]["name"] == "Staf"
-
-
-class TestIteration10RoleValidation:
-    def test_role_empty_name_rejected(self, client):
-        r = client.post(f"{BASE_URL}/roles", json={"name": ""}, allow_redirects=False, timeout=30)
-        assert r.status_code == 422
-        assert "name" in r.json().get("errors", {})
-
-    def test_role_create_and_delete(self, client):
-        # Create
-        r = client.post(f"{BASE_URL}/roles", json={"name": "Auditor QA"}, allow_redirects=False, timeout=30)
-        assert r.status_code in (200, 201, 204, 302), f"{r.status_code}: {r.text[:300]}"
-        # Find id
-        r2 = client.get(f"{BASE_URL}/roles", headers=_inertia_headers(client), timeout=30)
-        role = next((x for x in _inertia_json(r2)["props"]["roles"] if x["name"] == "Auditor QA"), None)
-        assert role, "created role not found"
-        # Delete
-        r3 = client.delete(f"{BASE_URL}/roles/{role['id']}", allow_redirects=False, timeout=30)
-        assert r3.status_code in (200, 204, 302), r3.text[:300]
-
-
-class TestIteration10UsersRelaxed:
-    def _cleanup_email(self, client, name):
-        # Look up user by name and delete
-        try:
-            r = client.get(f"{BASE_URL}/users?search={name}", headers=_inertia_headers(client), timeout=30)
-            for u in _inertia_json(r)["props"]["users"]["data"]:
-                if u["name"] == name:
-                    client.delete(f"{BASE_URL}/users/{u['id']}", allow_redirects=False, timeout=30)
-        except Exception:
-            pass
-
-    def test_create_user_only_required_fields(self, client):
-        """Username, email, phone nullable. Only name + role + password required."""
-        name = "TEST QA Minimal"
-        self._cleanup_email(client, name)
-        r = client.post(f"{BASE_URL}/users", json={
-            "name": name,
-            "username": "",
-            "email": "",
-            "phone": "",
-            "role": "Staf",
-            "password": "password12",
-            "is_active": True,
-        }, allow_redirects=False, timeout=30)
-        assert r.status_code in (200, 201, 204, 302), f"{r.status_code}: {r.text[:400]}"
-        # cleanup
-        self._cleanup_email(client, name)
-
-    def test_duplicate_phone_rejected(self, client):
-        # Zulfame likely has a phone; create user A with a phone, then user B with same phone
-        phone = "081999888777"
-        name_a, name_b = "TEST Phone A", "TEST Phone B"
-        self._cleanup_email(client, name_a)
-        self._cleanup_email(client, name_b)
-        # Create A
-        r = client.post(f"{BASE_URL}/users", json={
-            "name": name_a, "username": "", "email": "", "phone": phone,
-            "role": "Staf", "password": "password12", "is_active": True,
-        }, allow_redirects=False, timeout=30)
-        assert r.status_code in (200, 201, 204, 302), r.text[:300]
-        # Create B with same phone
-        r2 = client.post(f"{BASE_URL}/users", json={
-            "name": name_b, "username": "", "email": "", "phone": phone,
-            "role": "Staf", "password": "password12", "is_active": True,
-        }, allow_redirects=False, timeout=30)
-        assert r2.status_code == 422, f"expected 422 got {r2.status_code}: {r2.text[:300]}"
-        assert "phone" in r2.json().get("errors", {})
-        # Cleanup
-        self._cleanup_email(client, name_a)
-        self._cleanup_email(client, name_b)
-
-    def test_create_user_missing_name_rejected(self, client):
-        r = client.post(f"{BASE_URL}/users", json={
-            "name": "", "role": "Staf", "password": "password12", "is_active": True,
-        }, allow_redirects=False, timeout=30)
-        assert r.status_code == 422
-        assert "name" in r.json().get("errors", {})
-
-    def test_create_user_missing_role_rejected(self, client):
-        r = client.post(f"{BASE_URL}/users", json={
-            "name": "TEST NoRole", "role": "", "password": "password12", "is_active": True,
-        }, allow_redirects=False, timeout=30)
-        assert r.status_code == 422
-        assert "role" in r.json().get("errors", {})
-
-    def test_create_user_short_password_rejected(self, client):
-        r = client.post(f"{BASE_URL}/users", json={
-            "name": "TEST ShortPwd", "role": "Staf", "password": "abc", "is_active": True,
-        }, allow_redirects=False, timeout=30)
-        assert r.status_code == 422
-        assert "password" in r.json().get("errors", {})
-
-
-class TestIteration10UsersSort:
-    def test_sort_by_role(self, client):
-        r = client.get(
-            f"{BASE_URL}/users?sort=role&dir=asc",
-            headers=_inertia_headers(client),
-            timeout=30,
-        )
-        assert r.status_code == 200
-        j = _inertia_json(r)
-        assert j["props"]["filters"]["sort"] == "role"
-
-    def test_sort_by_is_active(self, client):
-        r = client.get(
-            f"{BASE_URL}/users?sort=is_active&dir=desc",
-            headers=_inertia_headers(client),
-            timeout=30,
-        )
-        assert r.status_code == 200
-        assert _inertia_json(r)["props"]["filters"]["sort"] == "is_active"
-
-
-# ---------- Iteration 11: Role import, users role filter, activity sort/detail ----------
-class TestIteration11RoleImport:
-    def test_import_no_file_422(self, client):
-        r = client.post(f"{BASE_URL}/roles/import", data={}, allow_redirects=False, timeout=30)
-        assert r.status_code == 422, f"{r.status_code}: {r.text[:200]}"
-        assert "file" in r.json().get("errors", {})
-
-    def test_import_non_csv_422(self, client):
-        files = {"file": ("bad.png", b"\x89PNG\r\n\x1a\nfakebinary", "image/png")}
-        # Do not send JSON content-type; use multipart
-        headers = {k: v for k, v in client.headers.items() if k.lower() not in ("content-type", "accept")}
-        headers["Accept"] = "application/json"
-        r = client.post(f"{BASE_URL}/roles/import", files=files, headers=headers, allow_redirects=False, timeout=30)
-        assert r.status_code == 422, f"{r.status_code}: {r.text[:200]}"
-        assert "file" in r.json().get("errors", {})
-
-    def test_import_csv_adds_and_skips(self, client):
-        # Clean pre-existing
-        r0 = client.get(f"{BASE_URL}/roles", headers=_inertia_headers(client), timeout=30)
-        roles0 = {x["name"]: x["id"] for x in _inertia_json(r0)["props"]["roles"]}
-        for n in ("Auditor Internal", "Manajer Cabang"):
-            if n in roles0:
-                client.delete(f"{BASE_URL}/roles/{roles0[n]}", allow_redirects=False, timeout=30)
-
-        csv_bytes = b"name\nAuditor Internal\nManajer Cabang\nStaf\n"
-        files = {"file": ("roles.csv", csv_bytes, "text/csv")}
-        headers = {k: v for k, v in client.headers.items() if k.lower() not in ("content-type",)}
-        headers["Accept"] = "application/json"
-        r = client.post(f"{BASE_URL}/roles/import", files=files, headers=headers,
-                        allow_redirects=False, timeout=30)
-        assert r.status_code in (200, 204, 302), f"{r.status_code}: {r.text[:300]}"
-
-        # Verify roles now include new two and Staf still exists (was unique-skipped)
-        r2 = client.get(f"{BASE_URL}/roles", headers=_inertia_headers(client), timeout=30)
-        names = [x["name"] for x in _inertia_json(r2)["props"]["roles"]]
-        assert "Auditor Internal" in names
-        assert "Manajer Cabang" in names
-        assert names.count("Staf") == 1
-        assert "name" not in names  # header row skipped
-
-        # Cleanup imported roles
-        roles = {x["name"]: x["id"] for x in _inertia_json(r2)["props"]["roles"]}
-        for n in ("Auditor Internal", "Manajer Cabang"):
-            r3 = client.delete(f"{BASE_URL}/roles/{roles[n]}", allow_redirects=False, timeout=30)
-            assert r3.status_code in (200, 204, 302)
-
-
-class TestIteration11UsersRoleFilter:
-    def test_role_options_present(self, client):
-        r = client.get(f"{BASE_URL}/users", headers=_inertia_headers(client), timeout=30)
-        d = _inertia_json(r)
-        opts = d["props"].get("roleOptions", [])
-        labels = {o["label"] for o in opts}
-        assert "Super Admin" in labels and "Staf" in labels
-
-    def test_filter_by_role_super_admin(self, client):
-        r = client.get(f"{BASE_URL}/users?role=Super Admin",
-                       headers=_inertia_headers(client), timeout=30)
-        assert r.status_code == 200
-        d = _inertia_json(r)
-        assert d["props"]["filters"]["role"] == "Super Admin"
-        # every user in data must have role Super Admin
-        for u in d["props"]["users"]["data"]:
-            assert u["role"] == "Super Admin", f"unexpected role: {u['role']}"
-
-    def test_filter_by_role_staf(self, client):
-        r = client.get(f"{BASE_URL}/users?role=Staf",
-                       headers=_inertia_headers(client), timeout=30)
-        d = _inertia_json(r)
-        assert d["props"]["filters"]["role"] == "Staf"
-        for u in d["props"]["users"]["data"]:
-            assert u["role"] == "Staf"
-
-
-class TestIteration11ActivitySort:
-    @pytest.mark.parametrize("key", ["created_at", "actor_name", "action", "module", "level"])
-    def test_sort_key_asc(self, client, key):
-        r = client.get(f"{BASE_URL}/audit-trail?sort={key}&dir=asc",
-                       headers=_inertia_headers(client), timeout=30)
-        assert r.status_code == 200
-        d = _inertia_json(r)
-        assert d["props"]["filters"]["sort"] == key
-        assert d["props"]["filters"]["dir"] == "asc"
-
-    def test_sort_dir_desc(self, client):
-        r = client.get(f"{BASE_URL}/audit-trail?sort=level&dir=desc",
-                       headers=_inertia_headers(client), timeout=30)
-        d = _inertia_json(r)
-        assert d["props"]["filters"]["dir"] == "desc"
-
-    def test_activity_detail_fields_present(self, client):
-        r = client.get(f"{BASE_URL}/audit-trail", headers=_inertia_headers(client), timeout=30)
-        d = _inertia_json(r)
-        rows = d["props"]["logs"]["data"]
-        assert rows, "no activity rows"
-        row = rows[0]
-        # Fields required for detail dialog (iter 12 adds context/technical fields):
-        for k in ("id", "created_at", "created_at_full", "actor", "action", "module",
-                  "level", "level_label", "level_chip", "subject", "ip",
-                  "changes", "context", "method", "url", "status_code", "user_agent"):
-            assert k in row, f"missing {k}"
-
-    def test_purge_past_range_no_500(self, client):
-        r = client.delete(
-            f"{BASE_URL}/audit-trail?date_from=2020-01-01&date_to=2020-01-02",
-            allow_redirects=False, timeout=30,
-        )
-        assert r.status_code in (200, 204, 302), f"{r.status_code}: {r.text[:200]}"
-
-
-
-# ---------- Iteration 12: Empty-string persistence bug + Audit Trail features ----------
-class TestIteration12EmptyPersists:
-    """Kolom yang sengaja dikosongkan harus TETAP KOSONG setelah reload."""
-
-    def _snapshot(self, client):
-        r = client.get(f"{BASE_URL}/appearance", headers=_inertia_headers(client), timeout=30)
-        return _inertia_json(r)["props"]["settings"]
-
-    def test_identity_empty_initials_persists(self, client):
-        before = self._snapshot(client)
-        try:
-            payload = {
-                "app_name": before.get("app_name") or "CODEX",
-                "tagline": "",
-                "brand_initials": "",
-            }
-            r = client.put(f"{BASE_URL}/appearance/identity", json=payload,
-                           allow_redirects=False, timeout=30)
-            assert r.status_code in (200, 204, 302), f"{r.status_code}: {r.text[:300]}"
-            after = self._snapshot(client)
-            assert after["brand_initials"] == "", f"expected '' got {after['brand_initials']!r}"
-            assert after["tagline"] == "", f"expected '' got {after['tagline']!r}"
-        finally:
-            client.put(f"{BASE_URL}/appearance/identity", json={
-                "app_name": before.get("app_name") or "CODEX",
-                "tagline": before.get("tagline") or "",
-                "brand_initials": before.get("brand_initials") or "",
-            }, allow_redirects=False, timeout=30)
-
-    def test_seo_empty_meta_title_and_keywords_persist(self, client):
-        before = self._snapshot(client)
-        try:
-            payload = {
-                "meta_title": "",
-                "meta_description": before.get("meta_description") or "desc",
-                "meta_keywords": "",
-                "canonical_url": before.get("canonical_url") or "",
-                "search_indexable": bool(before.get("search_indexable")),
-            }
-            r = client.put(f"{BASE_URL}/appearance/seo", json=payload,
-                           allow_redirects=False, timeout=30)
-            assert r.status_code in (200, 204, 302), f"{r.status_code}: {r.text[:300]}"
-            after = self._snapshot(client)
-            assert after["meta_title"] == "", f"expected '' got {after['meta_title']!r}"
-            assert after["meta_keywords"] == "", f"expected '' got {after['meta_keywords']!r}"
-        finally:
-            client.put(f"{BASE_URL}/appearance/seo", json={
-                "meta_title": before.get("meta_title") or "",
-                "meta_description": before.get("meta_description") or "desc",
-                "meta_keywords": before.get("meta_keywords") or "",
-                "canonical_url": before.get("canonical_url") or "",
-                "search_indexable": bool(before.get("search_indexable")),
-            }, allow_redirects=False, timeout=30)
-
-    def test_contact_empty_footer_persists(self, client):
-        before = self._snapshot(client)
-        try:
-            payload = {
-                "support_email": before.get("support_email") or "dukungan@adminkit.test",
-                "footer_text": "",
-            }
-            r = client.put(f"{BASE_URL}/appearance/contact", json=payload,
-                           allow_redirects=False, timeout=30)
-            assert r.status_code in (200, 204, 302), f"{r.status_code}: {r.text[:300]}"
-            after = self._snapshot(client)
-            assert after["footer_text"] == "", f"expected '' got {after['footer_text']!r}"
-        finally:
-            client.put(f"{BASE_URL}/appearance/contact", json={
-                "support_email": before.get("support_email") or "dukungan@adminkit.test",
-                "footer_text": before.get("footer_text") or "",
-            }, allow_redirects=False, timeout=30)
-
-    def test_storage_empty_path_and_public_url_persist(self, client):
-        r0 = client.get(f"{BASE_URL}/storage-settings", headers=_inertia_headers(client), timeout=30)
-        before = _inertia_json(r0)["props"]["settings"]
-        try:
-            payload = {
-                "storage_driver": before.get("storage_driver") or "local",
-                "s3_endpoint": before.get("s3_endpoint") or "",
-                "s3_bucket": before.get("s3_bucket") or "",
-                "s3_path": "",
-                "s3_key": before.get("s3_key") or "",
-                "s3_secret": "",
-                "s3_region": before.get("s3_region") or "",
-                "s3_public_url": "",
-                "s3_path_style": bool(before.get("s3_path_style")),
-            }
-            r = client.put(f"{BASE_URL}/storage-settings", json=payload,
-                           allow_redirects=False, timeout=30)
-            assert r.status_code in (200, 204, 302), f"{r.status_code}: {r.text[:300]}"
-            r2 = client.get(f"{BASE_URL}/storage-settings", headers=_inertia_headers(client), timeout=30)
-            after = _inertia_json(r2)["props"]["settings"]
-            assert after.get("s3_path", "") == "", f"expected '' got {after.get('s3_path')!r}"
-            assert after.get("s3_public_url", "") == "", f"expected '' got {after.get('s3_public_url')!r}"
-        finally:
-            client.put(f"{BASE_URL}/storage-settings", json={
-                "storage_driver": before.get("storage_driver") or "local",
-                "s3_endpoint": before.get("s3_endpoint") or "",
-                "s3_bucket": before.get("s3_bucket") or "",
-                "s3_path": before.get("s3_path") or "",
-                "s3_key": before.get("s3_key") or "",
-                "s3_secret": "",
-                "s3_region": before.get("s3_region") or "",
-                "s3_public_url": before.get("s3_public_url") or "",
-                "s3_path_style": bool(before.get("s3_path_style")),
-            }, allow_redirects=False, timeout=30)
-
-
-class TestIteration12AuditTrailFeatures:
-    """Audit Trail: diff perubahan, password masking, failed login, 403 access denied."""
-
-    def _rows(self, client):
-        r = client.get(f"{BASE_URL}/audit-trail?sort=created_at&dir=desc",
-                       headers=_inertia_headers(client), timeout=30)
-        return _inertia_json(r)["props"]["logs"]["data"]
-
-    def _user_id(self, client, username):
-        r = client.get(f"{BASE_URL}/users?search={username}",
-                       headers=_inertia_headers(client), timeout=30)
-        for u in _inertia_json(r)["props"]["users"]["data"]:
-            if u["username"] == username:
-                return u["id"]
-        return None
-
-    def test_user_update_creates_diff_changes(self, client, creds):
-        # Use a dedicated per-test user to avoid races with other tests updating zulfame.
-        uname = "test_qa_diff_user"
-        # Clean any leftover
-        r0 = client.get(f"{BASE_URL}/users?search={uname}",
-                        headers=_inertia_headers(client), timeout=30)
-        for u in _inertia_json(r0)["props"]["users"]["data"]:
-            if u["username"] == uname:
-                client.delete(f"{BASE_URL}/users/{u['id']}",
-                              allow_redirects=False, timeout=30)
-        create_payload = {
-            "name": "QA Diff Original",
-            "username": uname,
-            "email": "TEST_qa_diff_user@example.com",
-            "phone": "",
-            "role": "Staf",
-            "password": "password12",
-            "is_active": True,
-        }
-        rc = client.post(f"{BASE_URL}/users", json=create_payload,
-                         allow_redirects=False, timeout=30)
-        assert rc.status_code in (200, 201, 204, 302), rc.text[:300]
-        uid = self._user_id(client, uname)
-        assert uid, "dedicated test user not found after create"
-
-        base = {
-            "username": uname,
-            "email": "TEST_qa_diff_user@example.com",
-            "phone": "",
-            "role": "Staf",
-            "is_active": True,
-        }
-        try:
-            r = client.put(f"{BASE_URL}/users/{uid}", json=(base | {"name": "QA Diff Updated"}),
-                           allow_redirects=False, timeout=30)
-            assert r.status_code in (200, 204, 302), f"{r.status_code}: {r.text[:300]}"
-
-            # Look for an audit row referencing THIS user's URL (isolated from others).
-            rows = self._rows(client)
-            found = None
-            for row in rows[:50]:
-                ch = row.get("changes") or {}
-                url = row.get("url") or ""
-                method = row.get("method") or ""
-                if (
-                    "name" in ch
-                    and method in ("PUT", "PATCH")
-                    and re.search(rf"/users/{uid}(?:\?|$|/)", url)
-                ):
-                    found = row
-                    break
-            assert found, (
-                f"no user-update row with name diff for uid={uid} in latest 50: "
-                f"{[(r.get('method'), r.get('url'), (r.get('changes') or {}).get('name')) for r in rows[:50]]}"
-            )
-            change = found["changes"]["name"]
-            assert "old" in change and "new" in change
-            # After fix: diffOf(Model, array $before) captures originals BEFORE
-            # save(), so old MUST reflect the pre-update value and new the new.
-            assert change.get("new") == "QA Diff Updated", change
-            assert change.get("old") == "QA Diff Original", change
-            assert found.get("method") in ("PUT", "PATCH"), found.get("method")
-            assert found.get("url"), "url should be set"
-        finally:
-            # cleanup
-            client.delete(f"{BASE_URL}/users/{uid}", allow_redirects=False, timeout=30)
-
-    def test_user_password_change_is_masked(self, client, creds):
-        uid = self._user_id(client, creds["username"])
-        r = client.put(f"{BASE_URL}/users/{uid}", json={
-            "name": "Zulfadli Rizal",
-            "role": "Super Admin",
-            "is_active": True,
-            "password": "password",
-        }, allow_redirects=False, timeout=30)
-        assert r.status_code in (200, 204, 302), r.text[:200]
-        rows = self._rows(client)
-        pwd_row = None
-        for row in rows[:30]:
-            ch = row.get("changes") or {}
-            url = row.get("url") or ""
-            method = row.get("method") or ""
-            # Only the update-audit row (PUT on this uid) — skip delete-snapshot rows
-            # from other cleanups which also carry a 'password' key with new=null.
-            if (
-                "password" in ch
-                and method in ("PUT", "PATCH")
-                and re.search(rf"/users/{uid}(?:\?|$|/)", url)
-            ):
-                pwd_row = row
-                break
-        assert pwd_row, "no audit row with password diff"
-        pwd = pwd_row["changes"]["password"]
-        assert pwd["new"] == "••••••", f"new not masked: {pwd['new']!r}"
-        if pwd["old"] is not None:
-            assert pwd["old"] == "••••••", f"old not masked: {pwd['old']!r}"
-        import json as _json
-        blob = _json.dumps(pwd_row["changes"])
-        assert "$2y$" not in blob and "$2b$" not in blob and "password12" not in blob
-
-    def test_failed_login_recorded(self):
-        s = requests.Session()
-        s.get(f"{BASE_URL}/login")
-        xsrf = requests.utils.unquote(s.cookies.get("XSRF-TOKEN"))
-        r = s.post(f"{BASE_URL}/login",
-                   json={"credential": "zulfame", "password": "wrong-pass-once"},
-                   headers={"X-XSRF-TOKEN": xsrf, "X-Requested-With": "XMLHttpRequest",
-                            "Accept": "application/json", "Referer": f"{BASE_URL}/login"},
-                   timeout=30, allow_redirects=False)
-        assert r.status_code == 422, r.status_code
-
-        s2 = requests.Session()
-        s2.get(f"{BASE_URL}/login")
-        xsrf2 = requests.utils.unquote(s2.cookies.get("XSRF-TOKEN"))
-        r2 = s2.post(f"{BASE_URL}/login",
-                     json={"credential": "zulfame", "password": "password"},
-                     headers={"X-XSRF-TOKEN": xsrf2, "X-Requested-With": "XMLHttpRequest",
-                              "Accept": "application/json", "Referer": f"{BASE_URL}/login"},
-                     timeout=30, allow_redirects=False)
-        assert r2.status_code in (200, 204, 302), r2.status_code
-        xsrf2 = requests.utils.unquote(s2.cookies.get("XSRF-TOKEN"))
-        s2.headers.update({"X-XSRF-TOKEN": xsrf2, "X-Requested-With": "XMLHttpRequest",
-                           "Accept": "application/json", "Referer": f"{BASE_URL}/"})
-        r3 = s2.get(f"{BASE_URL}/audit-trail?sort=created_at&dir=desc",
-                    headers={"Accept": "text/html"}, timeout=30)
-        rows = _inertia_json(r3)["props"]["logs"]["data"]
-        failed = None
-        for row in rows[:20]:
-            if row.get("level") == "danger" and "masuk" in (row.get("action") or "").lower():
-                failed = row
-                break
-        assert failed, f"no failed-login row in latest 20: {[(r.get('level'), r.get('action')) for r in rows[:20]]}"
-        assert failed.get("status_code") in (422, 401), f"status_code={failed.get('status_code')}"
-        ctx_blob = str(failed.get("context") or {}).lower()
-        assert "zulfame" in ctx_blob or "credential" in ctx_blob, f"context missing credential: {failed.get('context')}"
-
-    def test_forbidden_403_recorded(self, client):
-        payload = {
-            "name": "TEST QA Staf",
-            "username": "test_qa_staf12",
-            "email": "TEST_qa_staf12@example.com",
-            "phone": "",
-            "role": "Staf",
-            "password": "password12",
-            "is_active": True,
-        }
-        r0 = client.get(f"{BASE_URL}/users?search=test_qa_staf12",
-                        headers=_inertia_headers(client), timeout=30)
-        for u in _inertia_json(r0)["props"]["users"]["data"]:
-            if u["username"] == "test_qa_staf12":
-                client.delete(f"{BASE_URL}/users/{u['id']}",
-                              allow_redirects=False, timeout=30)
-        rc = client.post(f"{BASE_URL}/users", json=payload,
-                         allow_redirects=False, timeout=30)
-        assert rc.status_code in (200, 201, 204, 302), rc.text[:300]
-
-        s = requests.Session()
-        s.get(f"{BASE_URL}/login")
-        xsrf = requests.utils.unquote(s.cookies.get("XSRF-TOKEN"))
-        r = s.post(f"{BASE_URL}/login",
-                   json={"credential": "test_qa_staf12", "password": "password12"},
-                   headers={"X-XSRF-TOKEN": xsrf, "X-Requested-With": "XMLHttpRequest",
-                            "Accept": "application/json", "Referer": f"{BASE_URL}/login"},
-                   timeout=30, allow_redirects=False)
-        assert r.status_code in (200, 204, 302), r.status_code
-        xsrf = requests.utils.unquote(s.cookies.get("XSRF-TOKEN"))
-        s.headers.update({"X-XSRF-TOKEN": xsrf, "X-Requested-With": "XMLHttpRequest",
-                          "Accept": "text/html", "Referer": f"{BASE_URL}/"})
-        r_forbid = s.get(f"{BASE_URL}/appearance", timeout=30, allow_redirects=False)
-        assert r_forbid.status_code == 403, r_forbid.status_code
-
-        rows = self._rows(client)
-        denied = None
-        for row in rows[:25]:
-            if row.get("status_code") == 403:
-                denied = row
-                break
-        assert denied, f"no 403 audit row in latest 25: {[(r.get('status_code'), r.get('action')) for r in rows[:25]]}"
-        assert denied.get("level") == "danger", denied.get("level")
-
-        # cleanup
-        r_lookup = client.get(f"{BASE_URL}/users?search=test_qa_staf12",
-                              headers=_inertia_headers(client), timeout=30)
-        for u in _inertia_json(r_lookup)["props"]["users"]["data"]:
-            if u["username"] == "test_qa_staf12":
-                client.delete(f"{BASE_URL}/users/{u['id']}",
-                              allow_redirects=False, timeout=30)
-
-
-# ---------- Iteration 13: Audit Detail as a dedicated page ----------
-class TestIteration13AuditDetail:
-    """Detail entri audit dipindah ke /audit-trail/{id} (halaman tersendiri, bukan dialog)."""
-
-    def _first_log_id(self, client):
-        r = client.get(f"{BASE_URL}/audit-trail?sort=created_at&dir=desc",
-                       headers=_inertia_headers(client), timeout=30)
-        rows = _inertia_json(r)["props"]["logs"]["data"]
-        assert rows, "no audit rows"
-        return rows[0]["id"], rows
-
-    def test_audit_detail_route_renders_dedicated_page(self, client):
-        log_id, _ = self._first_log_id(client)
-        r = client.get(f"{BASE_URL}/audit-trail/{log_id}",
-                       headers=_inertia_headers(client), timeout=30)
-        assert r.status_code == 200, r.status_code
-        d = _inertia_json(r)
-        assert d["component"] == "AuditDetail", d["component"]
-        log = d["props"]["log"]
-        for k in ("id", "action", "module", "level", "level_label", "level_chip",
-                  "actor", "user_id", "actor_email", "subject_type", "subject_id",
-                  "subject", "changes", "context", "ip", "method", "url",
-                  "status_code", "user_agent", "created_at_iso",
-                  "created_at_full", "created_at_diff"):
-            assert k in log, f"missing '{k}' in AuditDetail props.log"
-        # ISO 8601 sanity
-        assert "T" in log["created_at_iso"], log["created_at_iso"]
-
-    def test_audit_detail_404_for_unknown_id(self, client):
-        r = client.get(f"{BASE_URL}/audit-trail/99999999",
-                       headers=_inertia_headers(client), timeout=30,
-                       allow_redirects=False)
-        assert r.status_code == 404, r.status_code
-
-    def test_audit_trail_index_no_activity_detail_props(self, client):
-        """Regresi: dialog dihapus, tetapi list tetap membawa field lengkap untuk klik → detail page."""
-        r = client.get(f"{BASE_URL}/audit-trail", headers=_inertia_headers(client), timeout=30)
-        d = _inertia_json(r)
-        assert d["component"] == "AuditTrail"
-        # sanity: list masih ada
-        rows = d["props"]["logs"]["data"]
-        assert rows, "no audit rows"
-
-    def test_audit_detail_page_after_403_contains_context(self, client):
-        """Buat entri 403, buka detail: level=danger, status_code=403, context memiliki kunci pesan/pengecualian/berkas."""
-        # Bersihkan user uji jika masih ada
-        r0 = client.get(f"{BASE_URL}/users?search=test_qa_staf13",
-                        headers=_inertia_headers(client), timeout=30)
-        for u in _inertia_json(r0)["props"]["users"]["data"]:
-            if u["username"] == "test_qa_staf13":
-                client.delete(f"{BASE_URL}/users/{u['id']}",
-                              allow_redirects=False, timeout=30)
-        payload = {
-            "name": "TEST QA Staf Iterasi",
-            "username": "test_qa_staf13",
-            "email": "TEST_qa_staf13@example.com",
-            "phone": "",
-            "role": "Staf",
-            "password": "password12",
-            "is_active": True,
-        }
-        rc = client.post(f"{BASE_URL}/users", json=payload,
-                         allow_redirects=False, timeout=30)
-        assert rc.status_code in (200, 201, 204, 302), rc.text[:300]
-
-        s = requests.Session()
-        s.get(f"{BASE_URL}/login")
-        xsrf = requests.utils.unquote(s.cookies.get("XSRF-TOKEN"))
-        r_login = s.post(f"{BASE_URL}/login",
-                         json={"credential": "test_qa_staf13", "password": "password12"},
-                         headers={"X-XSRF-TOKEN": xsrf, "X-Requested-With": "XMLHttpRequest",
-                                  "Accept": "application/json", "Referer": f"{BASE_URL}/login"},
-                         timeout=30, allow_redirects=False)
-        assert r_login.status_code in (200, 204, 302), r_login.status_code
-        xsrf = requests.utils.unquote(s.cookies.get("XSRF-TOKEN"))
-        s.headers.update({"X-XSRF-TOKEN": xsrf, "X-Requested-With": "XMLHttpRequest",
-                          "Accept": "text/html", "Referer": f"{BASE_URL}/"})
-        r_forbid = s.get(f"{BASE_URL}/appearance", timeout=30, allow_redirects=False)
-        assert r_forbid.status_code == 403, r_forbid.status_code
-
-        rows = _inertia_json(client.get(
-            f"{BASE_URL}/audit-trail?sort=created_at&dir=desc",
-            headers=_inertia_headers(client), timeout=30,
-        ))["props"]["logs"]["data"]
-        denied = next((row for row in rows[:25] if row.get("status_code") == 403), None)
-        assert denied, "no 403 audit row"
-        # buka halaman detail
-        r_show = client.get(f"{BASE_URL}/audit-trail/{denied['id']}",
-                            headers=_inertia_headers(client), timeout=30)
-        assert r_show.status_code == 200, r_show.status_code
-        log = _inertia_json(r_show)["props"]["log"]
-        assert log["level"] == "danger"
-        assert log["status_code"] == 403
-        ctx = log.get("context") or {}
-        assert "pesan" in ctx and "pengecualian" in ctx and "berkas" in ctx, ctx
-
-        # cleanup
-        r_lookup = client.get(f"{BASE_URL}/users?search=test_qa_staf13",
-                              headers=_inertia_headers(client), timeout=30)
-        for u in _inertia_json(r_lookup)["props"]["users"]["data"]:
-            if u["username"] == "test_qa_staf13":
-                client.delete(f"{BASE_URL}/users/{u['id']}",
-                              allow_redirects=False, timeout=30)
-
-    def test_audit_trail_vue_has_no_activity_detail_dialog(self):
-        """Regresi UI: dialog activity-detail lama sudah dihapus dari AuditTrail.vue."""
-        content = Path("/app/adminkit/resources/js/pages/AuditTrail.vue").read_text(encoding="utf-8")
-        assert "activity-detail" not in content, "dialog activity-detail masih ada di AuditTrail.vue"
-        assert "/audit-trail/" in content, "row-click ke /audit-trail/{id} tidak ditemukan"
-
-    def test_audit_detail_vue_has_required_testids(self):
-        """Pastikan halaman AuditDetail.vue memiliki semua data-testid yang diminta."""
-        content = Path("/app/adminkit/resources/js/pages/AuditDetail.vue").read_text(encoding="utf-8")
-        for tid in ("audit-detail-page", "audit-detail-action", "audit-detail-summary",
-                    "audit-detail-changes", "audit-detail-change-count",
-                    "audit-detail-context", "audit-detail-technical",
-                    "audit-detail-json", "audit-detail-copy", "audit-detail-back"):
-            assert f'data-testid="{tid}"' in content, f"missing data-testid={tid}"
-
-
-
-# ---------- Iteration 14: no-noise & 500 recording ----------
-class TestIteration14AuditNoiseAndSystemFailure:
-    """422 and 404 must NOT create audit rows; 500 must be recorded as 'Kegagalan sistem'."""
-
-    def _latest_count(self, client):
-        import subprocess
-        out = subprocess.run(
-            ["php", "artisan", "tinker", "--execute",
-             "echo App\\Models\\ActivityLog::count();"],
-            cwd="/app/adminkit", capture_output=True, text=True, timeout=30,
-        )
-        m = re.search(r"(\d+)", out.stdout)
-        assert m, out.stdout + out.stderr
-        return int(m.group(1))
-
-    def test_422_does_not_create_audit_row(self, client):
-        import subprocess
-        before = subprocess.run(
-            ["php", "artisan", "tinker", "--execute",
-             "echo App\\Models\\ActivityLog::where('context->pengecualian','ValidationException')->count();"],
-            cwd="/app/adminkit", capture_output=True, text=True, timeout=30,
-        )
-        n0 = int(re.search(r"(\d+)", before.stdout).group(1))
-        r = client.post(f"{BASE_URL}/users", json={}, allow_redirects=False, timeout=30)
-        assert r.status_code == 422, r.status_code
-        after = subprocess.run(
-            ["php", "artisan", "tinker", "--execute",
-             "echo App\\Models\\ActivityLog::where('context->pengecualian','ValidationException')->count();"],
-            cwd="/app/adminkit", capture_output=True, text=True, timeout=30,
-        )
-        n1 = int(re.search(r"(\d+)", after.stdout).group(1))
-        assert n1 == n0, f"422 (ValidationException) leaked audit row: {n0} -> {n1}"
-
-    def test_404_does_not_create_audit_row(self, client):
-        import subprocess
-        before = subprocess.run(
-            ["php", "artisan", "tinker", "--execute",
-             "echo App\\Models\\ActivityLog::where('context->pengecualian','NotFoundHttpException')->count();"],
-            cwd="/app/adminkit", capture_output=True, text=True, timeout=30,
-        )
-        n0 = int(re.search(r"(\d+)", before.stdout).group(1))
-        r = client.get(f"{BASE_URL}/halaman-tidak-ada",
-                       headers={"Accept": "text/html"}, timeout=30, allow_redirects=False)
-        assert r.status_code == 404, r.status_code
-        after = subprocess.run(
-            ["php", "artisan", "tinker", "--execute",
-             "echo App\\Models\\ActivityLog::where('context->pengecualian','NotFoundHttpException')->count();"],
-            cwd="/app/adminkit", capture_output=True, text=True, timeout=30,
-        )
-        n1 = int(re.search(r"(\d+)", after.stdout).group(1))
-        assert n1 == n0, f"404 leaked audit row: {n0} -> {n1}"
-
-    def test_500_reproducer_via_tinker(self):
-        """Directly invoke $exceptions->render() via artisan tinker to confirm 500 is recorded."""
-        import subprocess
-        cmd = [
-            "php", "artisan", "tinker", "--execute",
-            "use App\\Models\\ActivityLog;"
-            "$b=ActivityLog::count();"
-            "app(Illuminate\\Contracts\\Debug\\ExceptionHandler::class)->render(request(), new RuntimeException('QA_TEST_500'));"
-            "$a=ActivityLog::count();"
-            "$r=ActivityLog::where('action','Kegagalan sistem')->where('status_code',500)->latest('id')->first();"
-            "echo 'DELTA='.($a-$b).';ID='.($r?$r->id:'null').';LVL='.($r?$r->level:'null').';SC='.($r?$r->status_code:'null').';';"
-            "if($r){ $r->delete(); echo 'DELETED;'; }"
-        ]
-        out = subprocess.run(cmd, cwd="/app/adminkit", capture_output=True, text=True, timeout=60)
-        combined = out.stdout + out.stderr
-        # DELTA may be >1 when other pytest-xdist workers create audit rows in parallel;
-        # the important thing is that the specific 'Kegagalan sistem' row was recorded.
-        m = re.search(r"DELTA=(\d+)", combined)
-        assert m and int(m.group(1)) >= 1, combined[-800:]
-        assert "LVL=danger" in combined, combined[-800:]
-        assert "SC=500" in combined, combined[-800:]
-        assert "DELETED" in combined, combined[-800:]
-
-    def test_403_reproducer_via_tinker(self):
-        """Directly invoke $exceptions->render() with Spatie UnauthorizedException to confirm 403 recorded."""
-        import subprocess
-        cmd = [
-            "php", "artisan", "tinker", "--execute",
-            "use App\\Models\\ActivityLog;"
-            "$b=ActivityLog::count();"
-            "app(Illuminate\\Contracts\\Debug\\ExceptionHandler::class)->render(request(), new Spatie\\Permission\\Exceptions\\UnauthorizedException(403,'QA_TEST_403'));"
-            "$a=ActivityLog::count();"
-            "$r=ActivityLog::where('action','Akses ditolak')->where('status_code',403)->latest('id')->first();"
-            "echo 'DELTA='.($a-$b).';LVL='.($r?$r->level:'null').';SC='.($r?$r->status_code:'null').';';"
-            "if($r){ $r->delete(); echo 'DELETED;'; }"
-        ]
-        out = subprocess.run(cmd, cwd="/app/adminkit", capture_output=True, text=True, timeout=60)
-        combined = out.stdout + out.stderr
-        m = re.search(r"DELTA=(\d+)", combined)
-        assert m and int(m.group(1)) >= 1, combined[-800:]
-        assert "LVL=danger" in combined, combined[-800:]
-        assert "SC=403" in combined, combined[-800:]
-
-
-# ---------- Iteration 18: Notifications (per-user, targeted) + Bulk actions ----------
-import subprocess
-
-
-def _tinker(code: str, timeout=45) -> str:
-    """Run PHP snippet via artisan tinker; return combined stdout+stderr."""
-    out = subprocess.run(
-        ["php", "artisan", "tinker", "--execute", code],
-        cwd="/app/adminkit", capture_output=True, text=True, timeout=timeout,
-    )
-    return out.stdout + out.stderr
-
-
-class TestIteration18Notifications:
-    """Notifikasi per-pengguna: tandai, kepemilikan, dan penargetan berbasis izin."""
-
-    def _zulfame_id(self):
-        out = _tinker("echo App\\Models\\User::where('username','zulfame')->value('id');")
-        m = re.search(r"(\d+)", out)
-        return int(m.group(1)) if m else None
-
-    def _cleanup_qa_notifs(self):
-        _tinker(
-            "App\\Models\\Notification::where('title','like','QA_NOTIF %')->delete();"
-        )
-
-    def test_mark_all_read_sets_read_at(self, client):
-        uid = self._zulfame_id()
-        assert uid, "zulfame id not resolved"
-        try:
-            # Insert one unread notification for zulfame directly
-            _tinker(
-                f"App\\Models\\Notification::create(['user_id'=>{uid},'title'=>'QA_NOTIF one','module'=>'Pengguna','level'=>'info','url'=>'/users']);"
-            )
-            # Verify count > 0 via Inertia share
-            r0 = client.get(f"{BASE_URL}/", headers=_inertia_headers(client), timeout=30)
-            d0 = _inertia_json(r0)
-            unread_before = d0["props"]["notifications"]["unread"]
-            assert unread_before >= 1, f"expected unread>=1 got {unread_before}"
-
-            # Mark all as read
-            r = client.post(f"{BASE_URL}/notifications/read-all", json={},
-                            allow_redirects=False, timeout=30)
-            assert r.status_code in (200, 204, 302), f"{r.status_code}: {r.text[:200]}"
-
-            # After reload, unread should be 0
-            r1 = client.get(f"{BASE_URL}/", headers=_inertia_headers(client), timeout=30)
-            d1 = _inertia_json(r1)
-            assert d1["props"]["notifications"]["unread"] == 0, d1["props"]["notifications"]["unread"]
-
-            # And persisted in DB: read_at NOT null
-            out = _tinker(
-                f"echo App\\Models\\Notification::where('user_id',{uid})->whereNull('read_at')->count();"
-            )
-            m = re.search(r"(\d+)", out)
-            assert m and int(m.group(1)) == 0, out
-        finally:
-            self._cleanup_qa_notifs()
-
-    def test_mark_single_read_sets_read_at(self, client):
-        uid = self._zulfame_id()
-        try:
-            out = _tinker(
-                f"$n = App\\Models\\Notification::create(['user_id'=>{uid},'title'=>'QA_NOTIF single','module'=>'Pengguna','level'=>'info','url'=>'/users']); echo 'ID='.$n->id;"
-            )
-            m = re.search(r"ID=(\d+)", out)
-            assert m, out
-            nid = int(m.group(1))
-
-            r = client.post(f"{BASE_URL}/notifications/{nid}/read", json={},
-                            allow_redirects=False, timeout=30)
-            assert r.status_code in (200, 204, 302), f"{r.status_code}: {r.text[:200]}"
-
-            check = _tinker(
-                f"echo App\\Models\\Notification::find({nid})?->read_at?->toIso8601String() ?? 'NULL';"
-            )
-            assert "NULL" not in check, f"read_at not set: {check}"
-        finally:
-            self._cleanup_qa_notifs()
-
-    def test_mark_read_other_user_forbidden(self, client):
-        """POST /notifications/{id}/read pada notifikasi milik user lain → 403."""
-        try:
-            # Buat user QA lain lalu buat notifikasi untuk dia
-            out = _tinker(
-                "$u = App\\Models\\User::firstOrCreate(['username'=>'qa_notif_other'], "
-                "['name'=>'QA_Other','email'=>'TEST_qa_notif_other@example.com','password'=>bcrypt('password12'),'is_active'=>true]);"
-                "$u->syncRoles(['Staf']);"
-                "$n = App\\Models\\Notification::create(['user_id'=>$u->id,'title'=>'QA_NOTIF foreign','module'=>'Pengguna','level'=>'info']);"
-                "echo 'NID='.$n->id.';UID='.$u->id;"
-            )
-            m = re.search(r"NID=(\d+);UID=(\d+)", out)
-            assert m, out
-            nid, other_uid = int(m.group(1)), int(m.group(2))
-
-            r = client.post(f"{BASE_URL}/notifications/{nid}/read", json={},
-                            allow_redirects=False, timeout=30)
-            assert r.status_code == 403, f"expected 403 got {r.status_code}: {r.text[:200]}"
-
-            # read_at TIDAK berubah
-            chk = _tinker(f"echo App\\Models\\Notification::find({nid})?->read_at ?? 'NULL';")
-            assert "NULL" in chk, f"read_at bocor: {chk}"
-        finally:
-            self._cleanup_qa_notifs()
-            _tinker("App\\Models\\User::where('username','qa_notif_other')->delete();")
-
-    def test_notification_targeted_only_permission_holders_and_not_actor(self, client):
-        """Buat user C sbg zulfame: A(Super Admin) menerima, B(Staf) TIDAK, actor(zulfame) TIDAK."""
-        try:
-            # Bersihkan users uji jika masih ada
-            _tinker(
-                "foreach(['qa_recv_a','qa_recv_b','qa_target_c'] as $u){"
-                "$m=App\\Models\\User::where('username',$u)->first(); if($m){$m->forceDelete();}}"
-            )
-            _tinker("App\\Models\\Notification::where('title','QA_NOTIF_TARGET')->delete();")
-
-            # Buat A (Super Admin) & B (Staf) via tinker
-            out = _tinker(
-                "$a = App\\Models\\User::create(['name'=>'QA Recv A','username'=>'qa_recv_a','email'=>'TEST_qa_recv_a@example.com','password'=>bcrypt('password12'),'is_active'=>true]);"
-                "$a->syncRoles(['Super Admin']);"
-                "$b = App\\Models\\User::create(['name'=>'QA Recv B','username'=>'qa_recv_b','email'=>'TEST_qa_recv_b@example.com','password'=>bcrypt('password12'),'is_active'=>true]);"
-                "$b->syncRoles(['Staf']);"
-                "echo 'A='.$a->id.';B='.$b->id;"
-            )
-            m = re.search(r"A=(\d+);B=(\d+)", out)
-            assert m, out
-            aid, bid = int(m.group(1)), int(m.group(2))
-            zid = self._zulfame_id()
-
-            # Baseline unread untuk A, B, zulfame
-            base = _tinker(
-                f"echo 'A='.App\\Models\\Notification::where('user_id',{aid})->whereNull('read_at')->count()"
-                f".';B='.App\\Models\\Notification::where('user_id',{bid})->whereNull('read_at')->count()"
-                f".';Z='.App\\Models\\Notification::where('user_id',{zid})->whereNull('read_at')->count();"
-            )
-            m2 = re.search(r"A=(\d+);B=(\d+);Z=(\d+)", base)
-            assert m2, base
-            a0, b0, z0 = map(int, m2.groups())
-
-            # Buat pengguna C sebagai zulfame (actor)
-            r = client.post(f"{BASE_URL}/users", json={
-                "name": "QA Target C",
-                "username": "qa_target_c",
-                "email": "TEST_qa_target_c@example.com",
-                "phone": "",
-                "role": "Staf",
-                "password": "password12",
-                "is_active": True,
-            }, allow_redirects=False, timeout=30)
-            assert r.status_code in (200, 201, 204, 302), r.text[:300]
-
-            # Verifikasi penerima
-            after = _tinker(
-                f"echo 'A='.App\\Models\\Notification::where('user_id',{aid})->where('title','Pengguna baru terdaftar')->count()"
-                f".';B='.App\\Models\\Notification::where('user_id',{bid})->where('title','Pengguna baru terdaftar')->count()"
-                f".';Z='.App\\Models\\Notification::where('user_id',{zid})->where('title','Pengguna baru terdaftar')->where('created_at','>=', now()->subMinute())->count();"
-            )
-            m3 = re.search(r"A=(\d+);B=(\d+);Z=(\d+)", after)
-            assert m3, after
-            a1, b1, z1 = map(int, m3.groups())
-            assert a1 >= 1, f"A (Super Admin, users.view) tidak menerima notifikasi: {after}"
-            assert b1 == 0, f"B (Staf, tanpa users.view) menerima notifikasi: {after}"
-            assert z1 == 0, f"zulfame (aktor) menerima notifikasi atas aksinya sendiri: {after}"
-        finally:
-            _tinker(
-                "foreach(['qa_recv_a','qa_recv_b','qa_target_c'] as $u){"
-                "$m=App\\Models\\User::where('username',$u)->first(); if($m){$m->forceDelete();}}"
-                "App\\Models\\Notification::where('title','QA_NOTIF_TARGET')->delete();"
-            )
-
-
-class TestIteration18UsersBulk:
-    """Aksi massal pengguna: aktifkan/nonaktifkan/hapus dengan self-skip."""
-
-    def _mk_users(self, client, usernames):
-        ids = []
-        for u in usernames:
-            payload = {
-                "name": "QA Bulk User",
-                "username": u,
-                "email": f"TEST_{u}@example.com", "phone": "",
-                "role": "Staf", "password": "password12", "is_active": True,
-            }
-            r = client.post(f"{BASE_URL}/users", json=payload,
-                            allow_redirects=False, timeout=30)
-            assert r.status_code in (200, 201, 204, 302), r.text[:200]
-        # resolve ids
-        for u in usernames:
-            r = client.get(f"{BASE_URL}/users?search={u}",
-                           headers=_inertia_headers(client), timeout=30)
-            for row in _inertia_json(r)["props"]["users"]["data"]:
-                if row["username"] == u:
-                    ids.append(row["id"])
-                    break
-        return ids
-
-    def _cleanup(self, client, usernames):
-        php_list = ",".join(f"'{u}'" for u in usernames)
-        _tinker(
-            f"foreach([{php_list}] as $u)"
-            "{$m=App\\Models\\User::where('username',$u)->first(); if($m){$m->forceDelete();}}"
-        )
-
-    def test_bulk_missing_ids_422(self, client):
-        r = client.post(f"{BASE_URL}/users/bulk", json={"action": "delete"},
-                        allow_redirects=False, timeout=30)
-        assert r.status_code == 422, r.text[:200]
-        assert "ids" in r.json().get("errors", {})
-
-    def test_bulk_unknown_action_422(self, client):
-        r = client.post(f"{BASE_URL}/users/bulk",
-                        json={"action": "bogus", "ids": [1]},
-                        allow_redirects=False, timeout=30)
-        assert r.status_code == 422
-        assert "action" in r.json().get("errors", {})
-
-    def test_bulk_deactivate_then_activate(self, client):
-        usernames = ["qa_bulk_u1", "qa_bulk_u2"]
-        self._cleanup(client, usernames)
-        try:
-            ids = self._mk_users(client, usernames)
-            assert len(ids) == 2
-
-            # Deactivate
-            r = client.post(f"{BASE_URL}/users/bulk",
-                            json={"action": "deactivate", "ids": ids},
-                            allow_redirects=False, timeout=30)
-            assert r.status_code in (200, 204, 302), r.text[:200]
-            out = _tinker(
-                f"echo App\\Models\\User::whereIn('id',[{ids[0]},{ids[1]}])->where('is_active',false)->count();"
-            )
-            assert re.search(r"\b2\b", out), out
-
-            # Activate
-            r = client.post(f"{BASE_URL}/users/bulk",
-                            json={"action": "activate", "ids": ids},
-                            allow_redirects=False, timeout=30)
-            assert r.status_code in (200, 204, 302), r.text[:200]
-            out2 = _tinker(
-                f"echo App\\Models\\User::whereIn('id',[{ids[0]},{ids[1]}])->where('is_active',true)->count();"
-            )
-            assert re.search(r"\b2\b", out2), out2
-        finally:
-            self._cleanup(client, usernames)
-
-    def test_bulk_delete_skips_self(self, client):
-        """Jika payload memuat akun sendiri (zulfame), dilewati; user lain terhapus."""
-        usernames = ["qa_bulk_del1"]
-        self._cleanup(client, usernames)
-        try:
-            ids = self._mk_users(client, usernames)
-            zid_out = _tinker("echo App\\Models\\User::where('username','zulfame')->value('id');")
-            zid = int(re.search(r"(\d+)", zid_out).group(1))
-
-            r = client.post(f"{BASE_URL}/users/bulk",
-                            json={"action": "delete", "ids": ids + [zid]},
-                            allow_redirects=False, timeout=30)
-            assert r.status_code in (200, 204, 302), r.text[:200]
-
-            # zulfame masih ada, qa_bulk_del1 hilang
-            still = _tinker("echo App\\Models\\User::where('username','zulfame')->count();")
-            assert re.search(r"\b1\b", still), still
-            gone = _tinker(
-                f"echo App\\Models\\User::whereIn('id',[{ids[0]}])->count();"
-            )
-            assert re.search(r"\b0\b", gone), gone
-        finally:
-            self._cleanup(client, usernames)
-
-
-class TestIteration18RolesBulk:
-    """Hapus massal peranan: Super Admin dan yang masih dipakai selalu dilewati."""
-
-    def _mk_role(self, client, name):
-        r = client.post(f"{BASE_URL}/roles", json={"name": name},
-                        allow_redirects=False, timeout=30)
-        assert r.status_code in (200, 201, 204, 302), r.text[:200]
-        rr = client.get(f"{BASE_URL}/roles", headers=_inertia_headers(client), timeout=30)
-        for x in _inertia_json(rr)["props"]["roles"]:
-            if x["name"] == name:
-                return x["id"]
-        return None
-
-    def _cleanup_role(self, name):
-        _tinker(f"$r = Spatie\\Permission\\Models\\Role::where('name','{name}')->first(); if($r){{$r->delete();}}")
-
-    def test_bulk_missing_ids_422(self, client):
-        r = client.post(f"{BASE_URL}/roles/bulk-destroy", json={},
-                        allow_redirects=False, timeout=30)
-        assert r.status_code == 422, r.text[:200]
-        assert "ids" in r.json().get("errors", {})
-
-    def test_bulk_delete_skips_super_admin_and_used_role(self, client):
-        name = "QA Bulk Role One"
-        self._cleanup_role(name)
-        try:
-            role_id = self._mk_role(client, name)
-            assert role_id
-            # Ambil id Super Admin & Staf (dipakai)
-            out = _tinker(
-                "echo Spatie\\Permission\\Models\\Role::where('name','Super Admin')->value('id').',';"
-                "echo Spatie\\Permission\\Models\\Role::where('name','Staf')->value('id');"
-            )
-            m = re.search(r"(\d+),(\d+)", out)
-            sa_id, staf_id = int(m.group(1)), int(m.group(2))
-
-            r = client.post(f"{BASE_URL}/roles/bulk-destroy",
-                            json={"ids": [role_id, sa_id, staf_id]},
-                            allow_redirects=False, timeout=30)
-            assert r.status_code in (200, 204, 302), r.text[:200]
-
-            # QA role dihapus; Super Admin & Staf tetap ada
-            gone = _tinker(f"echo Spatie\\Permission\\Models\\Role::where('id',{role_id})->count();")
-            assert re.search(r"\b0\b", gone), gone
-            keep = _tinker(
-                f"echo Spatie\\Permission\\Models\\Role::whereIn('id',[{sa_id},{staf_id}])->count();"
-            )
-            assert re.search(r"\b2\b", keep), keep
-        finally:
-            self._cleanup_role(name)
+# ---------- CLEANUP ----------
+@pytest.fixture(scope="session", autouse=True)
+def _cleanup(session):
+    yield
+    for name in ["qa_module.view", "qa_module.manage", "qa_a.view", "qa_b.view", "qa_audit.view"]:
+        row = _find(session, name)
+        if row and not row["locked"]:
+            _delete(session, f"/permissions/{row['id']}")

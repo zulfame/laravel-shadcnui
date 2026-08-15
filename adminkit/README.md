@@ -52,9 +52,19 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 - Halaman profil: ubah data diri, unggah/hapus foto profil, ganti kata sandi.
 
 **Manajemen Pengguna**
-- Tabel server-side: pencarian, sortir, paginasi, filter **Peranan** (dinamis) dan **Status**.
+- Tabel server-side: pencarian, sortir, paginasi, filter **Perizinan**
+- Halaman `/permissions` untuk mengelola permission Spatie: tabel server-side (pencarian, sortir, filter **Entitas** dinamis, paginasi), tambah/ubah/hapus, dan hapus massal.
+- Nama izin wajib berformat `entitas.aksi` huruf kecil (mis. `projects.view`, `projects.delete_any`).
+- **Izin inti** bawaan modul (`Modules::permissions()`) terkunci: ikon kunci, tanpa menu aksi, dan ditolak 403 dari server bila dipaksa diubah/dihapus.
+
+**Peranan** (dinamis) dan **Status**.
 - Dialog tambah/ubah dengan validasi cepat; hanya **Nama, Peranan, Kata Sandi** yang wajib.
 - `username`, `email`, `phone` opsional namun **unik**; nomor HP hanya menerima angka (boleh `+`).
+
+**Perizinan**
+- Halaman `/permissions` untuk mengelola permission Spatie: tabel server-side (pencarian, sortir, filter **Entitas** dinamis, paginasi), tambah/ubah/hapus, dan hapus massal.
+- Nama izin wajib berformat `entitas.aksi` huruf kecil (mis. `projects.view`, `projects.delete_any`).
+- **Izin inti** bawaan modul (`Modules::permissions()`) terkunci: ikon kunci, tanpa menu aksi, dan ditolak 403 dari server bila dipaksa diubah/dihapus.
 
 **Peranan**
 - CRUD peranan, peranan `Super Admin` terkunci dari perubahan/penghapusan.
@@ -248,6 +258,8 @@ const submit = () => check.submit(() => form.post('/users'));
 - Menu sidebar otomatis menyembunyikan item yang izinnya tidak dimiliki (`resources/js/config/navigation.js` + izin dari share Inertia).
 - Peranan `Super Admin` (lihat `App\Enums\RoleName`) terkunci: tidak dapat diubah atau dihapus.
 
+Menambah izin ad-hoc dapat dilakukan lewat halaman **Perizinan** tanpa menyentuh kode; izin yang dipakai kode aplikasi tetap didaftarkan di `Modules::MAP` agar terkunci dan ikut di-seed.
+
 Menambah modul baru:
 1. Tambahkan entri pada `Modules::MAP` (label + izin).
 2. `php artisan db:seed` untuk membuat izin baru.
@@ -401,6 +413,9 @@ Nilai `'all'` dipakai sebagai sentinel filter "semua" karena `reka-ui` melarang 
 | POST/DELETE | `/profile/avatar` | Unggah/hapus foto profil |
 | GET | `/users` | Daftar pengguna (search, sort, filter peranan & status) |
 | POST/PUT/DELETE | `/users`, `/users/{user}` | CRUD pengguna |
+| GET | `/permissions` | Daftar izin (Perizinan) |
+| POST/PUT/DELETE | `/permissions`, `/permissions/{permission}` | CRUD izin |
+| POST | `/permissions/bulk-destroy` | Hapus massal izin |
 | GET | `/roles`, `/roles/{role}` | Daftar & detail peranan |
 | POST/PUT/DELETE | `/roles`, `/roles/{role}` | CRUD peranan |
 | POST | `/roles/import` | Impor peranan dari CSV |

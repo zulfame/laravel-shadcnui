@@ -134,6 +134,14 @@ Backlog kualitas: Pest feature test (auth, CRUD, otorisasi), ESLint + Prettier, 
 - **Badge lebih solid**: `.state-chip` kini isian penuh `hsl(var(--chip))` dengan teks kontras `hsl(var(--background))`; varian `secondary` pada `Badge` menjadi solid (`bg-foreground/85 text-background`), varian lembut lama tetap tersedia sebagai `muted`.
 - Terverifikasi di tema terang & gelap tanpa error console.
 
+## Selesai (2026-06-15, modul Perizinan)
+- Modul baru **Perizinan** (`permissions.view` / `permissions.manage`) ditambahkan ke `Modules::MAP` dan di-seed ke Super Admin; menu sidebar diletakkan **tepat di atas Peranan**, breadcrumb + ADMIN_ROUTES diperbarui.
+- Halaman `/permissions` (`Permissions.vue`): tabel server-side (cari, sortir nama/guard, filter Entitas dinamis, paginasi), checkbox + hapus massal, dialog Tambah/Ubah dengan validasi format `entitas.aksi` (cermin di UI & `StorePermissionRequest`).
+- **Izin inti terkunci**: nama yang ada di `Modules::permissions()` tidak bisa diubah/dihapus (ikon kunci, menu aksi disembunyikan, server menolak 403, hapus massal melewatinya).
+- Audit trail + notifikasi bertarget (`permissions.view`) untuk setiap perubahan izin.
+- Uji iterasi 20: backend 24/24 dan frontend 100%.
+- **Backlog dari referensi UI user (Filament Shield)**: halaman detail peranan akan memakai matriks per entitas dengan aksi View / View Any / Create / Update / Delete / Delete Any, toggle "select all" per entitas dan global, plus kolom Guard — dibangun di atas modul Perizinan ini.
+
 ## Selesai (2026-06-15, notifikasi nyata + aksi massal + presisi dialog)
 ### Notifikasi (sebelumnya 100% DUMMY hardcoded)
 - Tabel `notifications` (satu baris per penerima) + model `Notification`, helper `App\Support\Notify::toPermission()/toUser()`.
