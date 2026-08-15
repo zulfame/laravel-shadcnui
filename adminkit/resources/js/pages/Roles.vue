@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
-import { Eye, Loader2, Lock, Pencil, Plus, Save, ShieldCheck, Trash2, Upload, X } from 'lucide-vue-next';
+import { Eye, FileDown, Loader2, Lock, Pencil, Plus, Save, ShieldCheck, Trash2, Upload, X } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
 import Button from '@/components/ui/Button.vue';
@@ -64,7 +64,7 @@ const submit = () =>
 
 const openDetail = (role) => router.get(`/roles/${role.id}`);
 
-/* ── Impor Peranan (CSV) ─────────────────────────────────────────────── */
+/* ── Impor Peranan (Excel) ───────────────────────────────────────────── */
 const importOpen = ref(false);
 const importInput = ref(null);
 const importForm = useForm({ file: null });
@@ -233,16 +233,16 @@ const confirmDelete = () =>
             <Dialog v-model:open="importOpen" title="Impor Peranan" class="max-w-md">
                 <div class="form-dense space-y-[var(--field-gap)]">
                     <p class="text-sm text-muted-foreground">
-                        Unggah berkas CSV berisi satu nama peranan per baris. Baris berjudul
-                        <span class="font-mono text-xs">name</span> diabaikan dan nama yang sudah ada dilewati.
+                        Unduh berkas contoh melalui tombol <span class="font-medium text-foreground">Template</span>,
+                        isi datanya, lalu unggah kembali. Baris judul diabaikan dan nama peranan yang sudah ada dilewati.
                     </p>
                     <div class="space-y-[var(--item-gap)]">
-                        <Label for="role-import-file">Berkas CSV</Label>
+                        <Label for="role-import-file">Berkas Excel</Label>
                         <input
                             id="role-import-file"
                             ref="importInput"
                             type="file"
-                            accept=".csv,text/csv,text/plain"
+                            accept=".xlsx,.xls"
                             class="block w-full cursor-pointer rounded-md border border-input bg-transparent px-3 py-1.5 text-[13px] file:mr-3 file:rounded file:border-0 file:bg-secondary file:px-2 file:py-1 file:text-xs"
                             data-testid="role-import-file"
                             @change="onImportFile"
@@ -254,6 +254,16 @@ const confirmDelete = () =>
                 </div>
 
                 <template #footer>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        as="a"
+                        href="/roles/import/template"
+                        class="mr-auto"
+                        data-testid="role-import-template"
+                    >
+                        <FileDown class="size-4" /> Template
+                    </Button>
                     <Button variant="outline" size="sm" data-testid="role-import-cancel" @click="importOpen = false">
                         <X class="size-4" /> {{ ACTION.cancel }}
                     </Button>

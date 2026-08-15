@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { Download, Loader2, Pencil, Plus, Save, ToggleLeft, ToggleRight, Trash2, Upload, Users2, X } from 'lucide-vue-next';
+import { Download, FileDown, Loader2, Pencil, Plus, Save, ToggleLeft, ToggleRight, Trash2, Upload, Users2, X } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
 import Badge from '@/components/ui/Badge.vue';
@@ -140,7 +140,7 @@ const submit = () => {
     else form.post('/users', options);
 };
 
-/* ── Ekspor CSV mengikuti filter aktif ───────────────────────────────── */
+/* ── Ekspor Excel mengikuti filter aktif ───────────────────────────────── */
 const exportUrl = computed(() => {
     const params = new URLSearchParams();
     if (query.search) params.set('search', query.search);
@@ -150,7 +150,7 @@ const exportUrl = computed(() => {
     return `/users/export?${params.toString()}`;
 });
 
-/* ── Impor pengguna (CSV) ────────────────────────────────────────────── */
+/* ── Impor pengguna (Excel) ────────────────────────────────────────────── */
 const importOpen = ref(false);
 const importInput = ref(null);
 const importForm = useForm({ file: null });
@@ -466,17 +466,17 @@ watch(dialogOpen, (open) => {
             <Dialog v-model:open="importOpen" title="Impor Pengguna" class="max-w-md">
                 <div class="form-dense space-y-[var(--field-gap)]">
                     <p class="text-sm text-muted-foreground">
-                        Unggah berkas CSV dengan kolom berurutan:
-                        <span class="font-mono text-xs">name,username,email,phone,role,password</span>.
-                        Baris judul diabaikan, baris tidak valid dilewati, dan kata sandi yang kosong diisi acak.
+                        Unduh berkas contoh melalui tombol <span class="font-medium text-foreground">Template</span>,
+                        isi datanya, lalu unggah kembali. Baris judul diabaikan, baris tidak valid dilewati, dan kata
+                        sandi yang dibiarkan kosong diisi acak.
                     </p>
                     <div class="space-y-[var(--item-gap)]">
-                        <Label for="user-import-file">Berkas CSV</Label>
+                        <Label for="user-import-file">Berkas Excel</Label>
                         <input
                             id="user-import-file"
                             ref="importInput"
                             type="file"
-                            accept=".csv,text/csv,text/plain"
+                            accept=".xlsx,.xls"
                             class="block w-full cursor-pointer rounded-md border border-input bg-transparent px-3 py-1.5 text-[13px] file:mr-3 file:rounded file:border-0 file:bg-secondary file:px-2 file:py-1 file:text-xs"
                             data-testid="user-import-file"
                             @change="onImportFile"
@@ -488,6 +488,16 @@ watch(dialogOpen, (open) => {
                 </div>
 
                 <template #footer>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        as="a"
+                        href="/users/import/template"
+                        class="mr-auto"
+                        data-testid="user-import-template"
+                    >
+                        <FileDown class="size-4" /> Template
+                    </Button>
                     <Button variant="outline" size="sm" data-testid="user-import-cancel" @click="importOpen = false">
                         <X class="size-4" /> {{ ACTION.cancel }}
                     </Button>

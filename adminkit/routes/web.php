@@ -61,6 +61,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::post('/users/bulk', [UserController::class, 'bulk'])->name('users.bulk');
         Route::post('/users/import', [UserController::class, 'import'])->name('users.import');
+        Route::get('/users/import/template', [UserController::class, 'importTemplate'])
+            ->name('users.import.template');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
     });
@@ -88,6 +90,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permission:roles.manage')->group(function () {
         Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
         Route::post('/roles/import', [RoleController::class, 'import'])->name('roles.import');
+        Route::get('/roles/import/template', [RoleController::class, 'importTemplate'])
+            ->name('roles.import.template');
         Route::post('/roles/bulk-destroy', [RoleController::class, 'bulkDestroy'])->name('roles.bulk-destroy');
         Route::put('/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
         Route::put('/roles/{role}/permissions', [RoleController::class, 'syncPermissions'])

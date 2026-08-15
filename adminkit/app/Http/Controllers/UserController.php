@@ -7,7 +7,7 @@ use App\Http\Requests\User\ImportUserRequest;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Models\ActivityLog;
 use App\Models\User;
-use App\Support\Csv;
+use App\Support\Excel;
 use App\Support\Notify;
 use App\Support\Rules;
 use App\Support\TableQuery;
@@ -25,6 +25,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class UserController extends Controller
 {
     private const SORTABLE = ['name', 'username', 'email', 'phone', 'role', 'is_active'];
+
+    private const IMPORT_HEADERS = ['Nama Lengkap', 'Nama Pengguna', 'Alamat Email', 'Nomor HP', 'Peranan', 'Kata Sandi'];
 
     public function index(Request $request): Response
     {
@@ -142,26 +144,38 @@ class UserController extends Controller
         return back()->with('success', "Pengguna {$user->name} diperbarui.");
     }
 
+    /** Berkas Excel contoh untuk impor pengguna. */
+    public function importTemplate(): StreamedResponse
+    {
+        $role = Role::orderBy('name')->value('name') ?? 'Super Admin';
+
+        return Excel::download(
+            'template-impor-pengguna.xlsx',
+            self::IMPORT_HEADERS,
+            [
+                ['Budi Santoso', 'budisantoso', 'budi@example.com', '081234567890', $role, 'password'],
+                ['Siti Aminah', 'sitiaminah', 'siti@example.com', '081234567891', $role, ''],
+            ],
+            'Pengguna',
+        );
+    }
+
     /**
-     * Impor pengguna dari CSV dengan kolom:
-     * name,username,email,phone,role,password (baris judul opsional).
-     * Baris yang tidak lolos validasi dilewati; kata sandi kosong diisi acak.
+     * Impor pengguna dari Excel dengan kolom berurutan seperti template
+     * (baris judul opsional). Baris tidak valid dilewati; kata sandi kosong diisi acak.
      */
     public function import(ImportUserRequest $request): RedirectResponse
     {
-        $lines = array_filter(array_map(
-            'trim',
-            explode("\n", (string) file_get_contents($request->file('file')->getRealPath()))
-        ));
+        $lines = Excel::rows($request->file('file')->getRealPath());
 
         $roles = Role::pluck('name')->all();
         $added = 0;
         $skipped = 0;
 
-        foreach ($lines as $line) {
-            $cols = array_map(fn ($v) => trim(str_replace('"', '', $v)), explode(',', $line));
+        foreach ($lines as $cols) {
+            $cols = array_map(fn ($v) => trim((string) $v), array_values($cols));
             $row = [
-                'name' => $cols[0] ?? null,
+                'name' => ($cols[0] ?? '') ?: null,
                 'username' => ($cols[1] ?? '') ?: null,
                 'email' => ($cols[2] ?? '') ?: null,
                 'phone' => ($cols[3] ?? '') ?: null,
@@ -169,7 +183,7 @@ class UserController extends Controller
                 'password' => ($cols[5] ?? '') ?: Str::password(12),
             ];
 
-            if (mb_strtolower((string) $row['name']) === 'name') {
+            if (in_array(mb_strtolower((string) $row['name']), ['name', 'nama', 'nama lengkap'], true)) {
                 continue;
             }
 
@@ -224,7 +238,7 @@ class UserController extends Controller
         );
     }
 
-    /** Unduh CSV mengikuti filter aktif. */
+    /** Unduh Excel mengikuti filter aktif. */
     public function export(Request $request): StreamedResponse
     {
         $search = TableQuery::search($request);
@@ -252,10 +266,10 @@ class UserController extends Controller
                 $u->last_login_at?->format('Y-m-d H:i'),
             ]);
 
-        ActivityLog::record('Mengekspor daftar pengguna (CSV)', 'Pengguna', 'info');
+        ActivityLog::record('Mengekspor daftar pengguna (Excel)', 'Pengguna', 'info');
 
-        return Csv::stream(
-            Csv::filename('pengguna'),
+        return Excel::download(
+            Excel::filename('pengguna'),
             ['Nama Lengkap', 'Nama Pengguna', 'Alamat Email', 'Nomor HP', 'Peranan', 'Status', 'Terakhir Login'],
             $rows,
         );

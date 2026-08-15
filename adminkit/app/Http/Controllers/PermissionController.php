@@ -6,7 +6,7 @@ use App\Http\Requests\Permission\BulkPermissionRequest;
 use App\Http\Requests\Permission\GeneratePermissionRequest;
 use App\Http\Requests\Permission\StorePermissionRequest;
 use App\Models\ActivityLog;
-use App\Support\Csv;
+use App\Support\Excel;
 use App\Support\Modules;
 use App\Support\Notify;
 use App\Support\TableQuery;
@@ -108,7 +108,7 @@ class PermissionController extends Controller
         );
     }
 
-    /** Unduh CSV mengikuti filter aktif. */
+    /** Unduh Excel mengikuti filter aktif. */
     public function export(Request $request): StreamedResponse
     {
         $search = TableQuery::search($request);
@@ -128,10 +128,10 @@ class PermissionController extends Controller
                 $p->roles_count,
             ]);
 
-        ActivityLog::record('Mengekspor daftar izin (CSV)', 'Perizinan', 'info');
+        ActivityLog::record('Mengekspor daftar izin (Excel)', 'Perizinan', 'info');
 
-        return Csv::stream(
-            Csv::filename('perizinan'),
+        return Excel::download(
+            Excel::filename('perizinan'),
             ['Nama Izin', 'Entitas', 'Aksi', 'Guard', 'Jumlah Peranan'],
             $rows,
         );

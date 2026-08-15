@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ActivityLog\DestroyRangeRequest;
 use App\Models\ActivityLog;
-use App\Support\Csv;
+use App\Support\Excel;
 use App\Support\TableQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -104,7 +104,7 @@ class ActivityLogController extends Controller
         ]);
     }
 
-    /** Unduh CSV mengikuti filter aktif. */
+    /** Unduh Excel mengikuti filter aktif. */
     public function export(Request $request): StreamedResponse
     {
         $search = TableQuery::search($request);
@@ -125,10 +125,10 @@ class ActivityLogController extends Controller
                 $log->url,
             ]);
 
-        ActivityLog::record('Mengekspor audit trail (CSV)', 'Audit Trail', 'info');
+        ActivityLog::record('Mengekspor audit trail (Excel)', 'Audit Trail', 'info');
 
-        return Csv::stream(
-            Csv::filename('audit-trail'),
+        return Excel::download(
+            Excel::filename('audit-trail'),
             ['Waktu', 'Pelaku', 'Aksi', 'Modul', 'Level', 'Alamat IP', 'Metode', 'Kode Status', 'URL'],
             $rows,
         );

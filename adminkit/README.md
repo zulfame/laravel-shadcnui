@@ -14,6 +14,8 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 - [Instalasi](#instalasi)
 - [Perintah Harian](#perintah-harian)
 - [Struktur Proyek](#struktur-proyek)
+- [Skema Basis Data](#skema-basis-data)
+- [Ekspor & Impor Excel](#ekspor--impor-excel)
 - [Standar Validasi (WAJIB)](#standar-validasi-wajib)
 - [Hak Akses & Peranan](#hak-akses--peranan)
 - [Audit Trail](#audit-trail)
@@ -60,7 +62,7 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 
 **Peranan** (dinamis) dan **Status**.
 - Dialog tambah/ubah dengan validasi cepat; hanya **Nama, Peranan, Kata Sandi** yang wajib.
-- **Impor CSV** (kolom berurutan `name,username,email,phone,role,password`; baris judul diabaikan, baris tidak valid dilewati, kata sandi kosong diisi acak) dan **Ekspor CSV** mengikuti filter aktif.
+- **Impor Excel** (`.xlsx` sesuai template yang dapat diunduh; baris judul diabaikan, baris tidak valid dilewati, kata sandi kosong diisi acak) dan **Ekspor Excel** mengikuti filter aktif.
 - `username`, `email`, `phone` opsional namun **unik**; nomor HP hanya menerima angka (boleh `+`).
 
 **Perizinan**
@@ -71,7 +73,7 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 
 **Peranan**
 - CRUD peranan, peranan `Super Admin` terkunci dari perubahan/penghapusan.
-- **Impor peranan dari CSV** (satu nama per baris, header `name` diabaikan, duplikat dilewati).
+- **Impor peranan dari Excel** (nama peranan pada kolom pertama, baris judul diabaikan, duplikat dilewati).
 - **Matriks hak akses** di halaman detail peranan: izin dikelompokkan per entitas, toggle "pilih semua" per entitas dan global, pencarian izin, penghitung izin terpilih (Super Admin bersifat read-only).
 
 **Audit Trail**
@@ -80,8 +82,8 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 - Hapus jejak audit berdasarkan rentang tanggal.
 
 **Ekspor & Impor**
-- Ekspor CSV **mengikuti filter aktif** di Pengguna (`/users/export`), Perizinan (`/permissions/export`), dan Audit Trail (`/audit-trail/export`) — streaming via `App\Support\Csv` dengan BOM UTF-8 agar rapi di Excel.
-- Impor CSV untuk Pengguna (`POST /users/import`) dan Peranan (`POST /roles/import`).
+- Ekspor Excel **mengikuti filter aktif** di Pengguna (`/users/export`), Perizinan (`/permissions/export`), dan Audit Trail (`/audit-trail/export`) — `.xlsx` via `App\Support\Excel` (PhpSpreadsheet).
+- Impor Excel untuk Pengguna (`POST /users/import`) dan Peranan (`POST /roles/import`), lengkap dengan template contoh (`/users/import/template`, `/roles/import/template`).
 
 **Notifikasi**
 - Notifikasi **per pengguna** (tabel `notifications`, satu baris = satu penerima) — bukan siaran ke semua orang.
@@ -162,15 +164,17 @@ php artisan cache:clear  # WAJIB setelah mengubah tabel settings langsung dari D
 app/
 ├── Enums/RoleName.php                  # enum nama peranan
 ├── Http/
-│   ├── Controllers/                    # Auth, Dashboard, User, Role, Profile, Appearance, Storage, ActivityLog
+│   ├── Controllers/                    # Auth, Dashboard, User, Permission, Role, Notification, Profile, Appearance, Storage, ActivityLog
 │   ├── Middleware/HandleInertiaRequests.php   # share auth, branding, flash
 │   └── Requests/                       # SATU Form Request per form (lihat Standar Validasi)
-├── Models/                             # User, Role (Spatie), ActivityLog, Setting
+├── Models/                             # User, Role & Permission (Spatie), ActivityLog, Notification, Setting
 ├── Providers/AppServiceProvider.php    # branding untuk blade root + locale Carbon
 └── Support/
     ├── Branding.php                    # pembacaan setelan branding (+cache)
+    ├── Excel.php                       # unduhan & pembacaan berkas .xlsx (PhpSpreadsheet)
     ├── FileStorage.php                 # satu pintu unggahan (local/s3, prefix disk)
-    ├── Modules.php                      # daftar modul & izin
+    ├── Modules.php                     # daftar modul & izin inti
+    ├── Notify.php                      # notifikasi bertarget izin
     ├── Rules.php                       # SATU sumber aturan validasi per tipe kolom
     └── TableQuery.php                  # helper query tabel server-side
 
@@ -185,12 +189,47 @@ resources/
 │   ├── config/navigation.js            # area, menu, breadcrumb (ROUTE_TRAILS)
 │   ├── constants/labels.js             # label aksi (Title Case)
 │   ├── lib/validators.js               # cermin Rules.php untuk validasi cepat UI
-│   └── pages/                          # Dashboard, Users, Roles, RoleDetail, AuditTrail, AuditDetail, Appearance, Storage, Profile, auth/Login
+│   └── pages/                          # Dashboard, Users, Permissions, Roles, RoleDetail, AuditTrail, AuditDetail, Appearance, Storage, Profile, auth/Login
 └── views/app.blade.php                 # root blade (judul, favicon, meta SEO/OG)
 
 routes/web.php
 database/{migrations,seeders,factories}
 ```
+
+---
+
+## Skema Basis Data
+
+| Tabel | Isi penting |
+| --- | --- |
+| `users` | `name` (wajib), `username`/`email`/`phone` (opsional & unik), `password`, `avatar`, `is_active`, `last_login_at` |
+| `roles`, `permissions`, `model_has_roles`, `role_has_permissions` | standar `spatie/laravel-permission`; nama izin memakai pola `entitas.aksi` |
+| `activity_logs` | `actor_name`, `action`, `module`, `level`, `subject_type/id`, `changes` (JSON diff), `context` (JSON), `ip`, `method`, `url`, `status_code`, `user_agent` |
+| `notifications` | satu baris per penerima: `user_id`, `title`, `body`, `module`, `level`, `url`, `actor_id`, `read_at` |
+| `settings` | `key` (primary), `value` — branding, SEO, dan konfigurasi penyimpanan |
+
+---
+
+## Ekspor & Impor Excel
+
+**Ekspor** memakai `App\Support\Excel::download()` (PhpSpreadsheet, berkas `.xlsx` dengan header tebal, baris pertama dibekukan, auto-filter, lebar kolom otomatis) dan **selalu menghormati filter aktif**:
+
+| Halaman | Rute | Kolom |
+| --- | --- | --- |
+| Pengguna | `GET /users/export?search=&status=&role=` | Nama Lengkap, Nama Pengguna, Alamat Email, Nomor HP, Peranan, Status, Terakhir Login |
+| Perizinan | `GET /permissions/export?search=&entity=&sort=&dir=` | Nama Izin, Entitas, Aksi, Guard, Jumlah Peranan |
+| Audit Trail | `GET /audit-trail/export?search=&date_from=&date_to=&sort=&dir=` | Waktu, Pelaku, Aksi, Modul, Level, Alamat IP, Metode, Kode Status, URL |
+
+Di frontend, URL dibangun dari state `useServerTable` lalu dipakai pada `<Button as="a" :href="exportUrl">`.
+
+**Impor** memvalidasi tiap baris memakai `App\Support\Rules` — baris tidak valid dilewati dan jumlahnya dilaporkan:
+
+| Target | Rute | Format berkas |
+| --- | --- | --- |
+| Pengguna | `POST /users/import` | `.xlsx`/`.xls` sesuai template `GET /users/import/template` (baris judul diabaikan; kata sandi kosong → acak 12 karakter) |
+| Peranan | `POST /roles/import` | `.xlsx`/`.xls` sesuai template `GET /roles/import/template` (nama peranan pada kolom pertama, duplikat dilewati) |
+
+Tombol **Template** pada dialog impor mengunduh berkas contoh yang sudah berisi baris data teladan.
 
 ---
 
@@ -264,6 +303,16 @@ const submit = () => check.submit(() => form.post('/users'));
 - Rute dilindungi middleware `permission:` — contoh: `Route::middleware('permission:users.manage')`.
 - Menu sidebar otomatis menyembunyikan item yang izinnya tidak dimiliki (`resources/js/config/navigation.js` + izin dari share Inertia).
 - Peranan `Super Admin` (lihat `App\Enums\RoleName`) terkunci: tidak dapat diubah atau dihapus.
+
+### Matriks hak akses per peranan
+
+- Halaman detail peranan (`/roles/{id}`) menampilkan seluruh izin yang dikelompokkan per **entitas** (bagian sebelum titik) dengan checkbox per aksi, toggle "pilih semua" per entitas, toggle global, pencarian izin, dan penghitung izin terpilih.
+- Disimpan lewat `PUT /roles/{role}/permissions` → `syncPermissions()`; peranan `Super Admin` bersifat **read-only** (kontrol disabled dan server menolak 403).
+- Perubahan dicatat di audit trail sebagai diff daftar izin lama → baru dan memicu notifikasi bertarget `roles.view`.
+
+### Generator izin standar
+
+Halaman Perizinan menyediakan generator: masukkan entitas (mis. `projects`) lalu pilih aksi `view`, `view_any`, `create`, `update`, `delete`, `delete_any` (`GeneratePermissionRequest::ABILITIES`). Izin dibuat dengan pola `entitas.aksi`; yang sudah ada dilewati.
 
 Menambah izin ad-hoc dapat dilakukan lewat halaman **Perizinan** tanpa menyentuh kode; izin yang dipakai kode aplikasi tetap didaftarkan di `Modules::MAP` agar terkunci dan ikut di-seed.
 
@@ -424,12 +473,14 @@ Nilai `'all'` dipakai sebagai sentinel filter "semua" karena `reka-ui` melarang 
 | POST/PUT/DELETE | `/permissions`, `/permissions/{permission}` | CRUD izin |
 | POST | `/permissions/bulk-destroy` | Hapus massal izin |
 | POST | `/permissions/generate` | Generator izin standar per entitas |
-| GET | `/permissions/export`, `/users/export`, `/audit-trail/export` | Unduh CSV sesuai filter aktif |
-| POST | `/users/import` | Impor pengguna dari CSV |
+| GET | `/permissions/export`, `/users/export`, `/audit-trail/export` | Unduh Excel (.xlsx) sesuai filter aktif |
+| POST | `/users/import` | Impor pengguna dari Excel |
+| GET | `/users/import/template` | Unduh template impor pengguna |
 | PUT | `/roles/{role}/permissions` | Simpan matriks hak akses peranan |
 | GET | `/roles`, `/roles/{role}` | Daftar & detail peranan |
 | POST/PUT/DELETE | `/roles`, `/roles/{role}` | CRUD peranan |
-| POST | `/roles/import` | Impor peranan dari CSV |
+| POST | `/roles/import` | Impor peranan dari Excel |
+| GET | `/roles/import/template` | Unduh template impor peranan |
 | POST | `/users/bulk` | Aksi massal pengguna (`delete`/`activate`/`deactivate`) |
 | POST | `/roles/bulk-destroy` | Hapus massal peranan |
 | POST | `/notifications/read-all`, `/notifications/{notification}/read` | Tandai notifikasi dibaca |
@@ -477,6 +528,8 @@ Catatan pengujian manual/otomatis:
 | Logo tampil sebagai ikon | Berkas tidak dapat dimuat (driver penyimpanan berganti / berkas terhapus) — unggah ulang; ini perilaku fallback yang disengaja |
 | Gambar aset 404 setelah pindah driver | Nilai lama tanpa awalan disk; unggah ulang aset agar tersimpan sebagai `local:`/`s3:` |
 | `php: not found` | Instal PHP 8.2+ beserta ekstensi pada bagian Persyaratan |
+| Izin baru tidak langsung berlaku | Cache Spatie — controller sudah memanggil `forgetCachedPermissions()`; bila mengubah lewat tinker jalankan `app(PermissionRegistrar::class)->forgetCachedPermissions()` |
+| Impor ditolak "harus berformat Excel" | Simpan berkas sebagai `.xlsx` (Excel/LibreOffice/Google Sheets → Unduh sebagai Excel); `.csv` tidak lagi didukung |
 | Waktu relatif berbahasa Inggris | Setel `APP_LOCALE=id` (locale Carbon mengikuti nilai ini) |
 
 ---

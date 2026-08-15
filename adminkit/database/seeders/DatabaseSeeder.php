@@ -30,11 +30,11 @@ class DatabaseSeeder extends Seeder
             ['email' => 'zulfadlirizal@gmail.com'],
             [
                 'name' => 'Zulfadli Rizal',
-                'username' => 'zulfame',
+                'username' => '309011221',
                 'phone' => '082320099971',
                 'is_active' => true,
                 'email_verified_at' => now(),
-                'password' => Hash::make('password'),
+                'password' => Hash::make('1'),
             ]
         );
 
@@ -43,7 +43,7 @@ class DatabaseSeeder extends Seeder
         }
 
         // Peranan contoh berhak-akses terbatas, untuk mencoba matriks izin.
-        $staff = Role::findOrCreate('Staf', 'web');
+        $staff = Role::findOrCreate('Guest');
         $staff->syncPermissions(['dashboard.view', 'profile.view']);
 
         // Data contoh agar pencarian & paginasi sisi server dapat dicoba.

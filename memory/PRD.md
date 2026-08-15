@@ -230,3 +230,12 @@ Atas permintaan user: **semua style badge kustom DIHAPUS**.
 - Dukungan ikon: container `gap-1` + `[&>svg]:size-3` (cukup `<Star />` di dalam Badge).
 - Catatan penting: nama kelas `bdg-c-*` HARUS literal di JS (map `neutralInkMap`), karena kelas dinamis dibuang oleh purge Tailwind (bug ini sudah terjadi & diperbaiki).
 - Verifikasi: warna terhitung benar di kedua tema, halaman Pengguna (badge peran/status) tetap normal.
+
+## Selesai (2026-06-15, semua Ekspor/Impor pindah ke XLSX)
+- Lingkungan: pod restart membuat PHP hilang lagi → dipasang ulang (lihat `/app/memory/env_notes.md`). **Composer kini terpasang** di `/usr/local/bin/composer`.
+- Paket baru `phpoffice/phpspreadsheet ^5.9`; `app/Support/Csv.php` **DIHAPUS**, diganti `app/Support/Excel.php`:
+  `download($filename, $headers, $rows, $sheetTitle)` (header tebal + fill, freeze `A2`, auto-filter, auto width, nilai teks ditulis eksplisit agar `081...` tidak jadi angka), `rows($path)` (baca .xlsx/.xls, baris kosong dibuang), `filename($prefix)` → `.xlsx`.
+- Ekspor `.xlsx`: `/users/export`, `/permissions/export`, `/audit-trail/export` (tetap mengikuti filter aktif). Audit trail mencatat "(Excel)".
+- Impor `.xlsx`/`.xls`: `/users/import` (kolom sesuai template) & `/roles/import` (nama peranan di kolom pertama). `mimes:xlsx,xls` di `ImportUserRequest` (maks 2 MB) & `ImportRoleRequest` (maks 1 MB) — CSV kini ditolak.
+- **Template contoh** baru: `GET /users/import/template`, `GET /roles/import/template` (berisi 2 baris teladan). Dialog impor punya tombol **Template** (kiri, `mr-auto`) dan deskripsinya tidak lagi menyebut daftar kolom.
+- Uji: `tests/Feature/ExcelIoTest.php` — 4 lolos (5 unduhan menghasilkan xlsx terbaca, impor pengguna & peranan dari xlsx, berkas CSV ditolak). Screenshot dialog Impor Pengguna diverifikasi.

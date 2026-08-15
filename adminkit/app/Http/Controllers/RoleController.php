@@ -8,6 +8,7 @@ use App\Http\Requests\Role\ImportRoleRequest;
 use App\Http\Requests\Role\StoreRoleRequest;
 use App\Http\Requests\Role\SyncRolePermissionsRequest;
 use App\Models\ActivityLog;
+use App\Support\Excel;
 use App\Support\Notify;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Validator;
@@ -15,9 +16,21 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RoleController extends Controller
 {
+    /** Berkas Excel contoh untuk impor peranan. */
+    public function importTemplate(): StreamedResponse
+    {
+        return Excel::download(
+            'template-impor-peranan.xlsx',
+            ['Nama Peranan'],
+            [['Manajer Cabang'], ['Staf Operasional']],
+            'Peranan',
+        );
+    }
+
     public function index(): Response
     {
         return Inertia::render('Roles', [
@@ -146,20 +159,20 @@ class RoleController extends Controller
     }
 
     /**
-     * Impor peranan dari berkas CSV: satu nama peranan per baris
-     * (baris berjudul `name`/`nama` diabaikan). Nama yang sudah ada dilewati.
+     * Impor peranan dari berkas Excel: nama peranan pada kolom pertama
+     * (baris judul diabaikan). Nama yang sudah ada dilewati.
      */
     public function import(ImportRoleRequest $request): RedirectResponse
     {
-        $rows = array_filter(array_map(
-            fn ($line) => trim(str_replace(["\r", '"'], '', explode(',', $line)[0] ?? '')),
-            explode("\n", (string) file_get_contents($request->file('file')->getRealPath()))
-        ));
+        $rows = array_map(
+            fn ($row) => trim((string) (array_values($row)[0] ?? '')),
+            Excel::rows($request->file('file')->getRealPath())
+        );
 
         $added = 0;
         $skipped = 0;
 
-        foreach ($rows as $name) {
+        foreach (array_filter($rows) as $name) {
             if (in_array(mb_strtolower($name), ['name', 'nama', 'nama peranan'], true)) {
                 continue;
             }

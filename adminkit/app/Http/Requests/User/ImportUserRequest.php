@@ -9,7 +9,7 @@ class ImportUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'file' => ['required', 'file', 'mimes:csv,txt', 'max:1024'],
+            'file' => ['required', 'file', 'mimes:xlsx,xls', 'max:2048'],
         ];
     }
 
@@ -21,8 +21,8 @@ class ImportUserRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'file.mimes' => 'Berkas impor harus berformat CSV.',
-            'file.max' => 'Berkas impor maksimal 1 MB.',
+            'file.mimes' => 'Berkas impor harus berformat Excel (.xlsx atau .xls).',
+            'file.max' => 'Berkas impor maksimal 2 MB.',
         ];
     }
 }

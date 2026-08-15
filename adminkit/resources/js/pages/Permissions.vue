@@ -115,7 +115,7 @@ const submitGenerator = () =>
         onSuccess: () => (generatorOpen.value = false),
     });
 
-/* ── Ekspor CSV mengikuti filter aktif ───────────────────────────────── */
+/* ── Ekspor Excel mengikuti filter aktif ───────────────────────────────── */
 const exportUrl = computed(() => {
     const params = new URLSearchParams();
     if (query.search) params.set('search', query.search);
