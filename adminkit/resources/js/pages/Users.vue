@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { Pencil, Plus, Save, Trash2, Users2, X } from 'lucide-vue-next';
+import { Pencil, Plus, Save, ToggleLeft, ToggleRight, Trash2, Users2, X } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
 import Badge from '@/components/ui/Badge.vue';
@@ -140,6 +140,23 @@ const submit = () => {
     else form.post('/users', options);
 };
 
+/* ── Seleksi & aksi massal ─────────────────────────────────────────── */
+const selected = ref([]);
+const bulkForm = useForm({ action: '', ids: [] });
+const bulkConfirm = ref(false);
+
+const runBulk = (action) => {
+    bulkForm.action = action;
+    bulkForm.ids = [...selected.value];
+    bulkForm.post('/users/bulk', {
+        preserveScroll: true,
+        onSuccess: () => {
+            selected.value = [];
+            bulkConfirm.value = false;
+        },
+    });
+};
+
 /* ── Hapus ──────────────────────────────────────────────────────────── */
 const deleting = ref(null);
 const deleteForm = useForm({});
@@ -176,6 +193,9 @@ watch(dialogOpen, (open) => {
                 empty-title="Belum ada pengguna"
                 empty-description="Tambahkan pengguna pertama untuk mulai mengelola akses."
                 :show-refresh="false"
+                selectable
+                :selected="selected"
+                @update:selected="selected = $event"
                 @update:search="onSearch"
                 @update:sort="onSort"
                 @update:page="onPage"
@@ -199,6 +219,36 @@ watch(dialogOpen, (open) => {
                         data-testid="users-filter-status"
                         @update:model-value="onFilter('status', $event)"
                     />
+                </template>
+
+                <template #bulk-actions>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        :disabled="bulkForm.processing"
+                        data-testid="users-bulk-activate"
+                        @click="runBulk('activate')"
+                    >
+                        <ToggleRight class="size-4" /> Aktifkan
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        :disabled="bulkForm.processing"
+                        data-testid="users-bulk-deactivate"
+                        @click="runBulk('deactivate')"
+                    >
+                        <ToggleLeft class="size-4" /> Nonaktifkan
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        :disabled="bulkForm.processing"
+                        data-testid="users-bulk-delete"
+                        @click="bulkConfirm = true"
+                    >
+                        <Trash2 class="size-4" /> {{ ACTION.delete }}
+                    </Button>
                 </template>
 
                 <template #header-action>
@@ -363,6 +413,15 @@ watch(dialogOpen, (open) => {
                     </Button>
                 </template>
             </Dialog>
+
+            <ConfirmDeleteDialog
+                :open="bulkConfirm"
+                title="Hapus Pengguna Terpilih?"
+                :description="`${selected.length} pengguna akan dihapus permanen. Akun Anda sendiri dilewati.`"
+                :processing="bulkForm.processing"
+                @update:open="bulkConfirm = false"
+                @confirm="runBulk('delete')"
+            />
 
             <ConfirmDeleteDialog
                 :open="Boolean(deleting)"

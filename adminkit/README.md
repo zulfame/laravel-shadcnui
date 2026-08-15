@@ -17,6 +17,8 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 - [Standar Validasi (WAJIB)](#standar-validasi-wajib)
 - [Hak Akses & Peranan](#hak-akses--peranan)
 - [Audit Trail](#audit-trail)
+- [Notifikasi](#notifikasi)
+- [Aksi Massal (Bulk Action)](#aksi-massal-bulk-action)
 - [Pengaturan Penampilan (Branding)](#pengaturan-penampilan-branding)
 - [Pengaturan Penyimpanan (S3)](#pengaturan-penyimpanan-s3)
 - [Design System & Konvensi UI](#design-system--konvensi-ui)
@@ -63,6 +65,16 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 - Mencatat siapa mengubah apa, **diff nilai sebelum → sesudah**, konteks permintaan, dan kegagalan sistem.
 - Halaman detail khusus pengembang termasuk **Payload Mentah (JSON)**.
 - Hapus jejak audit berdasarkan rentang tanggal.
+
+**Notifikasi**
+- Notifikasi **per pengguna** (tabel `notifications`, satu baris = satu penerima) — bukan siaran ke semua orang.
+- Bertarget izin: hanya pengguna aktif yang memiliki izin modul terkait yang menerimanya, dan **pelaku aksi tidak menerima notifikasi atas aksinya sendiri**.
+- Lonceng di header menampilkan jumlah belum dibaca, tombol **Tandai** (tandai semua dibaca), dan klik item menandai dibaca lalu membuka halaman terkait.
+
+**Aksi Massal**
+- Checkbox pada tabel Pengguna & Peranan (pilih baris / pilih semua baris pada halaman aktif).
+- Pengguna: **Aktifkan**, **Nonaktifkan**, **Hapus** (akun sendiri otomatis dilewati).
+- Peranan: **Hapus** (Super Admin dan peranan yang masih dipakai otomatis dilewati).
 
 **Pengaturan**
 - **Penampilan**: identitas aplikasi (nama, tagline, inisial brand), logo terang/gelap, favicon, SEO & metadata (termasuk Open Graph), kontak & footer.
@@ -283,6 +295,42 @@ Implementasinya di `bootstrap/app.php` memakai **`$exceptions->render()`** (buka
 
 ---
 
+## Notifikasi
+
+Kirim notifikasi bertarget dari controller:
+
+```php
+Notify::toPermission(
+    permission: 'users.view',      // hanya pemegang izin ini yang menerima
+    title: 'Pengguna baru terdaftar',
+    module: 'Pengguna',
+    body: "{$user->name} · peranan {$role}",
+    url: '/users',                 // tujuan saat notifikasi diklik
+    level: 'success',              // info | success | warning | danger
+);
+
+Notify::toUser($user, 'Kata sandi Anda diubah', 'Keamanan');
+```
+
+Aturan:
+- `Notify::toPermission()` hanya mengirim ke pengguna **aktif** yang lulus `$user->can($permission)` dan **tidak** ke pelaku aksi.
+- Daftar & jumlah belum dibaca dibagikan lewat `HandleInertiaRequests` (`notifications.items`, `notifications.unread`) dan **selalu diambil dari `Auth::user()`** sehingga tidak mungkin bocor ke pengguna lain.
+- Menandai dibaca melalui `POST /notifications/{id}/read` (dibatasi kepemilikan, selain pemilik → 403) dan `POST /notifications/read-all`.
+
+## Aksi Massal (Bulk Action)
+
+`DataTableCard` menerima prop `selectable` + `selected` dan memancarkan `update:selected`; gunakan slot `#bulk-actions` untuk menaruh tombol:
+
+```vue
+<DataTableCard selectable :selected="selected" @update:selected="selected = $event">
+    <template #bulk-actions>
+        <Button size="sm" variant="destructive" @click="bulkConfirm = true">Hapus</Button>
+    </template>
+</DataTableCard>
+```
+
+Backend memakai Form Request (`BulkUserRequest`, `BulkRoleRequest`) dengan validasi `ids.*` `exists`, mencatat audit trail beserta jumlah baris yang dilewati, dan mengirim notifikasi bertarget.
+
 ## Pengaturan Penampilan (Branding)
 
 - Nilai disimpan pada tabel `settings` dan dibaca lewat `App\Support\Branding` (`raw()` untuk form, `values()` untuk tampilan) — hasilnya **di-cache**, jadi jalankan `php artisan cache:clear` bila mengubah langsung dari DB.
@@ -309,6 +357,7 @@ Implementasinya di `bootstrap/app.php` memakai **`$exceptions->render()`** (buka
 - **Badge** memakai referensi asli shadcn/ui (`default`, `secondary`, `destructive`, `outline`) dengan padding compact — tanpa palet warna kustom.
 - **Label dan judul memakai Title Case** (mis. `Nama Pengguna`, `Kata Sandi`, `Tambah Pengguna`), bukan Sentence case.
 - Jangan menambahkan `CardDescription` di bawah judul kartu.
+- Header dialog (`ui/Dialog.vue`): judul dan tombol tutup sejajar vertikal (`items-center`, judul `leading-6`, tombol tutup kotak `size-7`). Judul dialog memakai Title Case dan diakhiri `?` untuk konfirmasi.
 - Ikon memakai `lucide-vue-next`; jangan memakai emoji.
 - **Setiap elemen interaktif dan informasi penting wajib punya `data-testid`** dengan format kebab-case, mis. `user-form-save`, `users-filter-role`.
 - Sidebar mendukung mode ikon (`collapsible="icon"`): elemen non-ikon disembunyikan dengan `group-data-[collapsible=icon]:hidden`, dan ikon utama memakai `shrink-0`.
@@ -355,6 +404,9 @@ Nilai `'all'` dipakai sebagai sentinel filter "semua" karena `reka-ui` melarang 
 | GET | `/roles`, `/roles/{role}` | Daftar & detail peranan |
 | POST/PUT/DELETE | `/roles`, `/roles/{role}` | CRUD peranan |
 | POST | `/roles/import` | Impor peranan dari CSV |
+| POST | `/users/bulk` | Aksi massal pengguna (`delete`/`activate`/`deactivate`) |
+| POST | `/roles/bulk-destroy` | Hapus massal peranan |
+| POST | `/notifications/read-all`, `/notifications/{notification}/read` | Tandai notifikasi dibaca |
 | GET | `/audit-trail`, `/audit-trail/{log}` | Audit trail & detail |
 | DELETE | `/audit-trail` | Hapus jejak audit pada rentang tanggal |
 | GET | `/appearance` | Pengaturan penampilan |

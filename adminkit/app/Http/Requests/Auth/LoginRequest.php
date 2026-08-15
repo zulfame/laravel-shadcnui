@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Models\ActivityLog;
+use App\Support\Notify;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -62,6 +63,15 @@ class LoginRequest extends FormRequest
 
         if (! $attempted) {
             RateLimiter::hit($this->throttleKey());
+
+            Notify::toPermission(
+                permission: 'activity.view',
+                title: 'Percobaan masuk gagal',
+                module: 'Keamanan',
+                body: "Kredensial: {$credential}",
+                url: '/audit-trail',
+                level: 'danger',
+            );
 
             ActivityLog::record(
                 'Percobaan masuk gagal',

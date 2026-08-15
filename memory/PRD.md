@@ -134,6 +134,22 @@ Backlog kualitas: Pest feature test (auth, CRUD, otorisasi), ESLint + Prettier, 
 - **Badge lebih solid**: `.state-chip` kini isian penuh `hsl(var(--chip))` dengan teks kontras `hsl(var(--background))`; varian `secondary` pada `Badge` menjadi solid (`bg-foreground/85 text-background`), varian lembut lama tetap tersedia sebagai `muted`.
 - Terverifikasi di tema terang & gelap tanpa error console.
 
+## Selesai (2026-06-15, notifikasi nyata + aksi massal + presisi dialog)
+### Notifikasi (sebelumnya 100% DUMMY hardcoded)
+- Tabel `notifications` (satu baris per penerima) + model `Notification`, helper `App\Support\Notify::toPermission()/toUser()`.
+- **Tepat sasaran**: hanya pengguna AKTIF yang lulus `$user->can($permission)` menerima; **pelaku aksi tidak menerima notifikasi atas aksinya sendiri**. Daftar & jumlah belum dibaca dibagikan lewat `HandleInertiaRequests` selalu dari `Auth::user()`.
+- Endpoint `POST /notifications/{id}/read` (403 bila bukan milik pengguna) dan `POST /notifications/read-all`; tombol **Tandai** kini benar-benar menyimpan `read_at` (persisten setelah reload). Klik item menandai dibaca lalu membuka URL tujuan.
+- Pemicu: pengguna dibuat/dihapus & hapus massal (`users.view`), peranan dibuat/dihapus & hapus massal (`roles.view`), percobaan masuk gagal (`activity.view`).
+
+### Aksi massal (checkbox)
+- `DataTableCard`: prop `selectable` + `selected` + emit `update:selected`, checkbox header (halaman aktif saja) & per baris, bar aksi massal dengan slot `#bulk-actions`.
+- Pengguna: `POST /users/bulk` (`delete`/`activate`/`deactivate`) — akun sendiri otomatis dilewati. Peranan: `POST /roles/bulk-destroy` — Super Admin & peranan yang masih dipakai dilewati. Keduanya lewat Form Request (`BulkUserRequest`, `BulkRoleRequest`), tercatat di audit trail (termasuk jumlah dilewati) dan mengirim notifikasi bertarget.
+
+### Presisi header dialog
+- `ui/Dialog.vue`: `items-center`, wrapper `space-y-1` dihapus, judul `leading-6`, tombol tutup kotak `grid size-7 place-items-center` (`data-testid=dialog-close`). Δ pusat vertikal judul vs tombol = 0px pada 11 dialog.
+- Judul & label sisa dibuat Title Case: `Hapus Log Audit?`, `Hapus Data?`, `Tanggal Awal`, `Tanggal Akhir`.
+- Uji iterasi 18 (backend 80/80, frontend 100%) dan iterasi 19 (frontend 100% presisi).
+
 ## Selesai (2026-06-15, sidebar collapse + responsif tablet/mobile + README)
 - **Bug fatal 1 — sidebar collapse cacat**: brand mark & avatar hilang saat mode ikon karena elemen non-svg tidak punya `shrink-0` (aturan shadcn hanya memberi `shrink-0` pada `svg`) dan tombol `size=lg` menyusut ke 32px. Fix di `AppSidebar.vue`: `shrink-0` pada `BrandMark`/`Avatar` + `group-data-[collapsible=icon]:hidden` pada blok teks & `ChevronsUpDown` (header dan footer).
 - **Bug fatal 2 — layout tablet/mobile**: `DataTableCard` kini mendukung `hideBelow: 'sm'|'md'|'lg'|'xl'` (kelas literal `HIDE_BELOW`, bukan dinamis, agar tidak dibuang purge). Dipakai di Pengguna (username `lg`, email `md`, phone `xl`, peranan `sm`) dan Audit Trail (pelaku `md`, modul `sm`); nama pengguna truncate di mobile. Blok identitas Profil menumpuk di mobile; ringkasan AuditDetail 1 kolom di layar kecil.

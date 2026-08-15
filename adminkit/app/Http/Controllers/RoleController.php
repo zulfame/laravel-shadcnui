@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Enums\RoleName;
+use App\Http\Requests\Role\BulkRoleRequest;
 use App\Http\Requests\Role\ImportRoleRequest;
 use App\Http\Requests\Role\StoreRoleRequest;
 use App\Models\ActivityLog;
+use App\Support\Notify;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
@@ -56,6 +58,15 @@ class RoleController extends Controller
             'success',
             $role,
             ActivityLog::snapshotOf($role),
+        );
+
+        Notify::toPermission(
+            permission: 'roles.view',
+            title: 'Peranan baru dibuat',
+            module: 'Peranan',
+            body: $role->name,
+            url: '/roles',
+            level: 'success',
         );
 
         return back()->with('success', "Peranan {$role->name} ditambahkan.");
@@ -128,6 +139,45 @@ class RoleController extends Controller
         );
     }
 
+    /** Hapus massal: peranan Super Admin dan yang masih dipakai dilewati. */
+    public function bulkDestroy(BulkRoleRequest $request): RedirectResponse
+    {
+        $roles = Role::whereIn('id', $request->validated()['ids'])->withCount('users')->get();
+
+        $deletable = $roles->filter(
+            fn (Role $role) => $role->name !== RoleName::SuperAdmin->value && $role->users_count === 0
+        );
+        $skipped = $roles->count() - $deletable->count();
+
+        if ($deletable->isEmpty()) {
+            return back()->with('error', 'Tidak ada peranan yang dapat dihapus (terkunci atau masih dipakai).');
+        }
+
+        $names = $deletable->pluck('name')->implode(', ');
+        Role::whereIn('id', $deletable->modelKeys())->delete();
+
+        ActivityLog::record(
+            "Menghapus {$deletable->count()} peranan secara massal",
+            'Peranan',
+            'danger',
+            context: ['peranan' => $names, 'dilewati' => $skipped],
+        );
+
+        Notify::toPermission(
+            permission: 'roles.view',
+            title: 'Peranan dihapus secara massal',
+            module: 'Peranan',
+            body: "{$deletable->count()} peranan",
+            url: '/roles',
+            level: 'warning',
+        );
+
+        return back()->with(
+            'success',
+            "{$deletable->count()} peranan dihapus".($skipped ? ", {$skipped} dilewati." : '.')
+        );
+    }
+
     public function destroy(Role $role): RedirectResponse
     {
         if ($role->name === RoleName::SuperAdmin->value) {
@@ -143,6 +193,15 @@ class RoleController extends Controller
         $role->delete();
 
         ActivityLog::record("Menghapus peranan {$name}", 'Peranan', 'danger', changes: $snapshot);
+
+        Notify::toPermission(
+            permission: 'roles.view',
+            title: 'Peranan dihapus',
+            module: 'Peranan',
+            body: $name,
+            url: '/roles',
+            level: 'warning',
+        );
 
         return back()->with('success', "Peranan {$name} dihapus.");
     }

@@ -35,6 +35,20 @@ class HandleInertiaRequests extends Middleware
                     'is_admin' => $user->hasRole(RoleName::SuperAdmin->value),
                 ] : null,
             ],
+            'notifications' => $user ? [
+                // Hanya notifikasi milik pengguna yang sedang masuk.
+                'unread' => fn () => $user->notifications()->whereNull('read_at')->count(),
+                'items' => fn () => $user->notifications()->limit(10)->get()->map(fn ($n) => [
+                    'id' => $n->id,
+                    'title' => $n->title,
+                    'body' => $n->body,
+                    'module' => $n->module,
+                    'level' => $n->level,
+                    'url' => $n->url,
+                    'unread' => $n->read_at === null,
+                    'time' => $n->created_at->diffForHumans(),
+                ])->all(),
+            ] : ['unread' => 0, 'items' => []],
             'branding' => Branding::values(),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),

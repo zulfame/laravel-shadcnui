@@ -1,0 +1,24 @@
+{
+  "summary": "Frontend-only regression on Dialog header presisi. Login as zulfame OK. Tested 11 dialogs (Roles Add/Import/Edit-long/Delete/BulkDelete, Users Add/Edit/Delete/BulkDelete, Audit Purge, Users Add on mobile 390x844). Semua dialog: judul (h2) dan tombol [data-testid=dialog-close] TERSEJAJAR sempurna (Δ vertical center = 0.00px, tombol X di dalam header, header padding top=18px bot=19px selisih 1px = dalam toleransi). Uji fungsional Tambah 'QA Presisi' -> muncul di tabel -> hapus via confirm-delete-submit -> tabel bersih (0 baris tersisa). Dialog tetap tertutup lewat X, Batal, dan Escape. Mobile 390x844: dialog inside viewport (x=0 w=390) tanpa horizontal overflow. Regresi lonceng notifikasi: popover terbuka, tombol Tandai terdeteksi. Tidak ada console/page error selama sesi.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "AuditTrail purge dialog", "issues": ["Judul dialog 'Hapus log aktivitas' masih Sentence case; permintaan pengguna Title Case ('Hapus Log Aktivitas?'). Sumber: /app/adminkit/resources/js/pages/AuditTrail.vue baris 157 (title='Hapus log aktivitas'). Semua judul dialog lain sudah Title Case."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Ubah title dialog di /app/adminkit/resources/js/pages/AuditTrail.vue:157 dari 'Hapus log aktivitas' menjadi 'Hapus Log Aktivitas?' (atau serupa Title Case dengan tanda tanya seperti dialog Hapus lainnya), lalu jalankan 'cd /app/adminkit && yarn build'."
+  ],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100% presisi header, 91% (10/11) Title Case"},
+  "seed_data_creation": "Peranan sementara 'QA Presisi' dibuat lalu dihapus dalam siklus test (bersih, tidak menyentuh 46 peranan / 24 pengguna milik user).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "zulfame / password (Super Admin) sesuai /app/memory/test_credentials.md",
+  "context_for_next_testing_agent": "Presisi header dialog (items-center + leading-6 + DialogClose size-7) sudah 100% valid pada semua 11 dialog termasuk mobile & judul panjang. Delta pusat vertikal = 0px, top/bot padding 18/19 (dalam toleransi 1px). Fungsional CRUD Roles dan konfirmasi delete oke. Satu-satunya sisa: judul AuditTrail purge belum Title Case.",
+  "rca_of_the_issue": "AuditTrail.vue menetapkan title='Hapus log aktivitas' secara literal. Fix cukup satu string change di komponen, tidak menyentuh Dialog.vue atau ConfirmDeleteDialog.vue."
+}

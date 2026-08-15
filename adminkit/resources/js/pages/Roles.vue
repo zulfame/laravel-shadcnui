@@ -90,6 +90,22 @@ const submitImport = () =>
         },
     });
 
+/* ── Seleksi & hapus massal ────────────────────────────────────────── */
+const selected = ref([]);
+const bulkForm = useForm({ ids: [] });
+const bulkConfirm = ref(false);
+
+const runBulkDelete = () => {
+    bulkForm.ids = [...selected.value];
+    bulkForm.post('/roles/bulk-destroy', {
+        preserveScroll: true,
+        onSuccess: () => {
+            selected.value = [];
+            bulkConfirm.value = false;
+        },
+    });
+};
+
 /* ── Hapus ──────────────────────────────────────────────────────────── */
 const deleting = ref(null);
 const deleteForm = useForm({});
@@ -111,7 +127,22 @@ const confirmDelete = () =>
                 :rows="props.roles"
                 :empty-icon="ShieldCheck"
                 :show-refresh="false"
+                :selectable="canManage"
+                :selected="selected"
+                @update:selected="selected = $event"
             >
+                <template #bulk-actions>
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        :disabled="bulkForm.processing"
+                        data-testid="roles-bulk-delete"
+                        @click="bulkConfirm = true"
+                    >
+                        <Trash2 class="size-4" /> {{ ACTION.delete }}
+                    </Button>
+                </template>
+
                 <template #header-action>
                     <Button
                         v-if="canManage"
@@ -238,6 +269,15 @@ const confirmDelete = () =>
                     </Button>
                 </template>
             </Dialog>
+
+            <ConfirmDeleteDialog
+                :open="bulkConfirm"
+                title="Hapus Peranan Terpilih?"
+                :description="`${selected.length} peranan akan dihapus. Super Admin dan peranan yang masih dipakai dilewati.`"
+                :processing="bulkForm.processing"
+                @update:open="bulkConfirm = false"
+                @confirm="runBulkDelete"
+            />
 
             <ConfirmDeleteDialog
                 :open="Boolean(deleting)"

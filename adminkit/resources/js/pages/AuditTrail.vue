@@ -154,7 +154,7 @@ const fmt = (iso) =>
             </DataTableCard>
 
             <!-- Dialog hapus log berdasarkan rentang tanggal -->
-            <Dialog v-model:open="purgeOpen" title="Hapus log aktivitas" class="max-w-md">
+            <Dialog v-model:open="purgeOpen" title="Hapus Log Audit?" class="max-w-md">
                 <div class="form-dense space-y-[var(--field-gap)]">
                     <p class="text-sm text-muted-foreground">
                         Seluruh log pada rentang tanggal berikut akan dihapus permanen (termasuk tanggal awal
@@ -162,14 +162,14 @@ const fmt = (iso) =>
                     </p>
                     <div class="grid gap-[var(--field-gap)] sm:grid-cols-2">
                         <div class="space-y-[var(--item-gap)]">
-                            <Label>Tanggal awal</Label>
+                            <Label>Tanggal Awal</Label>
                             <DatePicker v-model="purgeForm.date_from" data-testid="purge-date-from" />
                             <p v-if="purgeForm.errors.date_from" class="text-xs font-medium text-destructive">
                                 {{ purgeForm.errors.date_from }}
                             </p>
                         </div>
                         <div class="space-y-[var(--item-gap)]">
-                            <Label>Tanggal akhir</Label>
+                            <Label>Tanggal Akhir</Label>
                             <DatePicker v-model="purgeForm.date_to" data-testid="purge-date-to" />
                             <p v-if="purgeForm.errors.date_to" class="text-xs font-medium text-destructive">
                                 {{ purgeForm.errors.date_to }}

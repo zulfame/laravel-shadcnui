@@ -26,15 +26,14 @@ defineEmits(['update:open']);
                     )
                 "
             >
-                <div class="flex items-start justify-between gap-4 border-b border-border bg-sidebar px-6 py-4">
-                    <div class="space-y-1">
-                        <DialogTitle class="text-base font-semibold leading-none tracking-tight">
-                            {{ props.title }}
-                        </DialogTitle>
-                    </div>
+                <div class="flex items-center justify-between gap-4 border-b border-border bg-sidebar px-6 py-4">
+                    <DialogTitle class="text-base font-semibold leading-6 tracking-tight">
+                        {{ props.title }}
+                    </DialogTitle>
                     <DialogClose
-                        class="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        class="-mr-1.5 grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                         aria-label="Tutup"
+                        data-testid="dialog-close"
                     >
                         <X class="size-4" />
                     </DialogClose>

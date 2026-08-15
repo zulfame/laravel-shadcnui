@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\User\BulkUserRequest;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Models\ActivityLog;
 use App\Models\User;
+use App\Support\Notify;
 use App\Support\TableQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -97,6 +99,15 @@ class UserController extends Controller
             ActivityLog::snapshotOf($user) + ['role' => ['old' => null, 'new' => $data['role']]],
         );
 
+        Notify::toPermission(
+            permission: 'users.view',
+            title: 'Pengguna baru terdaftar',
+            module: 'Pengguna',
+            body: "{$user->name} · peranan {$data['role']}",
+            url: '/users',
+            level: 'success',
+        );
+
         return back()->with('success', "Pengguna {$user->name} ditambahkan.");
     }
 
@@ -124,6 +135,59 @@ class UserController extends Controller
         return back()->with('success', "Pengguna {$user->name} diperbarui.");
     }
 
+    /** Aksi massal: hapus, aktifkan, atau nonaktifkan baris terpilih. */
+    public function bulk(BulkUserRequest $request): RedirectResponse
+    {
+        $data = $request->validated();
+
+        // Akun sendiri selalu dilewati agar tidak mengunci diri sendiri.
+        $users = User::whereIn('id', $data['ids'])->whereKeyNot($request->user()->id)->get();
+        $skipped = count($data['ids']) - $users->count();
+
+        if ($users->isEmpty()) {
+            return back()->with('error', 'Tidak ada pengguna yang dapat diproses.');
+        }
+
+        $names = $users->pluck('name')->implode(', ');
+
+        if ($data['action'] === 'delete') {
+            User::whereIn('id', $users->modelKeys())->delete();
+
+            ActivityLog::record(
+                "Menghapus {$users->count()} pengguna secara massal",
+                'Pengguna',
+                'danger',
+                context: ['pengguna' => $names, 'dilewati' => $skipped],
+            );
+
+            Notify::toPermission(
+                permission: 'users.view',
+                title: 'Pengguna dihapus secara massal',
+                module: 'Pengguna',
+                body: "{$users->count()} pengguna",
+                url: '/users',
+                level: 'warning',
+            );
+
+            return back()->with('success', "{$users->count()} pengguna dihapus.");
+        }
+
+        $active = $data['action'] === 'activate';
+        User::whereIn('id', $users->modelKeys())->update(['is_active' => $active]);
+
+        ActivityLog::record(
+            ($active ? 'Mengaktifkan ' : 'Menonaktifkan ')."{$users->count()} pengguna secara massal",
+            'Pengguna',
+            'info',
+            context: ['pengguna' => $names, 'dilewati' => $skipped],
+        );
+
+        return back()->with(
+            'success',
+            "{$users->count()} pengguna ".($active ? 'diaktifkan.' : 'dinonaktifkan.')
+        );
+    }
+
     public function destroy(Request $request, User $user): RedirectResponse
     {
         if ($user->is($request->user())) {
@@ -135,6 +199,15 @@ class UserController extends Controller
         $user->delete();
 
         ActivityLog::record("Menghapus pengguna {$name}", 'Pengguna', 'danger', changes: $snapshot);
+
+        Notify::toPermission(
+            permission: 'users.view',
+            title: 'Pengguna dihapus',
+            module: 'Pengguna',
+            body: $name,
+            url: '/users',
+            level: 'warning',
+        );
 
         return back()->with('success', "Pengguna {$name} dihapus.");
     }

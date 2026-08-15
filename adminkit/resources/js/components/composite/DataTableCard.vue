@@ -9,6 +9,7 @@ import {
     FilterX,
     RefreshCw,
     Search,
+    X,
 } from 'lucide-vue-next';
 
 import Button from '@/components/ui/Button.vue';
@@ -17,6 +18,7 @@ import CardContent from '@/components/ui/CardContent.vue';
 import CardHeader from '@/components/ui/CardHeader.vue';
 import CardTitle from '@/components/ui/CardTitle.vue';
 import Input from '@/components/ui/Input.vue';
+import Checkbox from '@/components/ui/Checkbox.vue';
 import Combobox from '@/components/ui/Combobox.vue';
 import Table from '@/components/ui/Table.vue';
 import TableBody from '@/components/ui/TableBody.vue';
@@ -51,6 +53,8 @@ const props = defineProps({
     emptyDescription: { type: String, default: '' },
     showRefresh: { type: Boolean, default: true },
     rowClickable: { type: Boolean, default: false },
+    selectable: { type: Boolean, default: false },
+    selected: { type: Array, default: () => [] },
     // ── mode server ──
     server: { type: Boolean, default: false },
     loading: { type: Boolean, default: false },
@@ -67,6 +71,13 @@ const HIDE_BELOW = {
     xl: 'hidden xl:table-cell',
 };
 
+const isSelected = (row) => props.selected.includes(row[props.rowKey]);
+
+const toggleRow = (row, checked) => {
+    const id = row[props.rowKey];
+    emit('update:selected', checked ? [...props.selected, id] : props.selected.filter((v) => v !== id));
+};
+
 const cellClass = (col) => [col.align === 'right' ? 'text-right' : '', HIDE_BELOW[col.hideBelow] ?? ''];
 
 const emit = defineEmits([
@@ -76,6 +87,7 @@ const emit = defineEmits([
     'update:sort',
     'update:page',
     'update:perPage',
+    'update:selected',
 ]);
 
 const localSearch = ref(props.search);
@@ -158,6 +170,20 @@ const paged = computed(() =>
 );
 
 const hasFilter = computed(() => localSearch.value.trim().length > 0);
+const pageIds = computed(() => paged.value.map((row) => row[props.rowKey]));
+const allOnPageSelected = computed(
+    () => pageIds.value.length > 0 && pageIds.value.every((id) => props.selected.includes(id)),
+);
+
+const toggleAllOnPage = (checked) => {
+    emit(
+        'update:selected',
+        checked
+            ? [...new Set([...props.selected, ...pageIds.value])]
+            : props.selected.filter((id) => !pageIds.value.includes(id)),
+    );
+};
+
 const isEmptySource = computed(() => (props.server ? total.value === 0 && !hasFilter.value : props.rows.length === 0));
 
 const pageSizeOptions = [
@@ -218,6 +244,27 @@ const pageSizeOptions = [
                 </div>
             </div>
 
+            <div
+                v-if="props.selectable && props.selected.length"
+                class="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/40 px-3 py-2"
+                :data-testid="`${props.testid}-bulk-bar`"
+            >
+                <span class="text-xs font-medium" :data-testid="`${props.testid}-bulk-count`">
+                    {{ props.selected.length }} baris dipilih
+                </span>
+                <div class="flex flex-wrap items-center gap-2">
+                    <slot name="bulk-actions" :selected="props.selected" />
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        :data-testid="`${props.testid}-bulk-clear`"
+                        @click="emit('update:selected', [])"
+                    >
+                        <X class="size-4" /> Bersihkan
+                    </Button>
+                </div>
+            </div>
+
             <div class="rounded-md border">
                 <EmptyState
                     v-if="isEmptySource"
@@ -232,6 +279,14 @@ const pageSizeOptions = [
                 >
                     <TableHeader>
                         <TableRow class="hover:bg-transparent">
+                            <TableHead v-if="props.selectable" class="w-9">
+                                <Checkbox
+                                    :model-value="allOnPageSelected"
+                                    aria-label="Pilih semua baris"
+                                    :data-testid="`${props.testid}-select-all`"
+                                    @update:model-value="toggleAllOnPage"
+                                />
+                            </TableHead>
                             <TableHead
                                 v-for="col in props.columns"
                                 :key="col.key"
@@ -260,7 +315,7 @@ const pageSizeOptions = [
                     </TableHeader>
                     <TableBody>
                         <TableRow v-if="props.loading" class="hover:bg-transparent">
-                            <TableCell :colspan="props.columns.length" class="py-3">
+                            <TableCell :colspan="props.columns.length + (props.selectable ? 1 : 0)" class="py-3">
                                 <div class="space-y-2" :data-testid="`${props.testid}-loading`">
                                     <Skeleton v-for="n in 5" :key="n" class="h-5 w-full" />
                                 </div>
@@ -274,6 +329,14 @@ const pageSizeOptions = [
                                 :data-testid="props.rowClickable ? `${props.testid}-row-${row[props.rowKey]}` : undefined"
                                 @click="props.rowClickable && emit('row-click', row)"
                             >
+                                <TableCell v-if="props.selectable" class="w-9" @click.stop>
+                                    <Checkbox
+                                        :model-value="isSelected(row)"
+                                        :aria-label="`Pilih baris ${row[props.rowKey]}`"
+                                        :data-testid="`${props.testid}-select-${row[props.rowKey]}`"
+                                        @update:model-value="toggleRow(row, $event)"
+                                    />
+                                </TableCell>
                                 <TableCell v-for="col in props.columns" :key="col.key" :class="cellClass(col)">
                                     <slot :name="`cell-${col.key}`" :row="row" :value="row[col.key]">
                                         {{ row[col.key] ?? '\u2014' }}
@@ -282,7 +345,7 @@ const pageSizeOptions = [
                             </TableRow>
                             <TableRow v-if="paged.length === 0">
                                 <TableCell
-                                    :colspan="props.columns.length"
+                                    :colspan="props.columns.length + (props.selectable ? 1 : 0)"
                                     class="h-24 text-center text-muted-foreground"
                                 >
                                     <div

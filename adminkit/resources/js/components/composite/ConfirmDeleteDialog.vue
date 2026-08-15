@@ -7,7 +7,7 @@ import { ACTION } from '@/constants/labels';
 // Judul singkat di header, penjelasan di body, aksi di footer (kiri & kanan).
 const props = defineProps({
     open: { type: Boolean, default: false },
-    title: { type: String, default: 'Hapus data?' },
+    title: { type: String, default: 'Hapus Data?' },
     description: { type: String, default: 'Tindakan ini tidak dapat dibatalkan.' },
     processing: { type: Boolean, default: false },
 });
