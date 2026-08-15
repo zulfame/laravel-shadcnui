@@ -1,0 +1,23 @@
+{
+  "summary": "Frontend-only verification after rollback ke shadcn Badge asli (monokrom, compact). Login super admin OK; halaman Log Aktivitas, Pengguna, Peranan, Dashboard (/), dan Profil dirender normal di tema TERANG dan GELAP. Semua chip Badge/StateChip menggunakan varian shadcn asli — kontras teks/latar diverifikasi via getComputedStyle + WCAG relative luminance: LIGHT primary c=17.18, LIGHT secondary c=16.44, DARK primary c=17.18, DARK secondary c=14.5 (semua jauh di atas ambang AA 4.5). Tidak ada sisa class .bdg-* atau .state-chip di DOM (leftover=0 di semua halaman). Tidak ada error console (0). Tidak ada halaman blank untuk rute valid.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [".screenshots/activity_dark.png", ".screenshots/users_dark.png"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Route /dashboard tidak ada (returns blank/13B) — Dashboard sebenarnya di-mount pada /. Ini bukan regresi badge, hanya catatan agar dokumentasi/menu konsisten memakai / atau tambahkan alias route /dashboard.",
+    "Halaman /profile tidak memiliki elemen Badge sama sekali (0 chip). Bukan bug — hanya konfirmasi bahwa rollback tidak menghilangkan gaya di halaman lain."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "100%"},
+  "seed_data_creation": "none",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "zulfame / password (super admin)",
+  "context_for_next_testing_agent": "Theme toggle adalah dropdown (data-testid=theme-toggle-trigger) yang membuka menu dengan tiga item: theme-option-light, theme-option-dark, theme-option-system. Klik trigger dulu, tunggu menu, lalu klik item. Route dashboard sebenarnya adalah '/'. Deteksi badge di script menggunakan filter: display=inline-flex, borderRadius>0, paddingLeft>=4, fontSize<=14, no children — cara ini efektif untuk shadcn Badge. Semua rollback shadcn asli bekerja: primary bg-neutral-900/neutral-50 flip antar tema, secondary bg-neutral-100/neutral-800 flip antar tema; StateChip.vue mapping token --st-* ke variant default/secondary/outline/destructive sudah benar.",
+  "rca_of_the_issue": "N/A — tidak ada issue ditemukan. Kontras chip di ActivityLog (kolom MODUL & LEVEL) yang jadi keluhan iterasi sebelumnya kini sepenuhnya diselesaikan oleh varian shadcn asli (bg-primary + text-primary-foreground dan bg-secondary + text-secondary-foreground) yang otomatis membalik warna via CSS variables saat kelas .dark diaktifkan pada <html>."
+}

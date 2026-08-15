@@ -134,6 +134,14 @@ Backlog kualitas: Pest feature test (auth, CRUD, otorisasi), ESLint + Prettier, 
 - **Badge lebih solid**: `.state-chip` kini isian penuh `hsl(var(--chip))` dengan teks kontras `hsl(var(--background))`; varian `secondary` pada `Badge` menjadi solid (`bg-foreground/85 text-background`), varian lembut lama tetap tersedia sebagai `muted`.
 - Terverifikasi di tema terang & gelap tanpa error console.
 
+## Revisi (2026-06-15, Badge dikembalikan ke shadcn/ui asli)
+Atas permintaan user: **semua style badge kustom DIHAPUS**.
+- `Badge.vue` = cva shadcn/ui asli (`default`, `secondary`, `destructive`, `outline`); hanya padding disesuaikan compact (`px-2 py-0.5 text-xs`). Tidak ada palet warna, tidak ada variant `chip`/`muted`.
+- `app.css`: token `--bdg-*` dan class `.bdg-solid/.bdg-light/.bdg-outline/.bdg-c-*` serta `.state-chip` **dihapus**.
+- `StateChip.vue` memetakan token status `--st-*` → variant shadcn (done/progress→`default`, pending→`outline`, draft/cancelled/archived→`secondary`, overdue→`destructive`). `ActivityLog::LEVEL_CHIPS` kembali ke token `--st-*`.
+- Uji iterasi 7 (frontend 100%): kontras WCAG jauh di atas AA di kedua tema, tidak ada sisa class lama di DOM, tanpa error console.
+- Catatan dari tester: rute dashboard adalah `/` (tidak ada `/dashboard`).
+
 ## Perbaikan (2026-06-15, kontras teks chip status/level)
 - **Bug**: pada tema terang, badge LEVEL/STATUS (StateChip) berlatar warna solid tapi teksnya gelap → hampir tak terbaca. RCA: class komponen `.state-chip` kalah spesifisitas dengan utility `text-foreground` dari `Badge variant="outline"` (layer utilities selalu menang atas layer components).
 - **Fix**: `Badge` mendapat variant `chip` (`bg-[hsl(var(--chip))] text-[hsl(var(--background))]`, semua utility → deterministik); `StateChip` memakai `variant="chip"`; blok CSS `.state-chip` dihapus (tak ada kode mati).
