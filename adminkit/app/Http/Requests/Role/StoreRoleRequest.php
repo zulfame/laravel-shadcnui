@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Role;
 
-use App\Support\Modules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -17,17 +16,12 @@ class StoreRoleRequest extends FormRequest
                 'required', 'string', 'min:3', 'max:50', 'regex:/^[\pL\pM0-9 .\-]+$/u',
                 Rule::unique('roles', 'name')->ignore($id),
             ],
-            'permissions' => ['array'],
-            'permissions.*' => ['string', Rule::in(Modules::permissions())],
         ];
     }
 
     public function attributes(): array
     {
-        return [
-            'name' => 'nama peranan',
-            'permissions' => 'izin',
-        ];
+        return ['name' => 'nama peranan'];
     }
 
     public function messages(): array

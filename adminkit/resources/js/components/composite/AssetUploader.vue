@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import { ImageIcon, Loader2, Upload, X } from 'lucide-vue-next';
 
@@ -21,6 +21,13 @@ const props = defineProps({
 });
 
 const input = ref(null);
+const broken = ref(false);
+watch(
+    () => props.url,
+    () => {
+        broken.value = false;
+    },
+);
 const form = useForm({ file: null });
 
 const onChange = (event) => {
@@ -50,7 +57,13 @@ const remove = () => form.delete(`/appearance/asset/${props.assetKey}`, { preser
                 :class="props.dark ? 'bg-zinc-900' : 'bg-muted/40'"
                 :data-testid="`asset-preview-${props.assetKey}`"
             >
-                <img v-if="props.url" :src="props.url" alt="" class="size-full object-contain" />
+                <img
+                    v-if="props.url && !broken"
+                    :src="props.url"
+                    alt=""
+                    class="size-full object-contain"
+                    @error="broken = true"
+                />
                 <ImageIcon v-else class="size-4 text-muted-foreground" aria-hidden="true" />
             </span>
             <input

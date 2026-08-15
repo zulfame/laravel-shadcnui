@@ -54,12 +54,13 @@ Route::middleware('auth')->group(function () {
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
     });
 
-    Route::get('/roles', [RoleController::class, 'index'])
-        ->middleware('permission:roles.view')->name('roles.index');
+    Route::middleware('permission:roles.view')->group(function () {
+        Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
+        Route::get('/roles/{role}', [RoleController::class, 'show'])->name('roles.show');
+    });
 
     Route::middleware('permission:roles.manage')->group(function () {
         Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
-        Route::put('/roles/matrix', [RoleController::class, 'syncMatrix'])->name('roles.matrix');
         Route::put('/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
         Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
     });
@@ -76,7 +77,6 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permission:appearance.manage')->group(function () {
         Route::put('/appearance/identity', [AppearanceController::class, 'updateIdentity'])->name('appearance.identity');
         Route::put('/appearance/seo', [AppearanceController::class, 'updateSeo'])->name('appearance.seo');
-        Route::put('/appearance/og', [AppearanceController::class, 'updateOg'])->name('appearance.og');
         Route::put('/appearance/contact', [AppearanceController::class, 'updateContact'])->name('appearance.contact');
         Route::post('/appearance/asset/{key}', [AppearanceController::class, 'uploadAsset'])->name('appearance.asset');
         Route::delete('/appearance/asset/{key}', [AppearanceController::class, 'destroyAsset'])->name('appearance.asset.destroy');

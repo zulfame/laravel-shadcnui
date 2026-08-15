@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Appearance\UpdateContactRequest;
 use App\Http\Requests\Appearance\UpdateIdentityRequest;
-use App\Http\Requests\Appearance\UpdateOgRequest;
 use App\Http\Requests\Appearance\UpdateSeoRequest;
 use App\Http\Requests\Appearance\UploadAssetRequest;
 use App\Models\ActivityLog;
@@ -31,11 +30,6 @@ class AppearanceController extends Controller
     }
 
     public function updateSeo(UpdateSeoRequest $request): RedirectResponse
-    {
-        return $this->persist($request);
-    }
-
-    public function updateOg(UpdateOgRequest $request): RedirectResponse
     {
         return $this->persist($request);
     }

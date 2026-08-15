@@ -56,7 +56,34 @@ def client(creds):
     if xsrf:
         s.headers["X-XSRF-TOKEN"] = requests.utils.unquote(xsrf)
     s.headers["Referer"] = f"{BASE_URL}/"
+    # Fetch inertia version from a page (HTML) to reuse for XHR-Inertia calls
+    r_home = s.get(f"{BASE_URL}/users", headers={"Accept": "text/html"}, timeout=30)
+    m = re.search(r'data-page="([^"]+)"', r_home.text)
+    version = ""
+    if m:
+        import html as _html, json as _json
+        try:
+            version = _json.loads(_html.unescape(m.group(1))).get("version", "")
+        except Exception:
+            version = ""
+    s.headers["_INERTIA_VERSION"] = version  # stash for tests
     return s
+
+
+def _inertia_headers(client):
+    return {"Accept": "text/html"}
+
+
+def _inertia_json(response):
+    """Parse Inertia data-page JSON from a text/html Inertia response.
+
+    Layout uses: <script data-page="app" type="application/json">{...json...}</script>
+    """
+    import json as _json
+    m = re.search(r'data-page="app"[^>]*>(\{.*?\})</script>', response.text, re.DOTALL)
+    if not m:
+        return None
+    return _json.loads(m.group(1))
 
 
 # ---------- Login validation ----------
@@ -334,3 +361,142 @@ class TestRegression:
         r = client.get(f"{BASE_URL}/users", headers={"Accept": "text/html"}, timeout=30)
         assert r.status_code == 200
         assert "Kantor" not in r.text, "Kolom 'Kantor' masih ada di halaman Pengguna"
+
+
+# ---------- Iteration 10: routes removed + relaxed identity + role show ----------
+class TestIteration10Routes:
+    def test_roles_matrix_route_removed(self, client):
+        # PUT /roles/matrix should NOT exist anymore
+        r = client.put(f"{BASE_URL}/roles/matrix", json={}, allow_redirects=False, timeout=30)
+        assert r.status_code in (404, 405), f"expected 404/405 got {r.status_code}"
+
+    def test_appearance_og_route_removed(self, client):
+        r = client.put(f"{BASE_URL}/appearance/og", json={}, allow_redirects=False, timeout=30)
+        assert r.status_code in (404, 405), f"expected 404/405 got {r.status_code}"
+
+    def test_role_show_page_loads(self, client):
+        # Find Staf role id
+        r = client.get(f"{BASE_URL}/roles", headers=_inertia_headers(client), timeout=30)
+        assert r.status_code == 200
+        data = _inertia_json(r)
+        roles = data["props"]["roles"]
+        staf = next((x for x in roles if x["name"] == "Staf"), None)
+        assert staf, "Staf role not found"
+        r2 = client.get(f"{BASE_URL}/roles/{staf['id']}", headers=_inertia_headers(client), timeout=30)
+        assert r2.status_code == 200
+        d2 = _inertia_json(r2)
+        assert d2["component"] == "RoleDetail"
+        assert d2["props"]["role"]["name"] == "Staf"
+
+
+class TestIteration10RoleValidation:
+    def test_role_empty_name_rejected(self, client):
+        r = client.post(f"{BASE_URL}/roles", json={"name": ""}, allow_redirects=False, timeout=30)
+        assert r.status_code == 422
+        assert "name" in r.json().get("errors", {})
+
+    def test_role_create_and_delete(self, client):
+        # Create
+        r = client.post(f"{BASE_URL}/roles", json={"name": "Auditor QA"}, allow_redirects=False, timeout=30)
+        assert r.status_code in (200, 201, 204, 302), f"{r.status_code}: {r.text[:300]}"
+        # Find id
+        r2 = client.get(f"{BASE_URL}/roles", headers=_inertia_headers(client), timeout=30)
+        role = next((x for x in _inertia_json(r2)["props"]["roles"] if x["name"] == "Auditor QA"), None)
+        assert role, "created role not found"
+        # Delete
+        r3 = client.delete(f"{BASE_URL}/roles/{role['id']}", allow_redirects=False, timeout=30)
+        assert r3.status_code in (200, 204, 302), r3.text[:300]
+
+
+class TestIteration10UsersRelaxed:
+    def _cleanup_email(self, client, name):
+        # Look up user by name and delete
+        try:
+            r = client.get(f"{BASE_URL}/users?search={name}", headers=_inertia_headers(client), timeout=30)
+            for u in _inertia_json(r)["props"]["users"]["data"]:
+                if u["name"] == name:
+                    client.delete(f"{BASE_URL}/users/{u['id']}", allow_redirects=False, timeout=30)
+        except Exception:
+            pass
+
+    def test_create_user_only_required_fields(self, client):
+        """Username, email, phone nullable. Only name + role + password required."""
+        name = "TEST QA Minimal"
+        self._cleanup_email(client, name)
+        r = client.post(f"{BASE_URL}/users", json={
+            "name": name,
+            "username": "",
+            "email": "",
+            "phone": "",
+            "role": "Staf",
+            "password": "password12",
+            "is_active": True,
+        }, allow_redirects=False, timeout=30)
+        assert r.status_code in (200, 201, 204, 302), f"{r.status_code}: {r.text[:400]}"
+        # cleanup
+        self._cleanup_email(client, name)
+
+    def test_duplicate_phone_rejected(self, client):
+        # Zulfame likely has a phone; create user A with a phone, then user B with same phone
+        phone = "081999888777"
+        name_a, name_b = "TEST Phone A", "TEST Phone B"
+        self._cleanup_email(client, name_a)
+        self._cleanup_email(client, name_b)
+        # Create A
+        r = client.post(f"{BASE_URL}/users", json={
+            "name": name_a, "username": "", "email": "", "phone": phone,
+            "role": "Staf", "password": "password12", "is_active": True,
+        }, allow_redirects=False, timeout=30)
+        assert r.status_code in (200, 201, 204, 302), r.text[:300]
+        # Create B with same phone
+        r2 = client.post(f"{BASE_URL}/users", json={
+            "name": name_b, "username": "", "email": "", "phone": phone,
+            "role": "Staf", "password": "password12", "is_active": True,
+        }, allow_redirects=False, timeout=30)
+        assert r2.status_code == 422, f"expected 422 got {r2.status_code}: {r2.text[:300]}"
+        assert "phone" in r2.json().get("errors", {})
+        # Cleanup
+        self._cleanup_email(client, name_a)
+        self._cleanup_email(client, name_b)
+
+    def test_create_user_missing_name_rejected(self, client):
+        r = client.post(f"{BASE_URL}/users", json={
+            "name": "", "role": "Staf", "password": "password12", "is_active": True,
+        }, allow_redirects=False, timeout=30)
+        assert r.status_code == 422
+        assert "name" in r.json().get("errors", {})
+
+    def test_create_user_missing_role_rejected(self, client):
+        r = client.post(f"{BASE_URL}/users", json={
+            "name": "TEST NoRole", "role": "", "password": "password12", "is_active": True,
+        }, allow_redirects=False, timeout=30)
+        assert r.status_code == 422
+        assert "role" in r.json().get("errors", {})
+
+    def test_create_user_short_password_rejected(self, client):
+        r = client.post(f"{BASE_URL}/users", json={
+            "name": "TEST ShortPwd", "role": "Staf", "password": "abc", "is_active": True,
+        }, allow_redirects=False, timeout=30)
+        assert r.status_code == 422
+        assert "password" in r.json().get("errors", {})
+
+
+class TestIteration10UsersSort:
+    def test_sort_by_role(self, client):
+        r = client.get(
+            f"{BASE_URL}/users?sort=role&dir=asc",
+            headers=_inertia_headers(client),
+            timeout=30,
+        )
+        assert r.status_code == 200
+        j = _inertia_json(r)
+        assert j["props"]["filters"]["sort"] == "role"
+
+    def test_sort_by_is_active(self, client):
+        r = client.get(
+            f"{BASE_URL}/users?sort=is_active&dir=desc",
+            headers=_inertia_headers(client),
+            timeout=30,
+        )
+        assert r.status_code == 200
+        assert _inertia_json(r)["props"]["filters"]["sort"] == "is_active"

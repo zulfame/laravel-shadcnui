@@ -16,7 +16,7 @@ class StoreUserRequest extends FormRequest
             'name' => Rules::personName(),
             'username' => Rules::username($id),
             'email' => Rules::email($id),
-            'phone' => Rules::phone(),
+            'phone' => Rules::phone($id),
             'role' => ['required', 'string', Rule::exists('roles', 'name')],
             'is_active' => ['boolean'],
             'password' => Rules::password($id === null),

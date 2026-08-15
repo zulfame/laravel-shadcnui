@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Storage;
 /**
  * Satu pintu untuk seluruh unggahan berkas (avatar, aset merek).
  * Driver mengikuti setelan di halaman Penyimpanan: `local` atau `s3`.
+ *
+ * Nilai yang disimpan di DB memakai awalan disk, mis. `s3:branding/x.png`,
+ * sehingga berkas lama tetap dapat diakses meski driver aktif berganti.
  */
 class FileStorage
 {
@@ -18,9 +21,9 @@ class FileStorage
         return StorageController::values()['storage_driver'] ?? 'local';
     }
 
-    public static function disk(): Filesystem
+    public static function disk(?string $driver = null): Filesystem
     {
-        if (self::driver() !== 's3') {
+        if (($driver ?? self::driver()) !== 's3') {
             return Storage::disk('public');
         }
 
@@ -41,38 +44,32 @@ class FileStorage
 
     public static function store(UploadedFile $file, string $folder): string
     {
-        return self::disk()->putFile(self::prefix($folder), $file);
+        $driver = self::driver();
+
+        return $driver.':'.self::disk($driver)->putFile(self::prefix($folder, $driver), $file);
     }
 
-    /** Prefix folder dengan `s3_path` bila driver s3 memakainya. */
-    private static function prefix(string $folder): string
+    public static function delete(?string $value): void
     {
-        if (self::driver() !== 's3') {
-            return $folder;
-        }
-
-        $path = trim((string) (StorageController::values()['s3_path'] ?? ''), '/');
-
-        return $path === '' ? $folder : "{$path}/{$folder}";
-    }
-
-    public static function delete(?string $path): void
-    {
-        if (! $path) {
+        if (! $value) {
             return;
         }
 
-        rescue(fn () => self::disk()->delete($path), report: false);
+        [$driver, $path] = self::split($value);
+
+        rescue(fn () => self::disk($driver)->delete($path), report: false);
     }
 
-    /** URL publik berkas; jatuh ke disk lokal bila driver bukan s3. */
-    public static function url(?string $path): ?string
+    /** URL publik berkas. */
+    public static function url(?string $value): ?string
     {
-        if (! $path) {
+        if (! $value) {
             return null;
         }
 
-        if (self::driver() !== 's3') {
+        [$driver, $path] = self::split($value);
+
+        if ($driver !== 's3') {
             return Storage::url($path);
         }
 
@@ -80,5 +77,29 @@ class FileStorage
         $base = $v['s3_public_url'] ?: rtrim($v['s3_endpoint'], '/').'/'.$v['s3_bucket'];
 
         return rtrim($base, '/').'/'.ltrim($path, '/');
+    }
+
+    /** Pisahkan awalan disk; nilai lama tanpa awalan memakai driver aktif. */
+    private static function split(string $value): array
+    {
+        foreach (['local', 's3'] as $driver) {
+            if (str_starts_with($value, $driver.':')) {
+                return [$driver, substr($value, strlen($driver) + 1)];
+            }
+        }
+
+        return [self::driver(), $value];
+    }
+
+    /** Prefix folder dengan `s3_path` bila driver s3 memakainya. */
+    private static function prefix(string $folder, string $driver): string
+    {
+        if ($driver !== 's3') {
+            return $folder;
+        }
+
+        $path = trim((string) (StorageController::values()['s3_path'] ?? ''), '/');
+
+        return $path === '' ? $folder : "{$path}/{$folder}";
     }
 }

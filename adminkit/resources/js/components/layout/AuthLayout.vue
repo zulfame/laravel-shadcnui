@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import { LayoutDashboard, ShieldCheck, SlidersHorizontal } from 'lucide-vue-next';
 
+import BrandMark from '@/components/composite/BrandMark.vue';
 import Separator from '@/components/ui/Separator.vue';
 
 /**
@@ -12,10 +13,6 @@ import Separator from '@/components/ui/Separator.vue';
  */
 const page = usePage();
 const branding = computed(() => page.props.branding ?? {});
-const brandInitials = computed(() =>
-    (branding.value.brand_initials || branding.value.app_name || 'AK').slice(0, 3).toUpperCase(),
-);
-
 const highlights = [
     {
         icon: LayoutDashboard,
@@ -47,11 +44,11 @@ const highlights = [
             />
 
             <div class="relative z-10 flex items-center gap-2.5" data-testid="auth-brand-desktop">
-                <span
-                    class="flex size-9 items-center justify-center overflow-hidden rounded-md bg-primary-foreground/10 text-xs font-semibold ring-1 ring-inset ring-primary-foreground/20"
-                >
-                    {{ brandInitials }}
-                </span>
+                <BrandMark
+                    :logo="branding.logo_dark || branding.logo_light"
+                    :initials="branding.brand_initials"
+                    class="size-9 bg-primary-foreground/10 text-xs font-semibold ring-1 ring-inset ring-primary-foreground/20"
+                />
                 <span class="flex flex-col">
                     <span class="text-sm font-semibold tracking-tight" data-testid="auth-brand-name">
                         {{ branding.app_name || 'AdminKit' }}
@@ -100,9 +97,11 @@ const highlights = [
         <main class="flex flex-col items-center justify-center bg-background px-4 py-10 sm:px-6 lg:px-8">
             <div class="w-full max-w-md">
                 <div class="mb-8 flex items-center gap-2.5 lg:hidden" data-testid="auth-brand-mobile">
-                    <span class="flex size-9 items-center justify-center overflow-hidden rounded-md bg-primary text-xs font-semibold text-primary-foreground">
-                        {{ brandInitials }}
-                    </span>
+                    <BrandMark
+                        :logo="branding.logo_light || branding.logo_dark"
+                        :initials="branding.brand_initials"
+                        class="size-9 bg-primary text-xs font-semibold text-primary-foreground"
+                    />
                     <span class="flex flex-col">
                         <span class="text-sm font-semibold tracking-tight">{{ branding.app_name || 'AdminKit' }}</span>
                         <span class="text-xs text-muted-foreground">

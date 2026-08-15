@@ -10,6 +10,7 @@ class UpdateSeoRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'meta_title' => Rules::text(120),
             'meta_description' => Rules::text(300),
             'meta_keywords' => Rules::text(200),
             'canonical_url' => Rules::url(),
@@ -20,6 +21,7 @@ class UpdateSeoRequest extends FormRequest
     public function attributes(): array
     {
         return [
+            'meta_title' => 'meta title',
             'meta_description' => 'meta description',
             'meta_keywords' => 'meta keywords',
             'canonical_url' => 'canonical URL',

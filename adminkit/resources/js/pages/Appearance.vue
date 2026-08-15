@@ -15,6 +15,7 @@ import Label from '@/components/ui/Label.vue';
 import Switch from '@/components/ui/Switch.vue';
 import Textarea from '@/components/ui/Textarea.vue';
 import AssetUploader from '@/components/composite/AssetUploader.vue';
+import BrandMark from '@/components/composite/BrandMark.vue';
 import { ACTION } from '@/constants/labels';
 import { all, email as emailRule, max, required, url as urlRule } from '@/lib/validators';
 import { useLiveValidation } from '@/composables/useLiveValidation';
@@ -32,12 +33,13 @@ const identity = useForm({
 });
 
 const identityCheck = useLiveValidation(identity, {
-    app_name: all(required('nama aplikasi'), max(60, 'Nama aplikasi')),
+    app_name: all(required('nama aplikasi'), max(60, 'Nama Aplikasi')),
     tagline: max(100, 'Tagline'),
-    brand_initials: max(4, 'Inisial brand'),
+    brand_initials: max(4, 'Inisial Brand'),
 });
 
 const seo = useForm({
+    meta_title: s.meta_title ?? '',
     meta_description: s.meta_description ?? '',
     meta_keywords: s.meta_keywords ?? '',
     canonical_url: s.canonical_url ?? '',
@@ -45,31 +47,22 @@ const seo = useForm({
 });
 
 const seoCheck = useLiveValidation(seo, {
-    meta_description: max(300, 'Meta description'),
-    meta_keywords: max(200, 'Meta keywords'),
+    meta_title: max(120, 'Meta Title'),
+    meta_description: max(300, 'Meta Description'),
+    meta_keywords: max(200, 'Meta Keywords'),
     canonical_url: all(urlRule('Canonical URL'), max(200, 'Canonical URL')),
-});
-
-const og = useForm({ og_title: s.og_title ?? '', og_description: s.og_description ?? '' });
-
-const ogCheck = useLiveValidation(og, {
-    og_title: max(120, 'OG title'),
-    og_description: max(300, 'OG description'),
 });
 
 const contact = useForm({ support_email: s.support_email ?? '', footer_text: s.footer_text ?? '' });
 
 const contactCheck = useLiveValidation(contact, {
-    support_email: all(emailRule('Email dukungan'), max(150, 'Email dukungan')),
-    footer_text: max(200, 'Teks footer'),
+    support_email: all(emailRule('Email Dukungan'), max(150, 'Email Dukungan')),
+    footer_text: max(200, 'Teks Footer'),
 });
 
 const save = (form, check, section) =>
     check.submit(() => form.put(`/appearance/${section}`, { preserveScroll: true }));
 
-const previewInitials = computed(
-    () => (identity.brand_initials || identity.app_name || 'AK').slice(0, 3).toUpperCase(),
-);
 const previewHost = computed(() => {
     try {
         return new URL(seo.canonical_url).host.toUpperCase();
@@ -132,12 +125,11 @@ const previewHost = computed(() => {
                             </div>
                             <!-- Pratinjau identitas -->
                             <div class="flex items-center gap-2.5 rounded-lg border bg-muted/30 px-3 py-2" data-testid="brand-preview">
-                                <span
-                                    class="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary text-[11px] font-semibold text-primary-foreground"
-                                >
-                                    <img v-if="props.settings.favicon_url" :src="props.settings.favicon_url" alt="" class="size-full object-contain" />
-                                    <template v-else>{{ previewInitials }}</template>
-                                </span>
+                                <BrandMark
+                                    :logo="props.settings.logo_light_url"
+                                    :initials="identity.brand_initials"
+                                    class="size-9 shrink-0 bg-primary text-[11px] font-semibold text-primary-foreground"
+                                />
                                 <span class="min-w-0">
                                     <span class="block truncate text-[13px] font-semibold">{{ identity.app_name }}</span>
                                     <span class="block truncate text-xs text-muted-foreground">{{ identity.tagline }}</span>
@@ -145,14 +137,26 @@ const previewHost = computed(() => {
                             </div>
                         </div>
 
-                        <div class="grid gap-[var(--field-gap)] lg:grid-cols-4">
+                        <div class="grid gap-[var(--field-gap)] lg:grid-cols-3">
+                            <AssetUploader
+                                label="Logo (Latar Terang)"
+                                hint="Dipakai pada latar terang. Maksimal 600 KB."
+                                asset-key="logo_light"
+                                :url="props.settings.logo_light_url"
+                            />
+                            <AssetUploader
+                                label="Logo (Latar Gelap)"
+                                hint="Dipakai pada latar gelap, mis. panel masuk."
+                                asset-key="logo_dark"
+                                :url="props.settings.logo_dark_url"
+                                dark
+                            />
                             <AssetUploader
                                 label="Favicon"
                                 hint="Ikon persegi (PNG/ICO/SVG), 32–512 px. Maksimal 256 KB."
                                 asset-key="favicon"
                                 accept="image/png,image/x-icon,image/svg+xml"
                                 :url="props.settings.favicon_url"
-                                class="lg:col-span-2"
                             />
                         </div>
                     </CardContent>
@@ -164,13 +168,26 @@ const previewHost = computed(() => {
                 </form>
             </Card>
 
-            <!-- SEO & Metadata -->
+            <!-- SEO & Metadata (termasuk Open Graph) -->
             <Card>
                 <CardHeader>
                     <CardTitle>SEO &amp; Metadata</CardTitle>
                 </CardHeader>
                 <form class="form-dense" novalidate @submit.prevent="save(seo, seoCheck, 'seo')">
                     <CardContent class="space-y-[var(--field-gap)]">
+                        <div class="space-y-[var(--item-gap)]">
+                            <Label for="meta_title">Meta Title</Label>
+                            <Input
+                                id="meta_title"
+                                v-model="seo.meta_title"
+                                maxlength="120"
+                                data-testid="meta-title-input"
+                                @blur="seoCheck.validate('meta_title')"
+                            />
+                            <p v-if="seo.errors.meta_title" class="text-xs font-medium text-destructive">
+                                {{ seo.errors.meta_title }}
+                            </p>
+                        </div>
                         <div class="space-y-[var(--item-gap)]">
                             <Label for="meta_description">Meta Description</Label>
                             <Textarea
@@ -210,63 +227,27 @@ const previewHost = computed(() => {
                                 </p>
                             </div>
                         </div>
-                        <div class="flex items-center justify-between gap-4 rounded-lg border bg-muted/30 px-3 py-2">
-                            <div>
-                                <p class="text-[13px] font-medium">Terlihat di mesin pencari</p>
-                                <p class="text-xs text-muted-foreground">
-                                    Bila nonaktif, halaman meminta mesin pencari untuk tidak mengindeks
-                                    (noindex, nofollow). Disarankan tetap nonaktif untuk konsol internal.
-                                </p>
-                            </div>
-                            <Switch v-model="seo.search_indexable" data-testid="search-indexable-toggle" />
-                        </div>
-                    </CardContent>
-                    <CardFooter class="justify-end">
-                        <Button size="sm" type="submit" :disabled="seo.processing" data-testid="seo-save">
-                            <Save class="size-4" /> {{ seo.processing ? ACTION.saving : ACTION.save }}
-                        </Button>
-                    </CardFooter>
-                </form>
-            </Card>
 
-            <!-- Pratinjau Tautan (Open Graph) -->
-            <Card>
-                <CardHeader>
-                    <CardTitle>Pratinjau Tautan (Open Graph)</CardTitle>
-                </CardHeader>
-                <form class="form-dense" novalidate @submit.prevent="save(og, ogCheck, 'og')">
-                    <CardContent class="space-y-[var(--field-gap)]">
                         <div class="grid gap-[var(--field-gap)] sm:grid-cols-2">
-                            <div class="space-y-[var(--item-gap)]">
-                                <Label for="og_title">OG Title</Label>
-                                <Input
-                                    id="og_title"
-                                    v-model="og.og_title"
-                                    maxlength="120"
-                                    data-testid="og-title-input"
-                                    @blur="ogCheck.validate('og_title')"
-                                />
-                            </div>
-                            <div class="space-y-[var(--item-gap)]">
-                                <Label for="og_description">OG Description</Label>
-                                <Input
-                                    id="og_description"
-                                    v-model="og.og_description"
-                                    maxlength="300"
-                                    data-testid="og-description-input"
-                                    @blur="ogCheck.validate('og_description')"
-                                />
+                            <AssetUploader
+                                label="OG Image"
+                                hint="Gambar pratinjau tautan (disarankan 1200×630)."
+                                asset-key="og_image"
+                                :url="props.settings.og_image_url"
+                            />
+                            <div class="flex items-start justify-between gap-4 rounded-lg border bg-muted/30 px-3 py-2">
+                                <div>
+                                    <p class="text-[13px] font-medium">Visibilitas</p>
+                                    <p class="text-xs text-muted-foreground">
+                                        Bila nonaktif, halaman meminta mesin pencari untuk tidak mengindeks
+                                        (noindex, nofollow).
+                                    </p>
+                                </div>
+                                <Switch v-model="seo.search_indexable" data-testid="search-indexable-toggle" />
                             </div>
                         </div>
 
-                        <AssetUploader
-                            label="OG Image"
-                            hint="Gambar pratinjau tautan (disarankan 1200×630)."
-                            asset-key="og_image"
-                            :url="props.settings.og_image_url"
-                        />
-
-                        <!-- Kartu pratinjau -->
+                        <!-- Kartu pratinjau tautan -->
                         <div class="w-full max-w-sm overflow-hidden rounded-lg border" data-testid="og-preview">
                             <div class="flex h-36 items-center justify-center bg-muted/50">
                                 <img
@@ -280,17 +261,15 @@ const previewHost = computed(() => {
                             <div class="space-y-1 px-3 py-2">
                                 <p class="text-[11px] uppercase tracking-wide text-muted-foreground">{{ previewHost }}</p>
                                 <p class="text-[13px] font-semibold">
-                                    {{ og.og_title || `${identity.app_name}: ${identity.tagline}` }}
+                                    {{ seo.meta_title || `${identity.app_name}: ${identity.tagline}` }}
                                 </p>
-                                <p class="line-clamp-2 text-xs text-muted-foreground">
-                                    {{ og.og_description || seo.meta_description }}
-                                </p>
+                                <p class="line-clamp-2 text-xs text-muted-foreground">{{ seo.meta_description }}</p>
                             </div>
                         </div>
                     </CardContent>
                     <CardFooter class="justify-end">
-                        <Button size="sm" type="submit" :disabled="og.processing" data-testid="og-save">
-                            <Save class="size-4" /> {{ og.processing ? ACTION.saving : ACTION.save }}
+                        <Button size="sm" type="submit" :disabled="seo.processing" data-testid="seo-save">
+                            <Save class="size-4" /> {{ seo.processing ? ACTION.saving : ACTION.save }}
                         </Button>
                     </CardFooter>
                 </form>

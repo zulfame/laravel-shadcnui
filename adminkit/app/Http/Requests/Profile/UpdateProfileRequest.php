@@ -15,7 +15,7 @@ class UpdateProfileRequest extends FormRequest
             'name' => Rules::personName(),
             'username' => Rules::username($id),
             'email' => Rules::email($id),
-            'phone' => Rules::phone(),
+            'phone' => Rules::phone($id),
         ];
     }
 

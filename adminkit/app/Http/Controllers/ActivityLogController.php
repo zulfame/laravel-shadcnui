@@ -46,7 +46,7 @@ class ActivityLogController extends Controller
             'moduleOptions' => ActivityLog::query()
                 ->select('module')->distinct()->orderBy('module')->pluck('module')
                 ->map(fn ($m) => ['value' => $m, 'label' => $m])
-                ->prepend(['value' => 'all', 'label' => 'Semua modul'])
+                ->prepend(['value' => 'all', 'label' => 'Semua Modul'])
                 ->values()->all(),
         ]);
     }

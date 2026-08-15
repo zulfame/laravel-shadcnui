@@ -71,7 +71,7 @@ const test = () => testForm.post('/storage-settings/test', { preserveScroll: tru
                     <CardContent class="space-y-[var(--field-gap)]">
                         <div class="grid gap-[var(--field-gap)] sm:grid-cols-2">
                             <div class="space-y-[var(--item-gap)]">
-                                <Label>Driver aktif</Label>
+                                <Label>Driver Aktif</Label>
                                 <Combobox
                                     v-model="form.storage_driver"
                                     :options="props.driverOptions"

@@ -17,8 +17,8 @@
 
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="{{ $branding['app_name'] }}">
-    <meta property="og:title" content="{{ $branding['og_title'] }}">
-    <meta property="og:description" content="{{ $branding['og_description'] }}">
+    <meta property="og:title" content="{{ $branding['meta_title'] }}">
+    <meta property="og:description" content="{{ $branding['meta_description'] }}">
     @if ($branding['og_image'])
         <meta property="og:image" content="{{ url($branding['og_image']) }}">
         <meta name="twitter:card" content="summary_large_image">

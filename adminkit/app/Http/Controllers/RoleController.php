@@ -4,11 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Enums\RoleName;
 use App\Http\Requests\Role\StoreRoleRequest;
-use App\Http\Requests\Role\SyncMatrixRequest;
 use App\Models\ActivityLog;
-use App\Support\Modules;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Role;
@@ -31,7 +28,18 @@ class RoleController extends Controller
                     'permissions_count' => $role->permissions->count(),
                     'locked' => $role->name === RoleName::SuperAdmin->value,
                 ])->all(),
-            'modules' => Modules::matrix(),
+        ]);
+    }
+
+    public function show(Role $role): Response
+    {
+        return Inertia::render('RoleDetail', [
+            'role' => [
+                'id' => $role->id,
+                'name' => $role->name,
+                'users_count' => $role->users()->count(),
+                'locked' => $role->name === RoleName::SuperAdmin->value,
+            ],
         ]);
     }
 
@@ -39,7 +47,6 @@ class RoleController extends Controller
     {
         $data = $request->validated();
         $role = Role::create(['name' => $data['name'], 'guard_name' => 'web']);
-        $role->syncPermissions($data['permissions'] ?? []);
 
         ActivityLog::record("Menambah peranan {$role->name}", 'Peranan', 'success', $role);
 
@@ -54,33 +61,10 @@ class RoleController extends Controller
 
         $data = $request->validated();
         $role->update(['name' => $data['name']]);
-        $role->syncPermissions($data['permissions'] ?? []);
 
         ActivityLog::record("Memperbarui peranan {$role->name}", 'Peranan', 'info', $role);
 
         return back()->with('success', "Peranan {$role->name} diperbarui.");
-    }
-
-    /**
-     * Simpan seluruh matriks izin sekaligus (satu tombol Simpan).
-     */
-    public function syncMatrix(SyncMatrixRequest $request): RedirectResponse
-    {
-        $validated = $request->validated();
-
-        DB::transaction(function () use ($validated) {
-            foreach ($validated['matrix'] as $roleId => $permissions) {
-                $role = Role::find($roleId);
-                if (! $role || $role->name === RoleName::SuperAdmin->value) {
-                    continue;
-                }
-                $role->syncPermissions(array_intersect($permissions, Modules::permissions()));
-            }
-        });
-
-        ActivityLog::record('Memperbarui matriks hak akses', 'Peranan', 'info');
-
-        return back()->with('success', 'Matriks hak akses disimpan.');
     }
 
     public function destroy(Role $role): RedirectResponse

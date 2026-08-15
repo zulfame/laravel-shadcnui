@@ -36,7 +36,7 @@ import { ACTION } from '@/constants/labels';
  *   CLIENT (default) — cari/urut/paginasi dihitung di browser dari `rows`.
  *   SERVER (`server`) — komponen hanya mengirim `update:*`; induk yang query.
  *
- * `columns`: [{ key, label, align?, width?, sortable? }]
+ * `columns`: [{ key, label, align?, width?, sortable?, sortKey? }]
  * Sel kustom lewat slot bernama `cell-<key>` dengan payload { row, value }.
  */
 const props = defineProps({
@@ -225,11 +225,14 @@ const pageSizeOptions = [
                                     class="flex h-full w-full items-center gap-1 font-medium"
                                     :class="col.align === 'right' ? 'justify-end text-right' : 'text-left'"
                                     :data-testid="`sort-${col.key}`"
-                                    @click="toggleSort(col.key)"
+                                    @click="toggleSort(col.sortKey ?? col.key)"
                                 >
                                     {{ col.label }}
-                                    <ArrowUp v-if="localSort.key === col.key && localSort.dir === 'asc'" class="size-3.5" />
-                                    <ArrowDown v-else-if="localSort.key === col.key" class="size-3.5" />
+                                    <ArrowUp
+                                        v-if="localSort.key === (col.sortKey ?? col.key) && localSort.dir === 'asc'"
+                                        class="size-3.5"
+                                    />
+                                    <ArrowDown v-else-if="localSort.key === (col.sortKey ?? col.key)" class="size-3.5" />
                                     <ArrowUpDown v-else class="size-3.5 opacity-50" />
                                 </button>
                                 <span v-else>{{ col.label }}</span>

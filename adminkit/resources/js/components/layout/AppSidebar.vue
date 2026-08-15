@@ -1,4 +1,5 @@
 <script setup>
+import BrandMark from '@/components/composite/BrandMark.vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { Check, ChevronsUpDown, LogOut, UserRound } from 'lucide-vue-next';
@@ -73,9 +74,6 @@ const currentUser = computed(() => ({
     initials: initialsOf(auth.value.name, auth.value.email),
 }));
 
-const brandInitials = computed(() =>
-    (branding.value.brand_initials || branding.value.app_name || 'AK').slice(0, 3).toUpperCase(),
-);
 </script>
 
 <template>
@@ -90,12 +88,11 @@ const brandInitials = computed(() =>
                                 class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                                 data-testid="area-switcher-trigger"
                             >
-                                <div
-                                    class="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg bg-primary text-[11px] font-semibold text-primary-foreground"
-                                >
-                                    <img v-if="branding.favicon" :src="branding.favicon" alt="" class="size-full object-contain" />
-                                    <template v-else>{{ brandInitials }}</template>
-                                </div>
+                                <BrandMark
+                                    :logo="branding.logo_light"
+                                    :initials="branding.brand_initials"
+                                    class="aspect-square size-8 rounded-lg bg-primary text-[11px] font-semibold text-primary-foreground"
+                                />
                                 <div class="grid flex-1 text-left text-sm leading-tight">
                                     <span class="truncate font-semibold">{{ branding.app_name || 'AdminKit' }}</span>
                                     <span class="truncate text-xs text-sidebar-foreground/70">

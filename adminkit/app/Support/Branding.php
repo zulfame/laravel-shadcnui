@@ -15,7 +15,7 @@ class Branding
     public const CACHE_KEY = 'adminkit.branding';
 
     /** Kunci bertipe aset berkas (disimpan sebagai path pada disk aktif). */
-    public const ASSETS = ['favicon', 'og_image'];
+    public const ASSETS = ['logo_light', 'logo_dark', 'favicon', 'og_image'];
 
     public const DEFAULTS = [
         'app_name' => 'AdminKit',
@@ -26,10 +26,11 @@ class Branding
         'meta_keywords' => 'admin panel, laravel, inertia, vue',
         'canonical_url' => '',
         'search_indexable' => '0',
-        'og_title' => '',
-        'og_description' => '',
+        'meta_title' => '',
         'support_email' => 'dukungan@adminkit.test',
         'footer_text' => '',
+        'logo_light' => null,
+        'logo_dark' => null,
         'favicon' => null,
         'og_image' => null,
     ];
@@ -49,8 +50,7 @@ class Branding
             $values['search_indexable'] = (bool) ($values['search_indexable'] ?? false);
             $values['footer_text'] = $values['footer_text']
                 ?: '© '.date('Y').' '.$values['app_name'].'. All Rights Reserved.';
-            $values['og_title'] = $values['og_title'] ?: $values['app_name'].': '.$values['tagline'];
-            $values['og_description'] = $values['og_description'] ?: $values['meta_description'];
+            $values['meta_title'] = $values['meta_title'] ?: $values['app_name'].': '.$values['tagline'];
 
             return $values;
         });

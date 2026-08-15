@@ -96,14 +96,14 @@ const fmt = (iso) =>
                 <template #filters>
                     <DatePicker
                         :model-value="query.date_from"
-                        placeholder="Dari tanggal"
+                        placeholder="Dari Tanggal"
                         class="h-[var(--ctl-h-sm)] w-[150px] text-xs"
                         data-testid="activity-date-from"
                         @update:model-value="onFilter('date_from', $event)"
                     />
                     <DatePicker
                         :model-value="query.date_to"
-                        placeholder="Sampai tanggal"
+                        placeholder="Sampai Tanggal"
                         class="h-[var(--ctl-h-sm)] w-[150px] text-xs"
                         data-testid="activity-date-to"
                         @update:model-value="onFilter('date_to', $event)"
@@ -111,7 +111,7 @@ const fmt = (iso) =>
                     <Combobox
                         :model-value="query.module"
                         :options="props.moduleOptions"
-                        placeholder="Semua modul"
+                        placeholder="Semua Modul"
                         class="w-[150px]"
                         data-testid="activity-filter-module"
                         @update:model-value="onFilter('module', $event)"
@@ -123,7 +123,7 @@ const fmt = (iso) =>
                         data-testid="activity-clear-range"
                         @click="onFilter('date_from', ''), onFilter('date_to', '')"
                     >
-                        Semua tanggal
+                        Semua Tanggal
                     </Button>
                 </template>
 

@@ -15,7 +15,7 @@ use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
-    private const SORTABLE = ['name', 'username', 'email', 'phone', 'last_login_at'];
+    private const SORTABLE = ['name', 'username', 'email', 'phone', 'role', 'is_active'];
 
     public function index(Request $request): Response
     {
@@ -33,7 +33,18 @@ class UserController extends Controller
                 ->orWhere('phone', 'like', "%{$search}%")
             ))
             ->when($status !== '', fn ($q) => $q->where('is_active', $status === 'aktif'))
-            ->orderBy($sort, $dir)
+            ->when(
+                $sort === 'role',
+                fn ($q) => $q->orderBy(
+                    Role::select('name')
+                        ->join('model_has_roles', 'model_has_roles.role_id', '=', 'roles.id')
+                        ->whereColumn('model_has_roles.model_id', 'users.id')
+                        ->where('model_has_roles.model_type', User::class)
+                        ->limit(1),
+                    $dir
+                ),
+                fn ($q) => $q->orderBy($sort, $dir)
+            )
             ->paginate(TableQuery::perPage($request))
             ->withQueryString();
 

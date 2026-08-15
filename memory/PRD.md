@@ -134,6 +134,15 @@ Backlog kualitas: Pest feature test (auth, CRUD, otorisasi), ESLint + Prettier, 
 - **Badge lebih solid**: `.state-chip` kini isian penuh `hsl(var(--chip))` dengan teks kontras `hsl(var(--background))`; varian `secondary` pada `Badge` menjadi solid (`bg-foreground/85 text-background`), varian lembut lama tetap tersedia sebagai `muted`.
 - Terverifikasi di tema terang & gelap tanpa error console.
 
+## Selesai (2026-06-15, Title Case + revisi Peranan/Pengguna/Penampilan)
+- **Title Case** untuk seluruh label, judul kartu, judul dialog, placeholder filter (mis. `Nama Pengguna`, `Kata Sandi`, `Akun Aktif`, `Tambah Pengguna`, `Semua Status`, `Driver Aktif`, `Dari Tanggal`, `Semua Modul`, `Hapus Pengguna?`).
+- **Peranan**: card & fungsi `Matriks Hak Akses` DIHAPUS (rute `PUT /roles/matrix`, `SyncMatrixRequest`, kolom Jumlah Izin) — akan dibangun ulang lewat halaman detail. Dialog hanya kolom `Nama Peranan` (tanpa placeholder). Aksi baris: **Detail (ikon mata)** → `GET /roles/{role}` (halaman `RoleDetail.vue`, placeholder), Ubah, lalu `DropdownMenuSeparator` di atas Hapus.
+- **Pengguna**: label mengikuti halaman Profil; kolom `Login Terakhir` dipindah menjadi field read-only `Terakhir Login` di dialog; avatar di depan nama dihapus; Peranan tanpa badge & dapat disortir (`sort=role` via subquery roles); Status dapat disortir (`sort=is_active`) dengan badge Aktif=`secondary` (abu) dan Nonaktif=`destructive` (merah); separator di atas Hapus.
+- **Wajib vs opsional**: hanya `name`, `role`, `password` wajib. `username` & `email` menjadi **nullable unik**, `phone` **nullable + UNIK** (migrasi `2026_08_15_040000_relax_user_identity_columns`).
+- **Penampilan**: uploader `Logo (Latar Terang)`, `Logo (Latar Gelap)`, `Favicon` di card Identitas; card `SEO & Metadata` dan `Open Graph` **digabung** (Meta Title menggantikan OG Title, OG Description memakai Meta Description, toggle `Visibilitas`, kartu pratinjau tetap) — rute `PUT /appearance/og` dihapus.
+- **Bug gambar rusak diperbaiki**: nilai aset kini disimpan berawalan disk (`local:branding/x.png` / `s3:...`) di `FileStorage`, plus komponen `BrandMark.vue` & `AssetUploader` jatuh ke inisial/ikon bila berkas gagal dimuat.
+- Uji iterasi 10: backend 38/38 dan frontend 100% lolos.
+
 ## Selesai (2026-06-15, standar validasi + revisi 4 halaman sesuai referensi)
 ### Standar validasi (global, WAJIB dipakai untuk form baru)
 - `app/Support/Rules.php` = SATU sumber aturan per tipe kolom: `personName()`, `username($ignoreId)`, `email($ignoreId)`, `phone()` (regex `^\+?[0-9]{9,15}$`), `password()`, `text($max)`, `url()`, `slug()`, `path()`, `date()` + `messages()` (pesan Indonesia).

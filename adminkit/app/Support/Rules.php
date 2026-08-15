@@ -29,22 +29,28 @@ class Rules
         return [$required ? 'required' : 'nullable', 'string', 'min:3', "max:{$max}", 'regex:'.self::PERSON_NAME];
     }
 
-    public static function username(?int $ignoreId = null): array
+    public static function username(?int $ignoreId = null, bool $required = false): array
     {
         return [
-            'required', 'string', 'min:3', 'max:50', 'alpha_dash', 'lowercase',
+            $required ? 'required' : 'nullable', 'string', 'min:3', 'max:50', 'alpha_dash', 'lowercase',
             Rule::unique('users', 'username')->ignore($ignoreId),
         ];
     }
 
-    public static function email(?int $ignoreId = null): array
+    public static function email(?int $ignoreId = null, bool $required = false): array
     {
-        return ['required', 'string', 'email:rfc', 'max:150', Rule::unique('users', 'email')->ignore($ignoreId)];
+        return [
+            $required ? 'required' : 'nullable', 'string', 'email:rfc', 'max:150',
+            Rule::unique('users', 'email')->ignore($ignoreId),
+        ];
     }
 
-    public static function phone(bool $required = false): array
+    public static function phone(?int $ignoreId = null, bool $required = false): array
     {
-        return [$required ? 'required' : 'nullable', 'string', 'regex:'.self::PHONE, 'max:16'];
+        return [
+            $required ? 'required' : 'nullable', 'string', 'regex:'.self::PHONE, 'max:16',
+            Rule::unique('users', 'phone')->ignore($ignoreId),
+        ];
     }
 
     public static function password(bool $required = true): array

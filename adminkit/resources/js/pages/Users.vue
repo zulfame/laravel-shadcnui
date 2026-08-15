@@ -4,11 +4,11 @@ import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { Pencil, Plus, Save, Trash2, Users2, X } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
-import Avatar from '@/components/ui/Avatar.vue';
 import Badge from '@/components/ui/Badge.vue';
 import Button from '@/components/ui/Button.vue';
 import Dialog from '@/components/ui/Dialog.vue';
 import DropdownMenuItem from '@/components/ui/DropdownMenuItem.vue';
+import DropdownMenuSeparator from '@/components/ui/DropdownMenuSeparator.vue';
 import Input from '@/components/ui/Input.vue';
 import Label from '@/components/ui/Label.vue';
 import PhoneInput from '@/components/ui/PhoneInput.vue';
@@ -18,9 +18,7 @@ import ConfirmDeleteDialog from '@/components/composite/ConfirmDeleteDialog.vue'
 import DataTableCard from '@/components/composite/DataTableCard.vue';
 import PasswordInput from '@/components/composite/PasswordInput.vue';
 import RowActions from '@/components/composite/RowActions.vue';
-import StateChip from '@/components/composite/StateChip.vue';
 import { ACTION } from '@/constants/labels';
-import { initialsOf } from '@/lib/utils';
 import { useServerTable } from '@/composables/useServerTable';
 import { all, email as emailRule, max, min, personName, phone, required, username } from '@/lib/validators';
 import { useLiveValidation } from '@/composables/useLiveValidation';
@@ -37,13 +35,12 @@ const canManage = computed(() => can('users.manage'));
 const currentUserId = computed(() => page.props.auth?.user?.id);
 
 const columns = [
-    { key: 'name', label: 'Nama' },
+    { key: 'name', label: 'Nama Lengkap' },
     { key: 'username', label: 'Nama Pengguna' },
-    { key: 'email', label: 'Email' },
+    { key: 'email', label: 'Alamat Email' },
     { key: 'phone', label: 'Nomor HP' },
-    { key: 'role', label: 'Peranan', sortable: false },
-    { key: 'status_label', label: 'Status', sortable: false },
-    { key: 'last_login_at', label: 'Login Terakhir' },
+    { key: 'role', label: 'Peranan' },
+    { key: 'status_label', label: 'Status', sortKey: 'is_active' },
     { key: 'actions', label: '', align: 'right', width: '48px', sortable: false },
 ];
 
@@ -63,12 +60,12 @@ const { query, loading, reload, onSearch, onSort, onPage, onPerPage, onFilter, s
 
 // reka-ui melarang value kosong pada item, jadi 'all' dipakai sebagai sentinel.
 const statusOptions = [
-    { value: 'all', label: 'Semua status' },
+    { value: 'all', label: 'Semua Status' },
     { value: 'aktif', label: 'Aktif' },
     { value: 'nonaktif', label: 'Nonaktif' },
 ];
 
-/* ── Dialog tambah / ubah ────────────────────────────────────────────── */
+/* ── Dialog Tambah / Ubah ────────────────────────────────────────────── */
 const dialogOpen = ref(false);
 const editing = ref(null);
 
@@ -95,8 +92,8 @@ const openEdit = (row) => {
     form.clearErrors();
     form.defaults({
         name: row.name,
-        username: row.username,
-        email: row.email,
+        username: row.username ?? '',
+        email: row.email ?? '',
         phone: row.phone ?? '',
         role: row.role ?? props.roleOptions[0]?.value,
         is_active: row.is_active,
@@ -107,15 +104,15 @@ const openEdit = (row) => {
 };
 
 const rules = {
-    name: all(required('nama'), min(3, 'Nama'), max(100, 'Nama'), personName('Nama')),
-    username: all(required('nama pengguna'), min(3, 'Nama pengguna'), max(50, 'Nama pengguna'), username('Nama pengguna')),
-    email: all(required('alamat email'), emailRule('Alamat email'), max(150, 'Alamat email')),
+    name: all(required('nama lengkap'), min(3, 'Nama Lengkap'), max(100, 'Nama Lengkap'), personName('Nama Lengkap')),
+    username: all(min(3, 'Nama Pengguna'), max(50, 'Nama Pengguna'), username('Nama Pengguna')),
+    email: all(emailRule('Alamat Email'), max(150, 'Alamat Email')),
     phone: phone('Nomor HP'),
     role: required('peranan'),
     password: (value) => {
-        if (editing.value) return value ? min(8, 'Kata sandi')(value) : '';
+        if (editing.value) return value ? min(8, 'Kata Sandi')(value) : '';
 
-        return all(required('kata sandi'), min(8, 'Kata sandi'))(value);
+        return all(required('kata sandi'), min(8, 'Kata Sandi'))(value);
     },
 };
 
@@ -181,7 +178,7 @@ watch(dialogOpen, (open) => {
                     <Combobox
                         :model-value="query.status"
                         :options="statusOptions"
-                        placeholder="Semua status"
+                        placeholder="Semua Status"
                         class="w-[140px]"
                         data-testid="users-filter-status"
                         @update:model-value="onFilter('status', $event)"
@@ -195,22 +192,25 @@ watch(dialogOpen, (open) => {
                 </template>
 
                 <template #cell-name="{ row }">
-                    <span class="flex items-center gap-2">
-                        <Avatar :fallback="initialsOf(row.name, row.email)" class="size-6" />
-                        <span class="font-medium">{{ row.name }}</span>
-                    </span>
+                    <span class="font-medium">{{ row.name }}</span>
                 </template>
 
                 <template #cell-username="{ row }">
-                    <span class="font-mono text-xs text-muted-foreground">{{ row.username }}</span>
+                    <span class="font-mono text-xs text-muted-foreground">{{ row.username ?? '—' }}</span>
                 </template>
 
                 <template #cell-role="{ row }">
-                    <Badge variant="secondary" class="font-normal">{{ row.role ?? '—' }}</Badge>
+                    <span>{{ row.role ?? '—' }}</span>
                 </template>
 
                 <template #cell-status_label="{ row }">
-                    <StateChip :label="row.status_label" :chip="row.status_chip" />
+                    <Badge
+                        :variant="row.is_active ? 'secondary' : 'destructive'"
+                        class="whitespace-nowrap font-medium"
+                        :data-testid="`users-status-${row.id}`"
+                    >
+                        {{ row.status_label }}
+                    </Badge>
                 </template>
 
                 <template #cell-actions="{ row }">
@@ -218,26 +218,25 @@ watch(dialogOpen, (open) => {
                         <DropdownMenuItem :data-testid="`users-edit-${row.id}`" @click="openEdit(row)">
                             <Pencil />{{ ACTION.edit }}
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                            v-if="row.id !== currentUserId"
-                            class="text-destructive data-[highlighted]:text-destructive"
-                            :data-testid="`users-delete-${row.id}`"
-                            @click="deleting = row"
-                        >
-                            <Trash2 />{{ ACTION.delete }}
-                        </DropdownMenuItem>
+                        <template v-if="row.id !== currentUserId">
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                class="text-destructive data-[highlighted]:text-destructive"
+                                :data-testid="`users-delete-${row.id}`"
+                                @click="deleting = row"
+                            >
+                                <Trash2 />{{ ACTION.delete }}
+                            </DropdownMenuItem>
+                        </template>
                     </RowActions>
                 </template>
             </DataTableCard>
 
-            <!-- Dialog tambah / ubah -->
-            <Dialog
-                v-model:open="dialogOpen"
-                :title="editing ? 'Ubah pengguna' : 'Tambah pengguna'"
-            >
+            <!-- Dialog Tambah / Ubah -->
+            <Dialog v-model:open="dialogOpen" :title="editing ? 'Ubah Pengguna' : 'Tambah Pengguna'">
                 <form id="user-form" class="form-dense grid gap-[var(--field-gap)] sm:grid-cols-2" novalidate @submit.prevent="submit">
                     <div class="space-y-[var(--item-gap)]">
-                        <Label for="f-name">Nama</Label>
+                        <Label for="f-name">Nama Lengkap</Label>
                         <Input
                             id="f-name"
                             v-model="form.name"
@@ -250,7 +249,7 @@ watch(dialogOpen, (open) => {
                         </p>
                     </div>
                     <div class="space-y-[var(--item-gap)]">
-                        <Label for="f-username">Nama pengguna</Label>
+                        <Label for="f-username">Nama Pengguna</Label>
                         <Input
                             id="f-username"
                             v-model="form.username"
@@ -263,7 +262,7 @@ watch(dialogOpen, (open) => {
                         </p>
                     </div>
                     <div class="space-y-[var(--item-gap)]">
-                        <Label for="f-email">Email</Label>
+                        <Label for="f-email">Alamat Email</Label>
                         <Input
                             id="f-email"
                             v-model="form.email"
@@ -293,13 +292,26 @@ watch(dialogOpen, (open) => {
                         <Combobox
                             v-model="form.role"
                             :options="props.roleOptions"
-                            placeholder="Pilih peranan"
+                            placeholder="Pilih Peranan"
                             class="h-[var(--ctl-h)] text-[13px]"
                             data-testid="user-form-role"
                         />
+                        <p v-if="form.errors.role" class="text-xs font-medium text-destructive" data-testid="user-form-role-error">
+                            {{ form.errors.role }}
+                        </p>
+                    </div>
+                    <div class="space-y-[var(--item-gap)]">
+                        <Label for="f-last-login">Terakhir Login</Label>
+                        <Input
+                            id="f-last-login"
+                            :model-value="editing?.last_login_at ?? '—'"
+                            readonly
+                            disabled
+                            data-testid="user-form-last-login"
+                        />
                     </div>
                     <div class="space-y-[var(--item-gap)] sm:col-span-2">
-                        <Label for="f-password">Kata sandi</Label>
+                        <Label for="f-password">Kata Sandi</Label>
                         <PasswordInput
                             id="f-password"
                             v-model="form.password"
@@ -313,7 +325,7 @@ watch(dialogOpen, (open) => {
                     </div>
                     <div class="flex items-center justify-between gap-4 rounded-lg border bg-muted/30 px-3 py-2 sm:col-span-2">
                         <div>
-                            <p class="text-[13px] font-medium">Akun aktif</p>
+                            <p class="text-[13px] font-medium">Akun Aktif</p>
                             <p class="text-xs text-muted-foreground">Akun nonaktif tidak dapat masuk ke aplikasi.</p>
                         </div>
                         <Switch v-model="form.is_active" data-testid="user-form-active" />
@@ -338,7 +350,7 @@ watch(dialogOpen, (open) => {
 
             <ConfirmDeleteDialog
                 :open="Boolean(deleting)"
-                title="Hapus pengguna?"
+                title="Hapus Pengguna?"
                 :processing="deleteForm.processing"
                 @update:open="deleting = null"
                 @confirm="confirmDelete"
