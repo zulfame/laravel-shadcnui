@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { Pencil, Plus, Save, ToggleLeft, ToggleRight, Trash2, Users2, X } from 'lucide-vue-next';
+import { Download, Loader2, Pencil, Plus, Save, ToggleLeft, ToggleRight, Trash2, Upload, Users2, X } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
 import Badge from '@/components/ui/Badge.vue';
@@ -140,6 +140,42 @@ const submit = () => {
     else form.post('/users', options);
 };
 
+/* ── Ekspor CSV mengikuti filter aktif ───────────────────────────────── */
+const exportUrl = computed(() => {
+    const params = new URLSearchParams();
+    if (query.search) params.set('search', query.search);
+    if (query.status && query.status !== 'all') params.set('status', query.status);
+    if (query.role && query.role !== 'all') params.set('role', query.role);
+
+    return `/users/export?${params.toString()}`;
+});
+
+/* ── Impor pengguna (CSV) ────────────────────────────────────────────── */
+const importOpen = ref(false);
+const importInput = ref(null);
+const importForm = useForm({ file: null });
+
+const openImport = () => {
+    importForm.clearErrors();
+    importForm.reset();
+    importOpen.value = true;
+};
+
+const onImportFile = (event) => {
+    importForm.file = event.target.files?.[0] ?? null;
+};
+
+const submitImport = () =>
+    importForm.post('/users/import', {
+        preserveScroll: true,
+        forceFormData: true,
+        onSuccess: () => {
+            importOpen.value = false;
+            importForm.reset();
+            if (importInput.value) importInput.value.value = '';
+        },
+    });
+
 /* ── Seleksi & aksi massal ─────────────────────────────────────────── */
 const selected = ref([]);
 const bulkForm = useForm({ action: '', ids: [] });
@@ -252,6 +288,18 @@ watch(dialogOpen, (open) => {
                 </template>
 
                 <template #header-action>
+                    <Button variant="outline" size="sm" as="a" :href="exportUrl" data-testid="users-export">
+                        <Download class="size-4" /> {{ ACTION.export }}
+                    </Button>
+                    <Button
+                        v-if="canManage"
+                        variant="outline"
+                        size="sm"
+                        data-testid="users-import"
+                        @click="openImport"
+                    >
+                        <Upload class="size-4" /> {{ ACTION.import }}
+                    </Button>
                     <Button v-if="canManage" size="sm" data-testid="users-add" @click="openCreate">
                         <Plus class="size-4" /> {{ ACTION.add }}
                     </Button>
@@ -410,6 +458,48 @@ watch(dialogOpen, (open) => {
                         data-testid="user-form-save"
                     >
                         <Save class="size-4" /> {{ form.processing ? ACTION.saving : ACTION.save }}
+                    </Button>
+                </template>
+            </Dialog>
+
+            <!-- Dialog Impor Pengguna -->
+            <Dialog v-model:open="importOpen" title="Impor Pengguna" class="max-w-md">
+                <div class="form-dense space-y-[var(--field-gap)]">
+                    <p class="text-sm text-muted-foreground">
+                        Unggah berkas CSV dengan kolom berurutan:
+                        <span class="font-mono text-xs">name,username,email,phone,role,password</span>.
+                        Baris judul diabaikan, baris tidak valid dilewati, dan kata sandi yang kosong diisi acak.
+                    </p>
+                    <div class="space-y-[var(--item-gap)]">
+                        <Label for="user-import-file">Berkas CSV</Label>
+                        <input
+                            id="user-import-file"
+                            ref="importInput"
+                            type="file"
+                            accept=".csv,text/csv,text/plain"
+                            class="block w-full cursor-pointer rounded-md border border-input bg-transparent px-3 py-1.5 text-[13px] file:mr-3 file:rounded file:border-0 file:bg-secondary file:px-2 file:py-1 file:text-xs"
+                            data-testid="user-import-file"
+                            @change="onImportFile"
+                        />
+                        <p v-if="importForm.errors.file" class="text-xs font-medium text-destructive" data-testid="user-import-error">
+                            {{ importForm.errors.file }}
+                        </p>
+                    </div>
+                </div>
+
+                <template #footer>
+                    <Button variant="outline" size="sm" data-testid="user-import-cancel" @click="importOpen = false">
+                        <X class="size-4" /> {{ ACTION.cancel }}
+                    </Button>
+                    <Button
+                        size="sm"
+                        :disabled="!importForm.file || importForm.processing"
+                        data-testid="user-import-submit"
+                        @click="submitImport"
+                    >
+                        <Loader2 v-if="importForm.processing" class="size-4 animate-spin" />
+                        <Upload v-else class="size-4" />
+                        {{ ACTION.import }}
                     </Button>
                 </template>
             </Dialog>

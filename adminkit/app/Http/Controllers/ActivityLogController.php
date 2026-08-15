@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ActivityLog\DestroyRangeRequest;
 use App\Models\ActivityLog;
+use App\Support\Csv;
 use App\Support\TableQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ActivityLogController extends Controller
 {
@@ -100,6 +102,36 @@ class ActivityLogController extends Controller
                 'created_at_diff' => $log->created_at->diffForHumans(),
             ],
         ]);
+    }
+
+    /** Unduh CSV mengikuti filter aktif. */
+    public function export(Request $request): StreamedResponse
+    {
+        $search = TableQuery::search($request);
+        [$from, $to] = $this->range($request);
+
+        $rows = $this->query($search, $from, $to)
+            ->orderBy(TableQuery::sort($request, self::SORTABLE, 'created_at'), TableQuery::direction($request, 'desc'))
+            ->cursor()
+            ->map(fn (ActivityLog $log) => [
+                $log->created_at->format('Y-m-d H:i:s'),
+                $log->actor_name,
+                $log->action,
+                $log->module,
+                ActivityLog::LEVEL_LABELS[$log->level] ?? $log->level,
+                $log->ip,
+                $log->method,
+                $log->status_code,
+                $log->url,
+            ]);
+
+        ActivityLog::record('Mengekspor audit trail (CSV)', 'Audit Trail', 'info');
+
+        return Csv::stream(
+            Csv::filename('audit-trail'),
+            ['Waktu', 'Pelaku', 'Aksi', 'Modul', 'Level', 'Alamat IP', 'Metode', 'Kode Status', 'URL'],
+            $rows,
+        );
     }
 
     public function destroyRange(DestroyRangeRequest $request): RedirectResponse

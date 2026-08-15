@@ -6,12 +6,14 @@ use App\Enums\RoleName;
 use App\Http\Requests\Role\BulkRoleRequest;
 use App\Http\Requests\Role\ImportRoleRequest;
 use App\Http\Requests\Role\StoreRoleRequest;
+use App\Http\Requests\Role\SyncRolePermissionsRequest;
 use App\Models\ActivityLog;
 use App\Support\Notify;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
@@ -43,8 +45,58 @@ class RoleController extends Controller
                 'name' => $role->name,
                 'users_count' => $role->users()->count(),
                 'locked' => $role->name === RoleName::SuperAdmin->value,
+                'permissions' => $role->permissions->pluck('name')->all(),
             ],
+            'matrix' => $this->matrix(),
         ]);
+    }
+
+    /**
+     * Izin dikelompokkan per entitas (bagian sebelum titik) beserta aksinya —
+     * dipakai sebagai matriks hak akses di halaman detail peranan.
+     */
+    private function matrix(): array
+    {
+        return Permission::orderBy('name')->pluck('name')
+            ->groupBy(fn (string $name) => str($name)->before('.')->value())
+            ->map(fn ($names, $entity) => [
+                'entity' => $entity,
+                'abilities' => $names->map(fn (string $name) => [
+                    'name' => $name,
+                    'label' => str($name)->after('.')->replace('_', ' ')->title()->value(),
+                ])->values()->all(),
+            ])
+            ->values()->all();
+    }
+
+    /** Simpan matriks hak akses satu peranan. */
+    public function syncPermissions(SyncRolePermissionsRequest $request, Role $role): RedirectResponse
+    {
+        abort_if($role->name === RoleName::SuperAdmin->value, 403, 'Peranan Super Admin tidak dapat diubah.');
+
+        $before = $role->permissions->pluck('name')->sort()->values()->all();
+        $after = collect($request->validated()['permissions'])->unique()->sort()->values()->all();
+
+        $role->syncPermissions($after);
+
+        ActivityLog::record(
+            "Memperbarui hak akses peranan {$role->name}",
+            'Peranan',
+            'info',
+            $role,
+            ['permissions' => ['old' => implode(', ', $before), 'new' => implode(', ', $after)]],
+        );
+
+        Notify::toPermission(
+            permission: 'roles.view',
+            title: 'Hak akses peranan diperbarui',
+            module: 'Peranan',
+            body: $role->name,
+            url: "/roles/{$role->id}",
+            level: 'info',
+        );
+
+        return back()->with('success', 'Hak akses peranan disimpan.');
     }
 
     public function store(StoreRoleRequest $request): RedirectResponse

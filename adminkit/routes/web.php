@@ -52,22 +52,27 @@ Route::middleware('auth')->group(function () {
         Route::delete('/profile/avatar', [ProfileController::class, 'destroyAvatar'])->name('profile.avatar.destroy');
     });
 
-    Route::get('/users', [UserController::class, 'index'])
-        ->middleware('permission:users.view')->name('users.index');
+    Route::middleware('permission:users.view')->group(function () {
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::get('/users/export', [UserController::class, 'export'])->name('users.export');
+    });
 
     Route::middleware('permission:users.manage')->group(function () {
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::post('/users/bulk', [UserController::class, 'bulk'])->name('users.bulk');
+        Route::post('/users/import', [UserController::class, 'import'])->name('users.import');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
     });
 
     Route::middleware('permission:permissions.view')->group(function () {
         Route::get('/permissions', [PermissionController::class, 'index'])->name('permissions.index');
+        Route::get('/permissions/export', [PermissionController::class, 'export'])->name('permissions.export');
     });
 
     Route::middleware('permission:permissions.manage')->group(function () {
         Route::post('/permissions', [PermissionController::class, 'store'])->name('permissions.store');
+        Route::post('/permissions/generate', [PermissionController::class, 'generate'])->name('permissions.generate');
         Route::post('/permissions/bulk-destroy', [PermissionController::class, 'bulkDestroy'])
             ->name('permissions.bulk-destroy');
         Route::put('/permissions/{permission}', [PermissionController::class, 'update'])->name('permissions.update');
@@ -85,11 +90,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/roles/import', [RoleController::class, 'import'])->name('roles.import');
         Route::post('/roles/bulk-destroy', [RoleController::class, 'bulkDestroy'])->name('roles.bulk-destroy');
         Route::put('/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
+        Route::put('/roles/{role}/permissions', [RoleController::class, 'syncPermissions'])
+            ->name('roles.permissions');
         Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
     });
 
     Route::middleware('permission:activity.view')->group(function () {
         Route::get('/audit-trail', [ActivityLogController::class, 'index'])->name('audit.index');
+        Route::get('/audit-trail/export', [ActivityLogController::class, 'export'])->name('audit.export');
         Route::get('/audit-trail/{log}', [ActivityLogController::class, 'show'])->name('audit.show');
     });
 

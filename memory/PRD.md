@@ -134,6 +134,13 @@ Backlog kualitas: Pest feature test (auth, CRUD, otorisasi), ESLint + Prettier, 
 - **Badge lebih solid**: `.state-chip` kini isian penuh `hsl(var(--chip))` dengan teks kontras `hsl(var(--background))`; varian `secondary` pada `Badge` menjadi solid (`bg-foreground/85 text-background`), varian lembut lama tetap tersedia sebagai `muted`.
 - Terverifikasi di tema terang & gelap tanpa error console.
 
+## Selesai (2026-06-15, matriks hak akses + generator izin + CSV ekspor/impor)
+- **Matriks hak akses** (`RoleDetail.vue` + `RoleController::matrix()/syncPermissions()`, `PUT /roles/{role}/permissions`): izin dikelompokkan per entitas (prefix sebelum titik), toggle per entitas & global, pencarian izin, penghitung terpilih. Super Admin read-only (kontrol disabled + 403 server). Diff izin lama→baru tercatat di audit trail + notifikasi `roles.view`.
+- **Generator izin standar** (`POST /permissions/generate`, `GeneratePermissionRequest::ABILITIES` = view, view_any, create, update, delete, delete_any): entitas divalidasi huruf kecil, izin yang sudah ada dilewati.
+- **Ekspor CSV** mengikuti filter aktif: `/users/export`, `/permissions/export`, `/audit-trail/export` memakai `App\Support\Csv` (streaming + BOM UTF-8); URL dibangun dari state `useServerTable` di frontend (tombol `Button as="a"`).
+- **Impor pengguna** (`POST /users/import`, `ImportUserRequest`): kolom `name,username,email,phone,role,password`, validasi per baris memakai `Rules`, baris invalid dilewati, kata sandi kosong → `Str::password(12)`.
+- Uji iterasi 21: backend 40/40, frontend 100%. Testing agent menemukan & memperbaiki satu bug: `Rule::in()` dipakai tanpa `use Illuminate\Validation\Rule;` di `UserController::import()`.
+
 ## Selesai (2026-06-15, modul Perizinan)
 - Modul baru **Perizinan** (`permissions.view` / `permissions.manage`) ditambahkan ke `Modules::MAP` dan di-seed ke Super Admin; menu sidebar diletakkan **tepat di atas Peranan**, breadcrumb + ADMIN_ROUTES diperbarui.
 - Halaman `/permissions` (`Permissions.vue`): tabel server-side (cari, sortir nama/guard, filter Entitas dinamis, paginasi), checkbox + hapus massal, dialog Tambah/Ubah dengan validasi format `entitas.aksi` (cermin di UI & `StorePermissionRequest`).

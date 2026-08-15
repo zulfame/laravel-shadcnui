@@ -272,3 +272,282 @@ def _cleanup(session):
         row = _find(session, name)
         if row and not row["locked"]:
             _delete(session, f"/permissions/{row['id']}")
+
+
+
+# =====================================================================
+# NEW FEATURES: Role permission matrix, Generator, Exports, User import
+# =====================================================================
+
+def _roles(session):
+    r = _get(session, "/roles")
+    assert r.status_code == 200
+    return r.json()["props"]["roles"]
+
+
+def _role_by_name(session, name):
+    for role in _roles(session):
+        if role["name"] == name:
+            return role
+    return None
+
+
+def _multipart_headers(session):
+    """Headers for multipart file upload (do NOT set Content-Type; requests sets it)."""
+    v = getattr(session, "_inertia_version", "")
+    return {
+        "X-XSRF-TOKEN": _xsrf(session),
+        "X-Inertia": "true",
+        "X-Inertia-Version": v,
+        "X-Requested-With": "XMLHttpRequest",
+        "Accept": "application/json",
+        "Referer": f"{BASE_URL}/",
+    }
+
+
+# ---------- ROLE PERMISSION MATRIX ----------
+class TestRolePermissionMatrix:
+    def test_show_role_returns_matrix(self, session):
+        role = _role_by_name(session, "Super Admin") or _roles(session)[0]
+        r = _get(session, f"/roles/{role['id']}")
+        assert r.status_code == 200
+        props = r.json()["props"]
+        assert "matrix" in props and isinstance(props["matrix"], list)
+        entities = {g["entity"] for g in props["matrix"]}
+        for e in ["activity", "appearance", "dashboard", "permissions", "profile", "roles", "storage", "users"]:
+            assert e in entities, f"missing matrix entity {e}"
+        # abilities shape
+        first = props["matrix"][0]
+        assert "abilities" in first and first["abilities"]
+        assert "name" in first["abilities"][0] and "label" in first["abilities"][0]
+
+    def test_super_admin_is_locked(self, session):
+        role = _role_by_name(session, "Super Admin")
+        assert role is not None
+        r = _get(session, f"/roles/{role['id']}")
+        assert r.json()["props"]["role"]["locked"] is True
+
+    def test_super_admin_sync_403(self, session):
+        role = _role_by_name(session, "Super Admin")
+        r = _put(session, f"/roles/{role['id']}/permissions", {"permissions": ["users.view"]})
+        assert r.status_code == 403, f"expected 403, got {r.status_code}: {r.text[:200]}"
+
+    def test_sync_non_super_admin_and_persist(self, session):
+        # Use any non-super role that exists (user-owned like 'Akunting' preferred).
+        target = None
+        for role in _roles(session):
+            if not role["locked"] and role["users_count"] == 0:
+                target = role
+                break
+        # If none with users_count=0, use first non-locked (we WILL restore to original).
+        if target is None:
+            for role in _roles(session):
+                if not role["locked"]:
+                    target = role
+                    break
+        assert target is not None
+        original = list(target["permissions"])
+
+        try:
+            # Set to specific set
+            new_perms = ["users.view", "users.manage", "dashboard.view"]
+            r = _put(session, f"/roles/{target['id']}/permissions", {"permissions": new_perms})
+            assert r.status_code in (200, 302, 303), r.text[:200]
+
+            # Reload and verify
+            r = _get(session, f"/roles/{target['id']}")
+            got = set(r.json()["props"]["role"]["permissions"])
+            assert got == set(new_perms), f"got {got}"
+        finally:
+            # Restore
+            _put(session, f"/roles/{target['id']}/permissions", {"permissions": original})
+            r = _get(session, f"/roles/{target['id']}")
+            assert set(r.json()["props"]["role"]["permissions"]) == set(original)
+
+    def test_sync_unknown_permission_returns_422(self, session):
+        target = None
+        for role in _roles(session):
+            if not role["locked"]:
+                target = role
+                break
+        assert target
+        r = _put(session, f"/roles/{target['id']}/permissions", {"permissions": ["does.not_exist_qa"]})
+        assert r.status_code == 422
+
+
+# ---------- PERMISSION GENERATOR ----------
+class TestPermissionGenerator:
+    ABILITIES = ["view", "view_any", "create", "update", "delete", "delete_any"]
+
+    def _cleanup_qa_projects(self, session):
+        # Fetch and delete all qa_projects.* rows
+        r = _get(session, "/permissions?entity=qa_projects&per_page=50")
+        for row in r.json()["props"]["permissions"]["data"]:
+            if not row["locked"]:
+                _delete(session, f"/permissions/{row['id']}")
+
+    def test_generate_creates_6(self, session):
+        self._cleanup_qa_projects(session)
+        r = _post(session, "/permissions/generate", {"entity": "qa_projects", "abilities": self.ABILITIES})
+        assert r.status_code in (200, 302, 303), f"got {r.status_code}: {r.text[:300]}"
+        rows = _get(session, "/permissions?entity=qa_projects&per_page=50").json()["props"]["permissions"]["data"]
+        names = {row["name"] for row in rows}
+        for ab in self.ABILITIES:
+            assert f"qa_projects.{ab}" in names, f"missing qa_projects.{ab}"
+
+    def test_generate_second_time_skips_all(self, session):
+        # Already created — running again should return error 'sudah ada'
+        r = _post(session, "/permissions/generate", {"entity": "qa_projects", "abilities": self.ABILITIES})
+        assert r.status_code in (200, 302, 303)
+        # Count remains 6
+        rows = _get(session, "/permissions?entity=qa_projects&per_page=50").json()["props"]["permissions"]["data"]
+        qa_rows = [r for r in rows if r["name"].startswith("qa_projects.")]
+        assert len(qa_rows) == 6
+
+    def test_generate_uppercase_entity_422(self, session):
+        r = _post(session, "/permissions/generate", {"entity": "QA Projects", "abilities": ["view"]})
+        assert r.status_code == 422
+
+    def test_generate_no_abilities_422(self, session):
+        r = _post(session, "/permissions/generate", {"entity": "qa_something", "abilities": []})
+        assert r.status_code == 422
+
+    def test_cleanup_qa_projects(self, session):
+        self._cleanup_qa_projects(session)
+        rows = _get(session, "/permissions?entity=qa_projects&per_page=50").json()["props"]["permissions"]["data"]
+        assert not any(r["name"].startswith("qa_projects.") for r in rows)
+
+
+# ---------- CSV EXPORT ----------
+class TestCsvExport:
+    UTF8_BOM = b"\xef\xbb\xbf"
+
+    def _download(self, session, path):
+        v = getattr(session, "_inertia_version", "")
+        r = session.get(f"{BASE_URL}{path}", headers={"Accept": "text/csv,*/*"}, timeout=60)
+        return r
+
+    def test_users_export(self, session):
+        r = self._download(session, "/users/export")
+        assert r.status_code == 200
+        assert "text/csv" in r.headers.get("Content-Type", "")
+        body = r.content
+        assert body.startswith(self.UTF8_BOM), f"missing BOM: {body[:20]!r}"
+        # Header row (Indonesian)
+        first_line = body[len(self.UTF8_BOM):].split(b"\n")[0].decode("utf-8")
+        for col in ["Nama Lengkap", "Nama Pengguna", "Alamat Email", "Nomor HP", "Peranan", "Status", "Terakhir Login"]:
+            assert col in first_line, f"missing column {col} in {first_line}"
+
+    def test_users_export_respects_role_filter(self, session):
+        # Compare CSV row count with table count filtered by role=Super Admin
+        r = _get(session, "/users?role=Super Admin&per_page=100")
+        table_count = len(r.json()["props"]["users"]["data"])
+        csv = self._download(session, "/users/export?role=Super Admin").content
+        lines = [l for l in csv[len(self.UTF8_BOM):].split(b"\n") if l.strip()]
+        data_rows = len(lines) - 1  # minus header
+        assert data_rows == table_count, f"csv rows {data_rows} != table rows {table_count}"
+
+    def test_permissions_export(self, session):
+        r = self._download(session, "/permissions/export?entity=users")
+        assert r.status_code == 200
+        assert "text/csv" in r.headers.get("Content-Type", "")
+        body = r.content
+        assert body.startswith(self.UTF8_BOM)
+        first_line = body[len(self.UTF8_BOM):].split(b"\n")[0].decode("utf-8")
+        for col in ["Nama Izin", "Entitas", "Aksi", "Guard", "Jumlah Peranan"]:
+            assert col in first_line
+        # every data row should start with users.
+        data = body[len(self.UTF8_BOM):].split(b"\n")[1:]
+        data = [d for d in data if d.strip()]
+        for row in data:
+            assert row.startswith(b"users."), f"unexpected row in filtered export: {row!r}"
+
+    def test_audit_export(self, session):
+        r = self._download(session, "/audit-trail/export")
+        assert r.status_code == 200
+        assert "text/csv" in r.headers.get("Content-Type", "")
+        body = r.content
+        assert body.startswith(self.UTF8_BOM)
+        first_line = body[len(self.UTF8_BOM):].split(b"\n")[0].decode("utf-8")
+        for col in ["Waktu", "Pelaku", "Aksi", "Modul", "Level", "Alamat IP", "Metode", "Kode Status", "URL"]:
+            assert col in first_line, f"missing {col} in {first_line}"
+
+
+# ---------- USER IMPORT ----------
+class TestUserImport:
+    QA_USERNAMES = ["qa_impor1", "qa_impor2"]
+
+    def _users_by_username(self, session, username):
+        r = _get(session, f"/users?search={username}&per_page=50")
+        for row in r.json()["props"]["users"]["data"]:
+            if row["username"] == username:
+                return row
+        return None
+
+    def _cleanup(self, session):
+        for uname in self.QA_USERNAMES:
+            u = self._users_by_username(session, uname)
+            if u:
+                _delete(session, f"/users/{u['id']}")
+
+    def test_import_valid_csv(self, session):
+        self._cleanup(session)
+        csv_body = (
+            "name,username,email,phone,role,password\n"
+            "QA Impor Satu,qa_impor1,qa1@example.test,081200000001,Staf,secret123\n"
+            "QA Impor Dua,qa_impor2,qa2@example.test,,Staf,\n"
+            ",qa_bad,qa3@example.test,081200000003,Staf,secret123\n"  # invalid: empty name
+        ).encode("utf-8")
+
+        files = {"file": ("qa_impor.csv", csv_body, "text/csv")}
+        r = session.post(
+            f"{BASE_URL}/users/import",
+            files=files,
+            headers=_multipart_headers(session),
+            timeout=60,
+            allow_redirects=False,
+        )
+        assert r.status_code in (200, 302, 303), f"got {r.status_code}: {r.text[:400]}"
+
+        # Verify both valid users exist, with role Staf and is_active
+        u1 = self._users_by_username(session, "qa_impor1")
+        u2 = self._users_by_username(session, "qa_impor2")
+        assert u1, "qa_impor1 missing"
+        assert u2, "qa_impor2 missing"
+        assert u1["role"] == "Staf" and u1["is_active"] is True
+        assert u2["role"] == "Staf" and u2["is_active"] is True
+        # invalid row skipped
+        assert self._users_by_username(session, "qa_bad") is None
+
+        self._cleanup(session)
+
+    def test_import_png_rejected(self, session):
+        # A tiny fake PNG magic-bytes buffer
+        png = b"\x89PNG\r\n\x1a\n" + b"\0" * 100
+        files = {"file": ("bad.png", png, "image/png")}
+        r = session.post(
+            f"{BASE_URL}/users/import",
+            files=files,
+            headers=_multipart_headers(session),
+            timeout=30,
+            allow_redirects=False,
+        )
+        assert r.status_code == 422, f"expected 422, got {r.status_code}: {r.text[:200]}"
+
+
+# ---------- FINAL CLEANUP for new tests ----------
+@pytest.fixture(scope="session", autouse=True)
+def _cleanup_new(session):
+    yield
+    # qa_projects.*
+    r = _get(session, "/permissions?entity=qa_projects&per_page=50")
+    if r.status_code == 200:
+        for row in r.json()["props"]["permissions"]["data"]:
+            if not row["locked"]:
+                _delete(session, f"/permissions/{row['id']}")
+    # qa_impor users
+    for uname in ["qa_impor1", "qa_impor2"]:
+        r = _get(session, f"/users?search={uname}&per_page=50")
+        for row in r.json()["props"]["users"]["data"]:
+            if row["username"] == uname:
+                _delete(session, f"/users/{row['id']}")

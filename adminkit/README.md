@@ -56,25 +56,32 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 - Halaman `/permissions` untuk mengelola permission Spatie: tabel server-side (pencarian, sortir, filter **Entitas** dinamis, paginasi), tambah/ubah/hapus, dan hapus massal.
 - Nama izin wajib berformat `entitas.aksi` huruf kecil (mis. `projects.view`, `projects.delete_any`).
 - **Izin inti** bawaan modul (`Modules::permissions()`) terkunci: ikon kunci, tanpa menu aksi, dan ditolak 403 dari server bila dipaksa diubah/dihapus.
+- **Generator izin standar**: masukkan entitas lalu pilih aksi (`view`, `view_any`, `create`, `update`, `delete`, `delete_any`) — izin yang sudah ada dilewati.
 
 **Peranan** (dinamis) dan **Status**.
 - Dialog tambah/ubah dengan validasi cepat; hanya **Nama, Peranan, Kata Sandi** yang wajib.
+- **Impor CSV** (kolom berurutan `name,username,email,phone,role,password`; baris judul diabaikan, baris tidak valid dilewati, kata sandi kosong diisi acak) dan **Ekspor CSV** mengikuti filter aktif.
 - `username`, `email`, `phone` opsional namun **unik**; nomor HP hanya menerima angka (boleh `+`).
 
 **Perizinan**
 - Halaman `/permissions` untuk mengelola permission Spatie: tabel server-side (pencarian, sortir, filter **Entitas** dinamis, paginasi), tambah/ubah/hapus, dan hapus massal.
 - Nama izin wajib berformat `entitas.aksi` huruf kecil (mis. `projects.view`, `projects.delete_any`).
 - **Izin inti** bawaan modul (`Modules::permissions()`) terkunci: ikon kunci, tanpa menu aksi, dan ditolak 403 dari server bila dipaksa diubah/dihapus.
+- **Generator izin standar**: masukkan entitas lalu pilih aksi (`view`, `view_any`, `create`, `update`, `delete`, `delete_any`) — izin yang sudah ada dilewati.
 
 **Peranan**
 - CRUD peranan, peranan `Super Admin` terkunci dari perubahan/penghapusan.
 - **Impor peranan dari CSV** (satu nama per baris, header `name` diabaikan, duplikat dilewati).
-- Halaman detail peranan (placeholder untuk pengaturan hak akses lanjutan).
+- **Matriks hak akses** di halaman detail peranan: izin dikelompokkan per entitas, toggle "pilih semua" per entitas dan global, pencarian izin, penghitung izin terpilih (Super Admin bersifat read-only).
 
 **Audit Trail**
 - Mencatat siapa mengubah apa, **diff nilai sebelum → sesudah**, konteks permintaan, dan kegagalan sistem.
 - Halaman detail khusus pengembang termasuk **Payload Mentah (JSON)**.
 - Hapus jejak audit berdasarkan rentang tanggal.
+
+**Ekspor & Impor**
+- Ekspor CSV **mengikuti filter aktif** di Pengguna (`/users/export`), Perizinan (`/permissions/export`), dan Audit Trail (`/audit-trail/export`) — streaming via `App\Support\Csv` dengan BOM UTF-8 agar rapi di Excel.
+- Impor CSV untuk Pengguna (`POST /users/import`) dan Peranan (`POST /roles/import`).
 
 **Notifikasi**
 - Notifikasi **per pengguna** (tabel `notifications`, satu baris = satu penerima) — bukan siaran ke semua orang.
@@ -416,6 +423,10 @@ Nilai `'all'` dipakai sebagai sentinel filter "semua" karena `reka-ui` melarang 
 | GET | `/permissions` | Daftar izin (Perizinan) |
 | POST/PUT/DELETE | `/permissions`, `/permissions/{permission}` | CRUD izin |
 | POST | `/permissions/bulk-destroy` | Hapus massal izin |
+| POST | `/permissions/generate` | Generator izin standar per entitas |
+| GET | `/permissions/export`, `/users/export`, `/audit-trail/export` | Unduh CSV sesuai filter aktif |
+| POST | `/users/import` | Impor pengguna dari CSV |
+| PUT | `/roles/{role}/permissions` | Simpan matriks hak akses peranan |
 | GET | `/roles`, `/roles/{role}` | Daftar & detail peranan |
 | POST/PUT/DELETE | `/roles`, `/roles/{role}` | CRUD peranan |
 | POST | `/roles/import` | Impor peranan dari CSV |

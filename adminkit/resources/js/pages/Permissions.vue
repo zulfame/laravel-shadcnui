@@ -1,11 +1,12 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { KeyRound, Lock, Pencil, Plus, Save, Trash2, X } from 'lucide-vue-next';
+import { Download, KeyRound, Lock, Pencil, Plus, Save, Trash2, Wand2, X } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
 import Badge from '@/components/ui/Badge.vue';
 import Button from '@/components/ui/Button.vue';
+import Checkbox from '@/components/ui/Checkbox.vue';
 import Combobox from '@/components/ui/Combobox.vue';
 import Dialog from '@/components/ui/Dialog.vue';
 import DropdownMenuItem from '@/components/ui/DropdownMenuItem.vue';
@@ -24,6 +25,7 @@ const props = defineProps({
     permissions: { type: Object, required: true },
     filters: { type: Object, default: () => ({}) },
     entityOptions: { type: Array, default: () => [] },
+    abilityOptions: { type: Array, default: () => [] },
 });
 
 const page = usePage();
@@ -90,6 +92,39 @@ const submit = () =>
         if (editing.value) form.put(`/permissions/${editing.value.id}`, options);
         else form.post('/permissions', options);
     });
+
+/* ── Generator izin standar ──────────────────────────────────────────── */
+const generatorOpen = ref(false);
+const generator = useForm({ entity: '', abilities: [...props.abilityOptions] });
+
+const openGenerator = () => {
+    generator.clearErrors();
+    generator.reset();
+    generatorOpen.value = true;
+};
+
+const toggleAbility = (ability, checked) => {
+    generator.abilities = checked
+        ? [...generator.abilities, ability]
+        : generator.abilities.filter((a) => a !== ability);
+};
+
+const submitGenerator = () =>
+    generator.post('/permissions/generate', {
+        preserveScroll: true,
+        onSuccess: () => (generatorOpen.value = false),
+    });
+
+/* ── Ekspor CSV mengikuti filter aktif ───────────────────────────────── */
+const exportUrl = computed(() => {
+    const params = new URLSearchParams();
+    if (query.search) params.set('search', query.search);
+    if (query.entity && query.entity !== 'all') params.set('entity', query.entity);
+    params.set('sort', query.sort);
+    params.set('dir', query.dir);
+
+    return `/permissions/export?${params.toString()}`;
+});
 
 /* ── Hapus & aksi massal ─────────────────────────────────────────────── */
 const deleting = ref(null);
@@ -166,6 +201,18 @@ const runBulkDelete = () => {
                 </template>
 
                 <template #header-action>
+                    <Button variant="outline" size="sm" as="a" :href="exportUrl" data-testid="permissions-export">
+                        <Download class="size-4" /> {{ ACTION.export }}
+                    </Button>
+                    <Button
+                        v-if="canManage"
+                        variant="outline"
+                        size="sm"
+                        data-testid="permissions-generate"
+                        @click="openGenerator"
+                    >
+                        <Wand2 class="size-4" /> Generator
+                    </Button>
                     <Button v-if="canManage" size="sm" data-testid="permissions-add" @click="openCreate">
                         <Plus class="size-4" /> {{ ACTION.add }}
                     </Button>
@@ -252,6 +299,64 @@ const runBulkDelete = () => {
                         data-testid="permission-form-save"
                     >
                         <Save class="size-4" /> {{ form.processing ? ACTION.saving : ACTION.save }}
+                    </Button>
+                </template>
+            </Dialog>
+
+            <!-- Dialog Generator Izin Standar -->
+            <Dialog v-model:open="generatorOpen" title="Generator Izin Standar" class="max-w-md">
+                <div class="form-dense space-y-[var(--field-gap)]">
+                    <div class="space-y-[var(--item-gap)]">
+                        <Label for="g-entity">Entitas</Label>
+                        <Input
+                            id="g-entity"
+                            v-model="generator.entity"
+                            class="font-mono"
+                            placeholder="projects"
+                            maxlength="40"
+                            data-testid="generator-entity"
+                        />
+                        <p v-if="generator.errors.entity" class="text-xs font-medium text-destructive" data-testid="generator-entity-error">
+                            {{ generator.errors.entity }}
+                        </p>
+                    </div>
+                    <div class="space-y-[var(--item-gap)]">
+                        <Label>Aksi Standar</Label>
+                        <ul class="grid grid-cols-2 gap-1.5 rounded-lg border p-2">
+                            <li
+                                v-for="ability in props.abilityOptions"
+                                :key="ability"
+                                class="flex items-center gap-2"
+                            >
+                                <Checkbox
+                                    :model-value="generator.abilities.includes(ability)"
+                                    :aria-label="ability"
+                                    :data-testid="`generator-ability-${ability}`"
+                                    @update:model-value="toggleAbility(ability, $event)"
+                                />
+                                <span class="font-mono text-xs">{{ ability }}</span>
+                            </li>
+                        </ul>
+                        <p v-if="generator.errors.abilities" class="text-xs font-medium text-destructive" data-testid="generator-abilities-error">
+                            {{ generator.errors.abilities }}
+                        </p>
+                        <p v-else class="text-xs text-muted-foreground">
+                            Izin dibuat dengan pola <span class="font-mono">entitas.aksi</span>; yang sudah ada dilewati.
+                        </p>
+                    </div>
+                </div>
+
+                <template #footer>
+                    <Button variant="outline" size="sm" data-testid="generator-cancel" @click="generatorOpen = false">
+                        <X class="size-4" /> {{ ACTION.cancel }}
+                    </Button>
+                    <Button
+                        size="sm"
+                        :disabled="generator.processing"
+                        data-testid="generator-submit"
+                        @click="submitGenerator"
+                    >
+                        <Wand2 class="size-4" /> Buat Izin
                     </Button>
                 </template>
             </Dialog>

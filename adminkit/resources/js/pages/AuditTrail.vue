@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
-import { ScrollText, Trash2, X } from 'lucide-vue-next';
+import { Download, ScrollText, Trash2, X } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
 import Badge from '@/components/ui/Badge.vue';
@@ -45,6 +45,17 @@ const { query, loading, reload, onSearch, onSort, onPage, onPerPage, onFilter, s
 });
 
 const hasRange = computed(() => Boolean(query.date_from && query.date_to));
+
+const exportUrl = computed(() => {
+    const params = new URLSearchParams();
+    if (query.search) params.set('search', query.search);
+    if (query.date_from) params.set('date_from', query.date_from);
+    if (query.date_to) params.set('date_to', query.date_to);
+    params.set('sort', query.sort);
+    params.set('dir', query.dir);
+
+    return `/audit-trail/export?${params.toString()}`;
+});
 
 const openDetail = (row) => router.get(`/audit-trail/${row.id}`);
 
@@ -124,6 +135,9 @@ const fmt = (iso) =>
                 </template>
 
                 <template #header-action>
+                    <Button variant="outline" size="sm" as="a" :href="exportUrl" data-testid="audit-export">
+                        <Download class="size-4" /> {{ ACTION.export }}
+                    </Button>
                     <Button
                         v-if="canManage"
                         variant="outline"

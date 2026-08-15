@@ -3,17 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\User\BulkUserRequest;
+use App\Http\Requests\User\ImportUserRequest;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Models\ActivityLog;
 use App\Models\User;
+use App\Support\Csv;
 use App\Support\Notify;
+use App\Support\Rules;
 use App\Support\TableQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Role;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class UserController extends Controller
 {
@@ -133,6 +140,125 @@ class UserController extends Controller
         ActivityLog::record("Memperbarui pengguna {$user->name}", 'Pengguna', 'info', $user, $changes);
 
         return back()->with('success', "Pengguna {$user->name} diperbarui.");
+    }
+
+    /**
+     * Impor pengguna dari CSV dengan kolom:
+     * name,username,email,phone,role,password (baris judul opsional).
+     * Baris yang tidak lolos validasi dilewati; kata sandi kosong diisi acak.
+     */
+    public function import(ImportUserRequest $request): RedirectResponse
+    {
+        $lines = array_filter(array_map(
+            'trim',
+            explode("\n", (string) file_get_contents($request->file('file')->getRealPath()))
+        ));
+
+        $roles = Role::pluck('name')->all();
+        $added = 0;
+        $skipped = 0;
+
+        foreach ($lines as $line) {
+            $cols = array_map(fn ($v) => trim(str_replace('"', '', $v)), explode(',', $line));
+            $row = [
+                'name' => $cols[0] ?? null,
+                'username' => ($cols[1] ?? '') ?: null,
+                'email' => ($cols[2] ?? '') ?: null,
+                'phone' => ($cols[3] ?? '') ?: null,
+                'role' => ($cols[4] ?? '') ?: null,
+                'password' => ($cols[5] ?? '') ?: Str::password(12),
+            ];
+
+            if (mb_strtolower((string) $row['name']) === 'name') {
+                continue;
+            }
+
+            $validator = Validator::make($row, [
+                'name' => Rules::personName(),
+                'username' => Rules::username(),
+                'email' => Rules::email(),
+                'phone' => Rules::phone(),
+                'role' => ['required', 'string', Rule::in($roles)],
+                'password' => Rules::password(),
+            ]);
+
+            if ($validator->fails()) {
+                $skipped++;
+
+                continue;
+            }
+
+            $user = User::create([
+                'name' => $row['name'],
+                'username' => $row['username'],
+                'email' => $row['email'],
+                'phone' => $row['phone'],
+                'password' => Hash::make($row['password']),
+                'is_active' => true,
+            ]);
+            $user->syncRoles([$row['role']]);
+            $added++;
+        }
+
+        ActivityLog::record(
+            "Mengimpor {$added} pengguna",
+            'Pengguna',
+            'success',
+            context: ['diimpor' => $added, 'dilewati' => $skipped],
+        );
+
+        if ($added > 0) {
+            Notify::toPermission(
+                permission: 'users.view',
+                title: 'Pengguna diimpor',
+                module: 'Pengguna',
+                body: "{$added} pengguna",
+                url: '/users',
+                level: 'success',
+            );
+        }
+
+        return back()->with(
+            $added > 0 ? 'success' : 'error',
+            "{$added} pengguna diimpor, {$skipped} dilewati."
+        );
+    }
+
+    /** Unduh CSV mengikuti filter aktif. */
+    public function export(Request $request): StreamedResponse
+    {
+        $search = TableQuery::search($request);
+        $status = TableQuery::filter($request, 'status');
+        $role = TableQuery::filter($request, 'role');
+
+        $rows = User::query()
+            ->with('roles')
+            ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
+                ->where('name', 'like', "%{$search}%")
+                ->orWhere('username', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%")
+                ->orWhere('phone', 'like', "%{$search}%")))
+            ->when($status !== '', fn ($q) => $q->where('is_active', $status === 'aktif'))
+            ->when($role !== '', fn ($q) => $q->whereHas('roles', fn ($r) => $r->where('name', $role)))
+            ->orderBy('name')
+            ->cursor()
+            ->map(fn (User $u) => [
+                $u->name,
+                $u->username,
+                $u->email,
+                $u->phone,
+                $u->roles->first()?->name,
+                $u->is_active ? 'Aktif' : 'Nonaktif',
+                $u->last_login_at?->format('Y-m-d H:i'),
+            ]);
+
+        ActivityLog::record('Mengekspor daftar pengguna (CSV)', 'Pengguna', 'info');
+
+        return Csv::stream(
+            Csv::filename('pengguna'),
+            ['Nama Lengkap', 'Nama Pengguna', 'Alamat Email', 'Nomor HP', 'Peranan', 'Status', 'Terakhir Login'],
+            $rows,
+        );
     }
 
     /** Aksi massal: hapus, aktifkan, atau nonaktifkan baris terpilih. */

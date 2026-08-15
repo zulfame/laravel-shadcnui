@@ -1,19 +1,70 @@
 <script setup>
-import { Head, router } from '@inertiajs/vue3';
-import { ArrowLeft, ShieldCheck } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
+import { Head, router, useForm } from '@inertiajs/vue3';
+import { ArrowLeft, Lock, Save } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
+import Badge from '@/components/ui/Badge.vue';
 import Button from '@/components/ui/Button.vue';
 import Card from '@/components/ui/Card.vue';
 import CardContent from '@/components/ui/CardContent.vue';
+import CardFooter from '@/components/ui/CardFooter.vue';
 import CardHeader from '@/components/ui/CardHeader.vue';
 import CardTitle from '@/components/ui/CardTitle.vue';
-import EmptyState from '@/components/composite/EmptyState.vue';
+import Checkbox from '@/components/ui/Checkbox.vue';
+import Input from '@/components/ui/Input.vue';
+import Label from '@/components/ui/Label.vue';
+import Switch from '@/components/ui/Switch.vue';
 import { ACTION } from '@/constants/labels';
 
 const props = defineProps({
     role: { type: Object, required: true },
+    matrix: { type: Array, default: () => [] },
 });
+
+const form = useForm({ permissions: [...props.role.permissions] });
+const search = ref('');
+
+const groups = computed(() => {
+    const term = search.value.trim().toLowerCase();
+
+    return props.matrix
+        .map((group) => ({
+            ...group,
+            abilities: term
+                ? group.abilities.filter(
+                      (a) => a.name.includes(term) || group.entity.includes(term),
+                  )
+                : group.abilities,
+        }))
+        .filter((group) => group.abilities.length);
+});
+
+const has = (name) => form.permissions.includes(name);
+
+const toggle = (name, checked) => {
+    form.permissions = checked
+        ? [...form.permissions, name]
+        : form.permissions.filter((p) => p !== name);
+};
+
+const groupChecked = (group) => group.abilities.every((a) => has(a.name));
+
+const toggleGroup = (group, checked) => {
+    const names = group.abilities.map((a) => a.name);
+    form.permissions = checked
+        ? [...new Set([...form.permissions, ...names])]
+        : form.permissions.filter((p) => !names.includes(p));
+};
+
+const allNames = computed(() => props.matrix.flatMap((g) => g.abilities.map((a) => a.name)));
+const allChecked = computed(() => allNames.value.length > 0 && allNames.value.every(has));
+
+const toggleAll = (checked) => {
+    form.permissions = checked ? [...allNames.value] : [];
+};
+
+const save = () => form.put(`/roles/${props.role.id}/permissions`, { preserveScroll: true });
 </script>
 
 <template>
@@ -21,20 +72,101 @@ const props = defineProps({
     <AppLayout>
         <div class="space-y-6" data-testid="role-detail-page">
             <Card>
-                <CardHeader class="flex-row items-center justify-between gap-4">
-                    <CardTitle data-testid="role-detail-name">{{ props.role.name }}</CardTitle>
+                <CardHeader class="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex min-w-0 items-center gap-2.5">
+                        <CardTitle class="truncate" data-testid="role-detail-name">{{ props.role.name }}</CardTitle>
+                        <Badge variant="secondary" class="font-normal" data-testid="role-detail-users">
+                            {{ props.role.users_count }} pengguna
+                        </Badge>
+                        <Lock v-if="props.role.locked" class="size-3.5 text-muted-foreground" aria-label="Terkunci" />
+                    </div>
                     <Button variant="outline" size="sm" data-testid="role-detail-back" @click="router.get('/roles')">
                         <ArrowLeft class="size-4" /> {{ ACTION.back }}
                     </Button>
                 </CardHeader>
+            </Card>
+
+            <Card>
+                <CardHeader class="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
+                    <CardTitle>Hak Akses</CardTitle>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <Input
+                            v-model="search"
+                            placeholder="Cari izin…"
+                            class="h-[var(--ctl-h)] w-full text-[13px] sm:w-56"
+                            data-testid="role-permissions-search"
+                        />
+                        <div class="flex items-center gap-2">
+                            <Label class="text-xs text-muted-foreground">Pilih Semua</Label>
+                            <Switch
+                                :model-value="allChecked"
+                                :disabled="props.role.locked"
+                                data-testid="role-permissions-toggle-all"
+                                @update:model-value="toggleAll"
+                            />
+                        </div>
+                    </div>
+                </CardHeader>
                 <CardContent>
-                    <EmptyState
-                        :icon="ShieldCheck"
-                        title="Pengaturan Hak Akses"
-                        description="Pengaturan hak akses untuk peranan ini akan tersedia di sini."
-                        data-testid="role-detail-placeholder"
-                    />
+                    <p v-if="props.role.locked" class="mb-3 text-xs text-muted-foreground" data-testid="role-locked-note">
+                        Peranan Super Admin selalu memiliki seluruh hak akses dan tidak dapat diubah.
+                    </p>
+
+                    <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-testid="role-permission-matrix">
+                        <section
+                            v-for="group in groups"
+                            :key="group.entity"
+                            class="overflow-hidden rounded-lg border"
+                            :data-testid="`permission-group-${group.entity}`"
+                        >
+                            <header class="flex items-center justify-between gap-3 border-b bg-muted/40 px-3 py-2">
+                                <span class="truncate font-mono text-xs font-semibold">{{ group.entity }}</span>
+                                <Switch
+                                    :model-value="groupChecked(group)"
+                                    :disabled="props.role.locked"
+                                    :data-testid="`permission-group-${group.entity}-toggle`"
+                                    @update:model-value="toggleGroup(group, $event)"
+                                />
+                            </header>
+                            <ul class="divide-y">
+                                <li
+                                    v-for="ability in group.abilities"
+                                    :key="ability.name"
+                                    class="flex items-center gap-2.5 px-3 py-1.5"
+                                >
+                                    <Checkbox
+                                        :model-value="has(ability.name)"
+                                        :disabled="props.role.locked"
+                                        :aria-label="ability.name"
+                                        :data-testid="`permission-${ability.name}`"
+                                        @update:model-value="toggle(ability.name, $event)"
+                                    />
+                                    <span class="text-[13px]">{{ ability.label }}</span>
+                                    <span class="ml-auto truncate font-mono text-[11px] text-muted-foreground">
+                                        {{ ability.name }}
+                                    </span>
+                                </li>
+                            </ul>
+                        </section>
+                    </div>
+
+                    <p v-if="!groups.length" class="py-6 text-center text-xs text-muted-foreground">
+                        Tidak ada izin yang cocok dengan pencarian.
+                    </p>
                 </CardContent>
+                <CardFooter class="justify-between">
+                    <span class="text-xs text-muted-foreground" data-testid="role-permissions-count">
+                        {{ form.permissions.length }} izin dipilih
+                    </span>
+                    <Button
+                        size="sm"
+                        :disabled="props.role.locked || form.processing"
+                        data-testid="role-permissions-save"
+                        @click="save"
+                    >
+                        <Save class="size-4" /> {{ form.processing ? ACTION.saving : ACTION.save }}
+                    </Button>
+                </CardFooter>
             </Card>
         </div>
     </AppLayout>

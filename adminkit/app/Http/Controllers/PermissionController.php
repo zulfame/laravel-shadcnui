@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Permission\BulkPermissionRequest;
+use App\Http\Requests\Permission\GeneratePermissionRequest;
 use App\Http\Requests\Permission\StorePermissionRequest;
 use App\Models\ActivityLog;
+use App\Support\Csv;
 use App\Support\Modules;
 use App\Support\Notify;
 use App\Support\TableQuery;
@@ -14,6 +16,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PermissionController extends Controller
 {
@@ -48,6 +51,7 @@ class PermissionController extends Controller
                 'meta' => TableQuery::meta($permissions),
             ],
             'filters' => ['search' => $search, 'sort' => $sort, 'dir' => $dir, 'entity' => $entity],
+            'abilityOptions' => GeneratePermissionRequest::ABILITIES,
             'entityOptions' => Permission::query()
                 ->pluck('name')
                 ->map(fn ($name) => str($name)->before('.')->value())
@@ -56,6 +60,81 @@ class PermissionController extends Controller
                 ->prepend(['value' => 'all', 'label' => 'Semua Entitas'])
                 ->all(),
         ]);
+    }
+
+    /** Buat izin standar sekaligus untuk sebuah entitas. */
+    public function generate(GeneratePermissionRequest $request): RedirectResponse
+    {
+        $data = $request->validated();
+        $created = [];
+
+        foreach ($data['abilities'] as $ability) {
+            $name = "{$data['entity']}.{$ability}";
+
+            if (Permission::where('name', $name)->where('guard_name', 'web')->exists()) {
+                continue;
+            }
+
+            Permission::create(['name' => $name, 'guard_name' => 'web']);
+            $created[] = $name;
+        }
+
+        $this->flushCache();
+        $skipped = count($data['abilities']) - count($created);
+
+        if ($created === []) {
+            return back()->with('error', 'Semua izin untuk entitas tersebut sudah ada.');
+        }
+
+        ActivityLog::record(
+            count($created)." izin dibuat untuk entitas {$data['entity']}",
+            'Perizinan',
+            'success',
+            context: ['izin' => implode(', ', $created), 'dilewati' => $skipped],
+        );
+
+        Notify::toPermission(
+            permission: 'permissions.view',
+            title: 'Izin standar dibuat',
+            module: 'Perizinan',
+            body: "{$data['entity']} · ".count($created).' izin',
+            url: '/permissions',
+            level: 'success',
+        );
+
+        return back()->with(
+            'success',
+            count($created).' izin dibuat'.($skipped ? ", {$skipped} dilewati." : '.')
+        );
+    }
+
+    /** Unduh CSV mengikuti filter aktif. */
+    public function export(Request $request): StreamedResponse
+    {
+        $search = TableQuery::search($request);
+        $entity = TableQuery::filter($request, 'entity');
+
+        $rows = Permission::query()
+            ->withCount('roles')
+            ->when($search !== '', fn ($q) => $q->where('name', 'like', "%{$search}%"))
+            ->when($entity !== '', fn ($q) => $q->where('name', 'like', "{$entity}.%"))
+            ->orderBy(TableQuery::sort($request, self::SORTABLE, 'name'), TableQuery::direction($request))
+            ->cursor()
+            ->map(fn (Permission $p) => [
+                $p->name,
+                str($p->name)->before('.')->value(),
+                str($p->name)->after('.')->value(),
+                $p->guard_name,
+                $p->roles_count,
+            ]);
+
+        ActivityLog::record('Mengekspor daftar izin (CSV)', 'Perizinan', 'info');
+
+        return Csv::stream(
+            Csv::filename('perizinan'),
+            ['Nama Izin', 'Entitas', 'Aksi', 'Guard', 'Jumlah Peranan'],
+            $rows,
+        );
     }
 
     public function store(StorePermissionRequest $request): RedirectResponse
