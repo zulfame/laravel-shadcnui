@@ -134,6 +134,13 @@ Backlog kualitas: Pest feature test (auth, CRUD, otorisasi), ESLint + Prettier, 
 - **Badge lebih solid**: `.state-chip` kini isian penuh `hsl(var(--chip))` dengan teks kontras `hsl(var(--background))`; varian `secondary` pada `Badge` menjadi solid (`bg-foreground/85 text-background`), varian lembut lama tetap tersedia sebagai `muted`.
 - Terverifikasi di tema terang & gelap tanpa error console.
 
+## Selesai (2026-06-15, sidebar collapse + responsif tablet/mobile + README)
+- **Bug fatal 1 — sidebar collapse cacat**: brand mark & avatar hilang saat mode ikon karena elemen non-svg tidak punya `shrink-0` (aturan shadcn hanya memberi `shrink-0` pada `svg`) dan tombol `size=lg` menyusut ke 32px. Fix di `AppSidebar.vue`: `shrink-0` pada `BrandMark`/`Avatar` + `group-data-[collapsible=icon]:hidden` pada blok teks & `ChevronsUpDown` (header dan footer).
+- **Bug fatal 2 — layout tablet/mobile**: `DataTableCard` kini mendukung `hideBelow: 'sm'|'md'|'lg'|'xl'` (kelas literal `HIDE_BELOW`, bukan dinamis, agar tidak dibuang purge). Dipakai di Pengguna (username `lg`, email `md`, phone `xl`, peranan `sm`) dan Audit Trail (pelaku `md`, modul `sm`); nama pengguna truncate di mobile. Blok identitas Profil menumpuk di mobile; ringkasan AuditDetail 1 kolom di layar kecil.
+- `APP_LOCALE=id` + `Carbon::setLocale()` di `AppServiceProvider` → waktu relatif berbahasa Indonesia.
+- **README.md lengkap** ditulis (instalasi, struktur, STANDAR VALIDASI wajib, hak akses, audit trail, branding, S3, design system, tabel server-side, daftar rute, deployment, troubleshooting).
+- Uji iterasi 17 (frontend 100%): brand mark 32×32 tetap tampil pada keadaan expanded & collapsed (desktop + tablet), tidak ada horizontal overflow pada 390px & 768px di seluruh halaman, kolom tabel muncul/tersembunyi sesuai breakpoint, waktu relatif Indonesia, tanpa error console.
+
 ## Selesai (2026-06-15, Audit Trail + bug "kosong tetap kosong")
 ### Bug: nilai yang dikosongkan kembali ke default
 - RCA: middleware `ConvertEmptyStringsToNull` mengubah `''` → `null`, lalu `Branding` menimpa `null` dengan `DEFAULTS`.

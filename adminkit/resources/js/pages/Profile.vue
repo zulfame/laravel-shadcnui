@@ -99,7 +99,7 @@ const removeAvatar = () => avatarForm.delete('/profile/avatar', { preserveScroll
                 </CardHeader>
                 <form class="form-dense" novalidate @submit.prevent="saveProfile">
                     <CardContent class="space-y-4">
-                        <div class="flex items-center justify-between gap-4">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div class="flex items-center gap-3">
                                 <Avatar
                                     :src="user.avatar"
@@ -144,11 +144,11 @@ const removeAvatar = () => avatarForm.delete('/profile/avatar', { preserveScroll
                                     </p>
                                 </div>
                             </div>
-                            <div class="flex flex-col items-end gap-1 text-right">
-                                <span class="text-[13px] font-semibold" data-testid="profile-display-name">
+                            <div class="flex items-center gap-2 sm:flex-col sm:items-end sm:gap-1 sm:text-right">
+                                <span class="whitespace-nowrap text-[13px] font-semibold" data-testid="profile-display-name">
                                     {{ user.name }}
                                 </span>
-                                <Badge variant="secondary" class="font-normal" data-testid="profile-role">
+                                <Badge variant="secondary" class="whitespace-nowrap font-normal" data-testid="profile-role">
                                     {{ user.role || 'Pengguna' }}
                                 </Badge>
                             </div>

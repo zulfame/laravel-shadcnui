@@ -36,10 +36,10 @@ const currentUserId = computed(() => page.props.auth?.user?.id);
 
 const columns = [
     { key: 'name', label: 'Nama Lengkap' },
-    { key: 'username', label: 'Nama Pengguna' },
-    { key: 'email', label: 'Alamat Email' },
-    { key: 'phone', label: 'Nomor HP' },
-    { key: 'role', label: 'Peranan' },
+    { key: 'username', label: 'Nama Pengguna', hideBelow: 'lg' },
+    { key: 'email', label: 'Alamat Email', hideBelow: 'md' },
+    { key: 'phone', label: 'Nomor HP', hideBelow: 'xl' },
+    { key: 'role', label: 'Peranan', hideBelow: 'sm' },
     { key: 'status_label', label: 'Status', sortKey: 'is_active' },
     { key: 'actions', label: '', align: 'right', width: '48px', sortable: false },
 ];
@@ -208,7 +208,7 @@ watch(dialogOpen, (open) => {
                 </template>
 
                 <template #cell-name="{ row }">
-                    <span class="font-medium">{{ row.name }}</span>
+                    <span class="block max-w-[45vw] truncate font-medium sm:max-w-none">{{ row.name }}</span>
                 </template>
 
                 <template #cell-username="{ row }">

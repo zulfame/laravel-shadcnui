@@ -1,0 +1,30 @@
+{
+  "summary": "Iteration 17 (frontend-only) verifies the two FATAL bugs and locale/responsive fixes for CODEX (AdminKit). Backend was NOT re-run (per instruction, iter 16 already 70/70). All target fixes are confirmed via live UI on https://inertia-admin-panel.preview.emergentagent.com. (1) SIDEBAR COLLAPSE @1440x900: brand-mark 32x32 stays visible in BOTH states (expanded at x=16,y=16; collapsed at x=8,y=8), chevron-svg width=0 in header, 'CODEX' text hidden while collapsed, user-menu-trigger stays 32x32 with avatar visible while its ChevronsUpDown and email are hidden — meets spec (a-d). Re-expand restores brand-mark to (16,16) and CODEX text reappears (visually confirmed via screenshot). (2) TABLET SIDEBAR @768x1024 and @1024x768: brand-mark 32x32 rendered at (16,16), no doc overflow (scrollWidth==innerWidth). (3) RESPONSIVE TABLES /users: mobile 390 shows exactly ['Nama Lengkap','Status', actions] (Nama Pengguna/Alamat Email/Nomor HP/Peranan collapsed to width=0); tablet 768 adds ['Alamat Email','Peranan']; desktop 1440 shows all 6+actions — matches DataTableCard hideBelow contract; NO horizontal overflow. (4) /audit-trail: mobile 390 shows ['Waktu','Aksi','Level']; 768 adds ['Pelaku','Modul']; 1024/1440 all — matches spec. (5) RESPONSIVE PAGES: doc.scrollWidth == innerWidth (diff=0) on ['/', '/profile','/appearance','/storage-settings','/roles'] for both 390x844 and 768x1024. (6) LOCALE: /audit-trail/{id} row 'Relatif' renders '1 menit yang lalu' (Indonesian) — no English 'ago' phrases detected in page body. (7) Zero console errors across all navigated pages. Branding intact: 'CODEX / Core Data Exchange' visible in login left panel and sidebar header.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py (unchanged, iter 16 result stands)",
+    "/app/test_reports/pytest/pytest_results.xml (iter 16)"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AppSidebar collapse fix is correct: shrink-0 on BrandMark + group-data-[collapsible=icon]:hidden on the text-and-chevron column keeps the 32x32 anchor visible while suppressing overflow content. The same pattern applied to the footer user block also verifies at 1440.",
+    "DataTableCard hideBelow contract works as expected: cells resolve to width=0 (display:none via Tailwind hidden md:table-cell etc.) rather than shrinking columns, so no truncation artifacts appear at breakpoints.",
+    "Carbon::setLocale in AppServiceProvider + APP_LOCALE=id yields Indonesian relative times on the audit detail page ('1 menit yang lalu'); consider caching config after any .env change on deploy to avoid stale locale."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (from iter 16 — not re-run per instruction)",
+    "frontend": "100% — sidebar collapse (desktop+tablet), responsive Users/Audit tables, responsive pages, Indonesian locale, zero console errors"
+  },
+  "seed_data_creation": "None. No test data created this iteration; login as zulfame/password only.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "zulfame / password (Super Admin) — /app/memory/test_credentials.md — password unchanged.",
+  "context_for_next_testing_agent": "Sidebar trigger selector is [data-testid=\"sidebar-trigger\"]. Brand mark is [data-testid=\"brand-mark\"] (32x32 both states). User menu is [data-testid=\"user-menu-trigger\"]. To assert collapsed state: query svg.lucide-chevrons-up-down inside the sidebar header — width should be 0. Users table testid=users-table; Audit table is unnamed 'table'. Relative time on /audit-trail/{id} is under a label element 'Relatif' (single text node). Login inputs: [data-testid=\"login-credential-input\"] + input[type=password] + button name='Masuk'. All primary fixes for iter 17 are verified; no follow-up test cycle required.",
+  "rca_of_the_issue": "Prev iteration (pre-17): the sidebar top block used a horizontal flex where the brand-mark's parent lacked shrink-0 while the sibling text/chevron column had no group-data-[collapsible=icon]:hidden — as a result, in icon-mode the fixed-width sidebar rail (~48px) squeezed both children and the 32x32 brand icon was pushed off/hidden while the chevron survived at the far right. Fix: (a) shrink-0 on BrandMark + Avatar ensures the 32x32 anchor never collapses; (b) group-data-[collapsible=icon]:hidden on the text+chevron block removes overflow candidates in icon mode. Verified via getBoundingClientRect: expanded=(16,16,32,32), collapsed=(8,8,32,32), chevron width=0. Responsive-table fix: DataTableCard reads hideBelow per column and emits Tailwind 'hidden sm:table-cell' / 'md:' / 'lg:' / 'xl:' classes on both th and td, matching the requested visibility breakpoints for /users and /audit-trail."
+}

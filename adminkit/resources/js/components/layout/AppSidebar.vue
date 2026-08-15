@@ -91,15 +91,20 @@ const currentUser = computed(() => ({
                                 <BrandMark
                                     :logo="branding.logo_light"
                                     :initials="branding.brand_initials"
-                                    class="aspect-square size-8 rounded-lg bg-primary text-[11px] font-semibold text-primary-foreground"
+                                    class="aspect-square size-8 shrink-0 rounded-lg bg-primary text-[11px] font-semibold text-primary-foreground"
                                 />
-                                <div class="grid flex-1 text-left text-sm leading-tight">
+                                <div
+                                    class="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden"
+                                >
                                     <span class="truncate font-semibold">{{ branding.app_name || 'AdminKit' }}</span>
                                     <span class="truncate text-xs text-sidebar-foreground/70">
                                         {{ activeArea?.label }}
                                     </span>
                                 </div>
-                                <ChevronsUpDown class="ml-auto size-4" aria-hidden="true" />
+                                <ChevronsUpDown
+                                    class="ml-auto size-4 group-data-[collapsible=icon]:hidden"
+                                    aria-hidden="true"
+                                />
                             </SidebarMenuButton>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent side="right" align="start" class="min-w-56 rounded-lg">
@@ -169,12 +174,21 @@ const currentUser = computed(() => ({
                                 class="border border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground shadow-sm hover:bg-sidebar-accent data-[state=open]:bg-sidebar-accent"
                                 data-testid="user-menu-trigger"
                             >
-                                <Avatar :src="currentUser.avatar" :fallback="currentUser.initials" />
-                                <div class="grid flex-1 text-left text-sm leading-tight">
+                                <Avatar
+                                    :src="currentUser.avatar"
+                                    :fallback="currentUser.initials"
+                                    class="shrink-0"
+                                />
+                                <div
+                                    class="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden"
+                                >
                                     <span class="truncate font-semibold">{{ currentUser.name }}</span>
                                     <span class="truncate text-xs text-sidebar-foreground/70">{{ currentUser.email }}</span>
                                 </div>
-                                <ChevronsUpDown class="ml-auto size-4" aria-hidden="true" />
+                                <ChevronsUpDown
+                                    class="ml-auto size-4 group-data-[collapsible=icon]:hidden"
+                                    aria-hidden="true"
+                                />
                             </SidebarMenuButton>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent side="right" align="end" class="min-w-56 rounded-lg">

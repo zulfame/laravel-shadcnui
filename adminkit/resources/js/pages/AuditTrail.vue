@@ -24,9 +24,9 @@ const canManage = computed(() => (page.props.auth?.user?.permissions ?? []).incl
 
 const columns = [
     { key: 'created_at', label: 'Waktu' },
-    { key: 'actor', label: 'Pelaku', sortKey: 'actor_name' },
+    { key: 'actor', label: 'Pelaku', sortKey: 'actor_name', hideBelow: 'md' },
     { key: 'action', label: 'Aksi' },
-    { key: 'module', label: 'Modul' },
+    { key: 'module', label: 'Modul', hideBelow: 'sm' },
     { key: 'level_label', label: 'Level', sortKey: 'level' },
 ];
 

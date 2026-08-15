@@ -36,7 +36,8 @@ import { ACTION } from '@/constants/labels';
  *   CLIENT (default) — cari/urut/paginasi dihitung di browser dari `rows`.
  *   SERVER (`server`) — komponen hanya mengirim `update:*`; induk yang query.
  *
- * `columns`: [{ key, label, align?, width?, sortable?, sortKey? }]
+ * `columns`: [{ key, label, align?, width?, sortable?, sortKey?, hideBelow? }]
+ * `hideBelow`: 'sm' | 'md' | 'lg' | 'xl' — kolom disembunyikan di bawah breakpoint itu.
  * Sel kustom lewat slot bernama `cell-<key>` dengan payload { row, value }.
  */
 const props = defineProps({
@@ -57,6 +58,16 @@ const props = defineProps({
     sort: { type: Object, default: () => ({ key: '', dir: 'asc' }) },
     meta: { type: Object, default: () => ({ page: 1, per_page: 10, total: 0, last_page: 1 }) },
 });
+
+// Kelas literal (bukan dinamis) agar tidak dibuang purge Tailwind.
+const HIDE_BELOW = {
+    sm: 'hidden sm:table-cell',
+    md: 'hidden md:table-cell',
+    lg: 'hidden lg:table-cell',
+    xl: 'hidden xl:table-cell',
+};
+
+const cellClass = (col) => [col.align === 'right' ? 'text-right' : '', HIDE_BELOW[col.hideBelow] ?? ''];
 
 const emit = defineEmits([
     'refresh',
@@ -225,7 +236,7 @@ const pageSizeOptions = [
                                 v-for="col in props.columns"
                                 :key="col.key"
                                 :style="col.width ? { width: col.width } : undefined"
-                                :class="col.align === 'right' ? 'text-right' : ''"
+                                :class="cellClass(col)"
                             >
                                 <button
                                     v-if="col.sortable !== false"
@@ -263,11 +274,7 @@ const pageSizeOptions = [
                                 :data-testid="props.rowClickable ? `${props.testid}-row-${row[props.rowKey]}` : undefined"
                                 @click="props.rowClickable && emit('row-click', row)"
                             >
-                                <TableCell
-                                    v-for="col in props.columns"
-                                    :key="col.key"
-                                    :class="col.align === 'right' ? 'text-right' : ''"
-                                >
+                                <TableCell v-for="col in props.columns" :key="col.key" :class="cellClass(col)">
                                     <slot :name="`cell-${col.key}`" :row="row" :value="row[col.key]">
                                         {{ row[col.key] ?? '\u2014' }}
                                     </slot>

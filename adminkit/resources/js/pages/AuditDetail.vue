@@ -98,7 +98,7 @@ const copyJson = async () => {
         <div class="space-y-6" data-testid="audit-detail-page">
             <!-- Ringkasan -->
             <Card>
-                <CardHeader class="flex-row items-center justify-between gap-4">
+                <CardHeader class="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex min-w-0 items-center gap-2.5">
                         <StateChip :label="props.log.level_label" :chip="props.log.level_chip" />
                         <CardTitle class="truncate" data-testid="audit-detail-action">
@@ -115,13 +115,13 @@ const copyJson = async () => {
                     </Button>
                 </CardHeader>
                 <CardContent>
-                    <dl class="grid gap-x-6 gap-y-2 sm:grid-cols-2 xl:grid-cols-3" data-testid="audit-detail-summary">
+                    <dl class="grid gap-x-8 gap-y-2 md:grid-cols-2 2xl:grid-cols-3" data-testid="audit-detail-summary">
                         <div
                             v-for="item in summary"
                             :key="item.label"
-                            class="flex items-baseline gap-3 border-b py-1.5 last:border-b-0"
+                            class="flex flex-col gap-0.5 border-b py-1.5 last:border-b-0 sm:flex-row sm:items-baseline sm:gap-3"
                         >
-                            <dt class="w-28 shrink-0 text-xs text-muted-foreground">{{ item.label }}</dt>
+                            <dt class="text-xs text-muted-foreground sm:w-28 sm:shrink-0">{{ item.label }}</dt>
                             <dd class="min-w-0 break-all text-[13px]" :class="item.mono && 'font-mono text-xs'">
                                 {{ item.value }}
                             </dd>
