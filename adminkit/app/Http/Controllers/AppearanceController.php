@@ -45,10 +45,13 @@ class AppearanceController extends Controller
 
         FileStorage::delete(Branding::raw()[$key] ?? null);
 
-        Setting::putMany([$key => FileStorage::store($request->file('file'), 'branding')]);
+        $changes = Setting::putMany(
+            [$key => FileStorage::store($request->file('file'), 'branding')],
+            allowNull: true,
+        );
         Branding::forget();
 
-        ActivityLog::record("Mengunggah aset merek ({$key})", 'Penampilan', 'info');
+        ActivityLog::record("Mengunggah aset merek ({$key})", 'Penampilan', 'info', changes: $changes);
 
         return back()->with('success', 'Aset diunggah.');
     }
@@ -59,8 +62,10 @@ class AppearanceController extends Controller
 
         FileStorage::delete(Branding::raw()[$key] ?? null);
 
-        Setting::putMany([$key => null]);
+        $changes = Setting::putMany([$key => null], allowNull: true);
         Branding::forget();
+
+        ActivityLog::record("Menghapus aset merek ({$key})", 'Penampilan', 'warning', changes: $changes);
 
         return back()->with('success', 'Aset dihapus.');
     }
@@ -73,10 +78,10 @@ class AppearanceController extends Controller
             $data['search_indexable'] = $data['search_indexable'] ? '1' : '0';
         }
 
-        Setting::putMany($data);
+        $changes = Setting::putMany($data);
         Branding::forget();
 
-        ActivityLog::record('Memperbarui pengaturan penampilan', 'Penampilan', 'info');
+        ActivityLog::record('Memperbarui pengaturan penampilan', 'Penampilan', 'info', changes: $changes);
 
         return back()->with('success', 'Pengaturan penampilan disimpan.');
     }

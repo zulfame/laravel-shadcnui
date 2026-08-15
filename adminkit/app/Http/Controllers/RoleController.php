@@ -50,7 +50,13 @@ class RoleController extends Controller
         $data = $request->validated();
         $role = Role::create(['name' => $data['name'], 'guard_name' => 'web']);
 
-        ActivityLog::record("Menambah peranan {$role->name}", 'Peranan', 'success', $role);
+        ActivityLog::record(
+            "Menambah peranan {$role->name}",
+            'Peranan',
+            'success',
+            $role,
+            ActivityLog::snapshotOf($role),
+        );
 
         return back()->with('success', "Peranan {$role->name} ditambahkan.");
     }
@@ -62,9 +68,16 @@ class RoleController extends Controller
         }
 
         $data = $request->validated();
+        $before = $role->name;
         $role->update(['name' => $data['name']]);
 
-        ActivityLog::record("Memperbarui peranan {$role->name}", 'Peranan', 'info', $role);
+        ActivityLog::record(
+            "Memperbarui peranan {$role->name}",
+            'Peranan',
+            'info',
+            $role,
+            ['name' => ['old' => $before, 'new' => $role->name]],
+        );
 
         return back()->with('success', "Peranan {$role->name} diperbarui.");
     }
@@ -102,7 +115,12 @@ class RoleController extends Controller
             $added++;
         }
 
-        ActivityLog::record("Mengimpor {$added} peranan", 'Peranan', 'success');
+        ActivityLog::record(
+            "Mengimpor {$added} peranan",
+            'Peranan',
+            'success',
+            context: ['diimpor' => $added, 'dilewati' => $skipped],
+        );
 
         return back()->with(
             $added > 0 ? 'success' : 'error',
@@ -121,9 +139,10 @@ class RoleController extends Controller
         }
 
         $name = $role->name;
+        $snapshot = ActivityLog::snapshotOf($role, deleted: true);
         $role->delete();
 
-        ActivityLog::record("Menghapus peranan {$name}", 'Peranan', 'danger');
+        ActivityLog::record("Menghapus peranan {$name}", 'Peranan', 'danger', changes: $snapshot);
 
         return back()->with('success', "Peranan {$name} dihapus.");
     }

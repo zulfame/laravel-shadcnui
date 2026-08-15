@@ -134,6 +134,22 @@ Backlog kualitas: Pest feature test (auth, CRUD, otorisasi), ESLint + Prettier, 
 - **Badge lebih solid**: `.state-chip` kini isian penuh `hsl(var(--chip))` dengan teks kontras `hsl(var(--background))`; varian `secondary` pada `Badge` menjadi solid (`bg-foreground/85 text-background`), varian lembut lama tetap tersedia sebagai `muted`.
 - Terverifikasi di tema terang & gelap tanpa error console.
 
+## Selesai (2026-06-15, Audit Trail + bug "kosong tetap kosong")
+### Bug: nilai yang dikosongkan kembali ke default
+- RCA: middleware `ConvertEmptyStringsToNull` mengubah `''` → `null`, lalu `Branding` menimpa `null` dengan `DEFAULTS`.
+- Fix: `Setting::putMany()` menyimpan `''` untuk kunci non-aset (`allowNull: true` khusus aset), `Branding::merged()` memakai default HANYA untuk kunci yang belum pernah diatur, dan fallback turunan `footer_text`/`meta_title` dihapus. Kosong = tetap kosong (Penampilan & Penyimpanan sudah diuji).
+
+### Log Aktivitas → AUDIT TRAIL (rute `/audit-trail`)
+- Menu/judul/breadcrumb `Audit Trail`; halaman daftar `AuditTrail.vue`, halaman **detail tersendiri** `AuditDetail.vue` di `/audit-trail/{id}` (dialog dihapus karena data bisa panjang) — berorientasi pengembang: Ringkasan (ID, waktu, ISO 8601, relatif, modul, level+kode, pelaku, email, ID pengguna, objek, kelas objek), tabel **Perubahan Data** lebar penuh (kolom/sebelum/sesudah, monospace, header sticky, max-h 420px + scroll), kartu Kesalahan/Konteks, kartu Teknis, dan **Payload Mentah (JSON)** + tombol Salin.
+- Migrasi `2026_08_15_050000_extend_activity_logs_for_audit`: `changes`, `context` (JSON), `method`, `url`, `status_code`, `user_agent`.
+- `ActivityLog::record($action, $module, $level, $subject, $changes, $context, $statusCode)` merekam konteks permintaan otomatis. `diffOf($model, $before)` — **`$before` WAJIB `$model->getOriginal()` sebelum `save()`** (bug ini pernah terjadi: old==new). `snapshotOf($model, $deleted)` untuk create/delete. Kolom rahasia (`password`, `s3_secret`, `s3_key`, dll) disamarkan `••••••` via `ActivityLog::MASKED`.
+- `Setting::putMany()` mengembalikan diff setelan → dipakai Penampilan & Penyimpanan.
+- Pencatatan kegagalan otomatis di `bootstrap/app.php` lewat **`$exceptions->render()`** (bukan `report()`, karena turunan HttpException diabaikan Laravel): 403 → 'Akses ditolak', ≥500 → 'Kegagalan sistem'. `ValidationException` (422) dan 404 sengaja TIDAK dicatat agar tidak bising. Login gagal & lockout dicatat dari `LoginRequest` (level Gagal/Peringatan, status 422/429).
+- Uji iterasi 12–16: backend 70/70 dan frontend 100% (diff nyata terverifikasi lewat UI, kata sandi tersamarkan, 403/500 tercatat, 422/404 tidak).
+
+### Catatan operasional
+- Branding user sering tereset oleh data uji: nilai benar → `app_name='CODEX'`, `tagline='Core Data Exchange'`, `brand_initials='</>'`, `meta_title='CODEX: Core Data Exchange'` (lalu `php artisan cache:clear`).
+
 ## Selesai (2026-06-15, Title Case + revisi Peranan/Pengguna/Penampilan)
 - **Title Case** untuk seluruh label, judul kartu, judul dialog, placeholder filter (mis. `Nama Pengguna`, `Kata Sandi`, `Akun Aktif`, `Tambah Pengguna`, `Semua Status`, `Driver Aktif`, `Dari Tanggal`, `Semua Modul`, `Hapus Pengguna?`).
 - **Peranan**: card & fungsi `Matriks Hak Akses` DIHAPUS (rute `PUT /roles/matrix`, `SyncMatrixRequest`, kolom Jumlah Izin) — akan dibangun ulang lewat halaman detail. Dialog hanya kolom `Nama Peranan` (tanpa placeholder). Aksi baris: **Detail (ikon mata)** → `GET /roles/{role}` (halaman `RoleDetail.vue`, placeholder), Ubah, lalu `DropdownMenuSeparator` di atas Hapus.

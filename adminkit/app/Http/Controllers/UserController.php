@@ -89,7 +89,13 @@ class UserController extends Controller
         ]);
         $user->syncRoles([$data['role']]);
 
-        ActivityLog::record("Menambah pengguna {$user->name}", 'Pengguna', 'success', $user);
+        ActivityLog::record(
+            "Menambah pengguna {$user->name}",
+            'Pengguna',
+            'success',
+            $user,
+            ActivityLog::snapshotOf($user) + ['role' => ['old' => null, 'new' => $data['role']]],
+        );
 
         return back()->with('success', "Pengguna {$user->name} ditambahkan.");
     }
@@ -98,14 +104,22 @@ class UserController extends Controller
     {
         $data = $request->validated();
 
+        $roleBefore = $user->roles->first()?->name;
+        $before = $user->getOriginal();
+
         $user->fill(collect($data)->except('role', 'password')->all());
         if (filled($data['password'] ?? null)) {
             $user->password = Hash::make($data['password']);
         }
         $user->save();
+        $changes = ActivityLog::diffOf($user, $before);
         $user->syncRoles([$data['role']]);
 
-        ActivityLog::record("Memperbarui pengguna {$user->name}", 'Pengguna', 'info', $user);
+        if ($roleBefore !== $data['role']) {
+            $changes['role'] = ['old' => $roleBefore, 'new' => $data['role']];
+        }
+
+        ActivityLog::record("Memperbarui pengguna {$user->name}", 'Pengguna', 'info', $user, $changes);
 
         return back()->with('success', "Pengguna {$user->name} diperbarui.");
     }
@@ -117,9 +131,10 @@ class UserController extends Controller
         }
 
         $name = $user->name;
+        $snapshot = ActivityLog::snapshotOf($user, deleted: true);
         $user->delete();
 
-        ActivityLog::record("Menghapus pengguna {$name}", 'Pengguna', 'danger');
+        ActivityLog::record("Menghapus pengguna {$name}", 'Pengguna', 'danger', changes: $snapshot);
 
         return back()->with('success', "Pengguna {$name} dihapus.");
     }

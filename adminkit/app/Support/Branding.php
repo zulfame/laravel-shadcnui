@@ -39,8 +39,7 @@ class Branding
     public static function values(): array
     {
         return Cache::rememberForever(self::CACHE_KEY, function () {
-            $stored = Schema::hasTable('settings') ? Setting::values() : [];
-            $values = array_merge(self::DEFAULTS, array_filter($stored, fn ($v) => $v !== null));
+            $values = self::merged();
 
             foreach (self::ASSETS as $key) {
                 $values[$key.'_path'] = $values[$key] ?: null;
@@ -48,9 +47,6 @@ class Branding
             }
 
             $values['search_indexable'] = (bool) ($values['search_indexable'] ?? false);
-            $values['footer_text'] = $values['footer_text']
-                ?: '© '.date('Y').' '.$values['app_name'].'. All Rights Reserved.';
-            $values['meta_title'] = $values['meta_title'] ?: $values['app_name'].': '.$values['tagline'];
 
             return $values;
         });
@@ -59,13 +55,31 @@ class Branding
     /** Nilai mentah untuk form (tanpa fallback turunan). */
     public static function raw(): array
     {
-        $stored = Schema::hasTable('settings') ? Setting::values() : [];
-        $values = array_merge(self::DEFAULTS, array_filter($stored, fn ($v) => $v !== null));
+        $values = self::merged();
 
         foreach (self::ASSETS as $key) {
             $values[$key.'_url'] = FileStorage::url($values[$key]);
         }
         $values['search_indexable'] = (bool) ($values['search_indexable'] ?? false);
+
+        return $values;
+    }
+
+    /**
+     * Gabungkan default dengan nilai tersimpan. Nilai yang SENGAJA dikosongkan
+     * tetap kosong (tidak jatuh ke default) — default hanya untuk kunci yang
+     * belum pernah diatur.
+     */
+    private static function merged(): array
+    {
+        $stored = Schema::hasTable('settings') ? Setting::values() : [];
+        $values = array_merge(self::DEFAULTS, $stored);
+
+        foreach ($values as $key => $value) {
+            if ($value === null && ! in_array($key, self::ASSETS, true)) {
+                $values[$key] = '';
+            }
+        }
 
         return $values;
     }

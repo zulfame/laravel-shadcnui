@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\ActivityLog;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -62,6 +63,14 @@ class LoginRequest extends FormRequest
         if (! $attempted) {
             RateLimiter::hit($this->throttleKey());
 
+            ActivityLog::record(
+                'Percobaan masuk gagal',
+                'Keamanan',
+                'danger',
+                context: ['kredensial' => $credential, 'jenis_kolom' => $field],
+                statusCode: 422,
+            );
+
             throw ValidationException::withMessages([
                 'credential' => 'Kredensial atau kata sandi tidak cocok.',
             ]);
@@ -81,6 +90,14 @@ class LoginRequest extends FormRequest
         event(new Lockout($this));
 
         $seconds = RateLimiter::availableIn($this->throttleKey());
+
+        ActivityLog::record(
+            'Akun terkunci sementara (terlalu banyak percobaan masuk)',
+            'Keamanan',
+            'warning',
+            context: ['kredensial' => (string) $this->input('credential'), 'buka_dalam_detik' => $seconds],
+            statusCode: 429,
+        );
 
         throw ValidationException::withMessages([
             'credential' => "Terlalu banyak percobaan masuk. Silakan coba lagi dalam {$seconds} detik.",

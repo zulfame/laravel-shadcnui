@@ -1,0 +1,42 @@
+{
+  "summary": "Iteration 12 verification for AdminKit. Backend pytest: 59/60 pass (added 8 new tests in TestIteration12EmptyPersists + TestIteration12AuditTrailFeatures). The BUG-FIX for empty-string persistence is VERIFIED WORKING at API level for all four appearance fields (brand_initials, tagline, meta_title, meta_keywords, footer_text) AND for storage (s3_path, s3_public_url) — PUT '' then GET returns '' (no fallback to defaults). Audit Trail features verified: /audit-trail route + AuditTrail component, /activity route returns 404, sidebar renames to 'Audit Trail' (no 'Log Aktivitas'), row-detail dialog with sections activity-detail-changes / activity-detail-context / activity-detail-technical / activity-detail-close, dialog has max-h-[60vh] overflow-y-auto (thin-scroll) — scrollable ✓, purge past-range 2020-01-01..02 returns 302 (no 500), user-update produces name diff (old/new both present + method=PUT + url), user password change is masked as '••••••' (no bcrypt hash / plaintext leaks in JSON blob), failed-login (bad password) recorded as level=danger action='Percobaan masuk gagal' with status_code=422 and context containing 'kredensial: zulfame'. Frontend UI verified: sidebar rename, dialog testids, technical section contents (Alamat IP, Metode, URL, Kode Status, User Agent, ID Log), appearance/storage form testids all present. CRITICAL DEFECT FOUND: 403 access-denied responses are NOT recorded in Audit Trail — verified by logging in as a fresh Staf user, hitting /appearance which returned 403 (correct authz), but no audit row with status_code=403 appears. Root cause: bootstrap/app.php uses $exceptions->report() callback, but Laravel's default reportable-exception filter (HttpException, AuthorizationException, UnauthorizedException are in the ignored list) prevents the callback from ever firing on 403s. Fix: call $exceptions->stopIgnoring(HttpException::class) and $exceptions->stopIgnoring(AuthorizationException::class) / UnauthorizedException::class, or move the recording into a render() callback that runs unconditionally.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "bootstrap/app.php withExceptions() report() callback",
+        "issue": "403 access-denied (AuthorizationException / Spatie UnauthorizedException / HttpException 403) is NEVER logged to Audit Trail because Laravel ignores these classes for reporting by default. Test 'test_forbidden_403_recorded' fails: real Staf user hits /appearance → 403 returned but no audit row with status_code=403 exists. Fix: add $exceptions->stopIgnoring([\\Illuminate\\Auth\\Access\\AuthorizationException::class, \\Spatie\\Permission\\Exceptions\\UnauthorizedException::class, \\Symfony\\Component\\HttpKernel\\Exception\\HttpException::class]); or use a render() callback that records BEFORE Laravel renders.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix bootstrap/app.php so 403 access-denied exceptions are logged to Audit Trail (Laravel's default reporting ignores AuthorizationException/UnauthorizedException/HttpException — call $exceptions->stopIgnoring(...) or use a render() hook instead of report())."
+  ],
+  "critical_code_review_comments": [
+    "bootstrap/app.php: $exceptions->report() callback for 403 is dead code because Laravel's Handler->dontReport() ignores HttpException, AuthorizationException, and Spatie's UnauthorizedException. Use $exceptions->stopIgnoring(...) to make the report() callback actually fire, or record from a render() callback.",
+    "resources/js/pages/AuditTrail.vue: activity-detail dialog has max-h-[60vh] overflow-y-auto on the ELEMENT itself (line 244) — good. activity-clear-range button uses v-if='hasRange' so it is absent when no date filter is applied (correct; noted for QA)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py"
+  ],
+  "success_rate": {
+    "backend": "98.3% (59/60) — 1 failure is a genuine product defect (403 not logged)",
+    "frontend": "100%"
+  },
+  "seed_data_creation": "Temporary users created and deleted during test run: TEST_qa8@example.com/test_user_qa8 (users CRUD), TEST_qa_staf12@example.com/test_qa_staf12 (403 test), TEST QA Minimal, TEST Phone A/B, TEST NoRole, TEST ShortPwd. Temporary roles created+deleted: Auditor QA, Auditor Internal, Manajer Cabang. Zulfame name briefly changed to 'Zulfadli Rizal QA' and reverted. Zulfame password re-set to 'password' (same value, forces a masked diff row). Branding fully restored to app_name='CODEX', tagline='Core Data Exchange', brand_initials='</>', meta_title='CODEX: Core Data Exchange' via tinker + 'php artisan cache:clear'.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "zulfame / password (unchanged) — /app/memory/test_credentials.md",
+  "context_for_next_testing_agent": "TestIteration12EmptyPersists (identity/seo/contact/storage) all pass — confirms Setting::putMany('') persists and Branding::merged() does not fall back to DEFAULTS for previously-set empty values. TestIteration12AuditTrailFeatures: 3/4 pass. The failing 'test_forbidden_403_recorded' documents the 403-not-logged bug. Once bootstrap/app.php is fixed, re-run only this class. All routes changed from /activity to /audit-trail (component 'AuditTrail'); ActivityLogController::index returns rows with new fields changes/context/method/url/status_code/user_agent/created_at_full. Rate limit: 5 login fails per credential+IP — TestIteration12 does exactly ONE bad login. If throttled, run 'cd /app/adminkit && php artisan cache:clear'.",
+  "rca_of_the_issue": "Symptom: 403 access-denied never appears in Audit Trail. Reproduction: log in as a role without 'appearance.view' (e.g. Staf), GET /appearance → 403 returned; then check /audit-trail — no danger row with status_code=403. Root cause: /app/adminkit/bootstrap/app.php registers a $exceptions->report(function($e) {...}) callback that inspects the exception class and calls ActivityLog::record for 403/500. However Laravel's ExceptionHandler filters exceptions through dontReport()/isFatal() BEFORE invoking reportable callbacks; HttpException (all 4xx), AuthorizationException, and Spatie's UnauthorizedException are all ignored by default, so the callback never runs for 403. Fix: either (a) add $exceptions->stopIgnoring([HttpException::class, AuthorizationException::class, UnauthorizedException::class]); inside withExceptions(), OR (b) migrate the audit-recording to a $exceptions->render(function($e, $req){ ActivityLog::record(...); return null; }) callback so it fires irrespective of reporting rules."
+}

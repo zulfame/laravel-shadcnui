@@ -65,9 +65,9 @@ class StorageController extends Controller
         $data['s3_path'] = trim((string) ($data['s3_path'] ?? ''), '/');
         $data['s3_path_style'] = ($data['s3_path_style'] ?? false) ? '1' : '0';
 
-        Setting::putMany($data);
+        $changes = Setting::putMany($data);
 
-        ActivityLog::record('Memperbarui pengaturan penyimpanan', 'Penyimpanan', 'info');
+        ActivityLog::record('Memperbarui pengaturan penyimpanan', 'Penyimpanan', 'info', changes: $changes);
 
         return back()->with('success', 'Pengaturan penyimpanan disimpan.');
     }

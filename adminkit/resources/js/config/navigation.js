@@ -45,7 +45,7 @@ export const AREAS = [
                     { title: 'Penyimpanan', href: '/storage-settings', icon: HardDrive, perm: 'storage.view' },
                     { title: 'Peranan', href: '/roles', icon: ShieldCheck, perm: 'roles.view' },
                     { title: 'Pengguna', href: '/users', icon: Users2, perm: 'users.view' },
-                    { title: 'Log Aktivitas', href: '/activity', icon: ScrollText, perm: 'activity.view' },
+                    { title: 'Audit Trail', href: '/audit-trail', icon: ScrollText, perm: 'activity.view' },
                 ],
             },
         ],
@@ -80,10 +80,11 @@ const ROUTE_TRAILS = [
     [/^\/roles\/\d+$/, ['Peranan', 'Detail']],
     [/^\/appearance$/, ['Penampilan']],
     [/^\/storage-settings$/, ['Penyimpanan']],
-    [/^\/activity$/, ['Log Aktivitas']],
+    [/^\/audit-trail$/, ['Audit Trail']],
+    [/^\/audit-trail\/\d+$/, ['Audit Trail', 'Detail']],
 ];
 
-const ADMIN_ROUTES = [/^\/users/, /^\/roles/, /^\/appearance/, /^\/storage-settings/, /^\/activity/];
+const ADMIN_ROUTES = [/^\/users/, /^\/roles/, /^\/appearance/, /^\/storage-settings/, /^\/audit-trail/];
 
 /** Id area yang memiliki sebuah pathname. */
 export const areaIdOf = (pathname) =>

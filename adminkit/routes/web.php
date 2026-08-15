@@ -66,11 +66,13 @@ Route::middleware('auth')->group(function () {
         Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
     });
 
-    Route::get('/activity', [ActivityLogController::class, 'index'])
-        ->middleware('permission:activity.view')->name('activity.index');
+    Route::middleware('permission:activity.view')->group(function () {
+        Route::get('/audit-trail', [ActivityLogController::class, 'index'])->name('audit.index');
+        Route::get('/audit-trail/{log}', [ActivityLogController::class, 'show'])->name('audit.show');
+    });
 
-    Route::delete('/activity', [ActivityLogController::class, 'destroyRange'])
-        ->middleware('permission:activity.manage')->name('activity.destroy');
+    Route::delete('/audit-trail', [ActivityLogController::class, 'destroyRange'])
+        ->middleware('permission:activity.manage')->name('audit.destroy');
 
     Route::get('/appearance', [AppearanceController::class, 'edit'])
         ->middleware('permission:appearance.view')->name('appearance');

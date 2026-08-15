@@ -1,0 +1,47 @@
+{
+  "summary": "Iteration 14 verification. PRIMARY FIX VERIFIED: 403 access-denied is now recorded in Audit Trail. The move to $exceptions->render() in bootstrap/app.php works — Spatie UnauthorizedException, Illuminate AuthorizationException, and RuntimeException(500) all produce audit rows with correct action ('Akses ditolak' / 'Kegagalan sistem'), level='danger', status_code=403/500, and context={pengecualian,pesan,berkas}. Previously failing tests TestIteration12AuditTrailFeatures::test_forbidden_403_recorded and TestIteration13AuditDetail::test_audit_detail_page_after_403_contains_context now PASS. Added TestIteration14AuditNoiseAndSystemFailure (4 tests): 500-reproducer, 403-reproducer, and 404-noise tests pass; 422-noise test FAILS revealing a real regression — see backend_issues.critical. Frontend spot-check: login zulfame → /audit-trail (renders) → click activity-row-* → /audit-trail/{id} loads AuditDetail with audit-detail-page/technical/json/back testids (context testid conditionally rendered only when context is non-null — cosmetic). Regression suite unchanged (68/70 pass). One flaky failure: TestIteration12AuditTrailFeatures::test_user_update_creates_diff_changes fails intermittently in parallel run but passes in isolation (30% failure rate observed) — pre-existing.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "bootstrap/app.php $exceptions->render()",
+        "issue": "422 ValidationException is INCORRECTLY logged as 'Kegagalan sistem' with status_code=500. Root cause: the match() block classifies exceptions as 403 (AuthorizationException/UnauthorizedException), else HttpExceptionInterface->getStatusCode(), else default=>500. Illuminate\\Validation\\ValidationException does NOT implement HttpExceptionInterface (it has a public ->status property set to 422) so it falls through to default=>500 and gets recorded as a system failure. Reproducer: POST /users with empty body returns 422 but adds a row with action='Kegagalan sistem', status_code=500, context.pengecualian='ValidationException'. Expected: 422 should NOT create any audit row (per spec: 'kesalahan validasi (422) ... TIDAK boleh membuat entri audit').",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "TestIteration12AuditTrailFeatures::test_user_update_creates_diff_changes",
+        "issue": "Flaky under parallel xdist execution (fails ~30% of runs, passes in isolation). Likely race with other tests mutating the same test user. Non-blocking."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix bootstrap/app.php match() to explicitly handle ValidationException: add `$e instanceof \\Illuminate\\Validation\\ValidationException => $e->status,` (or return null before match) so 422 exits early and is NOT recorded. After the fix, TestIteration14AuditNoiseAndSystemFailure::test_422_does_not_create_audit_row must pass."
+  ],
+  "critical_code_review_comments": [
+    "bootstrap/app.php: the default => 500 fallback swallows every non-Http exception (ValidationException, AuthenticationException, TokenMismatchException, ThrottleRequestsException…) and mislabels them as 500. Handle each 4xx sibling explicitly (ValidationException=>422, AuthenticationException=>401, ThrottleRequestsException=>429) OR use `method_exists($e,'getStatusCode') ? $e->getStatusCode() : ($e->status ?? 500)` before applying the 403/>=500 filter.",
+    "AuditDetail.vue: `audit-detail-context` testid is only rendered when context is non-null — consider always rendering the container (empty-state text inside) so the testid is queryable and behaves consistently with audit-detail-changes. Not blocking."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py"
+  ],
+  "success_rate": {
+    "backend": "97.1% (68/70) — 1 real bug (422 misclassified as 500), 1 flaky pre-existing test",
+    "frontend": "100%"
+  },
+  "seed_data_creation": "Ephemeral users test_qa_staf12, test_qa_staf13 auto-created and auto-deleted by tests. All 'TEST_%' users cleaned (0 remaining). All QA_TEST audit rows (403/500 reproducers, ValidationException/NotFoundHttpException leak rows) deleted post-run. Branding fully restored: app_name=CODEX, tagline='Core Data Exchange', brand_initials='</>', meta_title='CODEX: Core Data Exchange'. `php artisan cache:clear` executed.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "zulfame / password (unchanged) — /app/memory/test_credentials.md",
+  "context_for_next_testing_agent": "Only ONE real defect remains: 422 ValidationException incorrectly logged as 500. Re-run TestIteration14AuditNoiseAndSystemFailure::test_422_does_not_create_audit_row after the fix. The flaky test_user_update_creates_diff_changes is pre-existing and unrelated. All 403/500 recording, no-noise for 404, and audit detail page work correctly.",
+  "rca_of_the_issue": "In bootstrap/app.php the render() closure computes $status via a match() with only 3 arms: AuthorizationException/UnauthorizedException => 403, HttpExceptionInterface => getStatusCode(), default => 500. Illuminate\\Validation\\ValidationException extends \\Exception (not HttpException) and exposes ->status=422. Because it hits the default arm, $status=500 which passes the '>=500' filter and gets recorded as 'Kegagalan sistem' with status_code=500. NotFoundHttpException works correctly because it IS a Symfony HttpException with getStatusCode()=404 → filtered out. Fix: add ValidationException handling to the match or short-circuit early: `if ($e instanceof \\Illuminate\\Validation\\ValidationException) return null;`."
+}

@@ -1,0 +1,36 @@
+{
+  "summary": "Iteration 16 verifies the HIGH-priority fix flagged in iter 15: ActivityLog::diffOf($model) is now diffOf(Model, array $before) with $before captured BEFORE save() in UserController::update and ProfileController::update. Backend: full pytest suite is GREEN — 70/70 across two consecutive runs (23s and 29s), no flakes. Tightened TestIteration12AuditTrailFeatures::test_user_update_creates_diff_changes so it now strictly asserts change['old']=='QA Diff Original' AND change['new']=='QA Diff Updated' (previously old was only loosely validated because the diff was broken). Also fixed sibling test test_user_password_change_is_masked to filter to the specific PUT /users/{uid} audit row (was picking up delete-snapshot rows where password.new=null due to reordering of top rows now that real diffs exist). Frontend: end-to-end UI flow through Users → Audit Trail → Profile confirms the diff is correct in the real UI. For a create+update+delete cycle of a dedicated Staf user via the UI, the audit-detail Perubahan Data table shows: name 'QA FE Original'→'QA FE Updated', email 'TEST_qa_fe_diff@example.com'→'TEST_qa_fe_diff2@example.com', phone '081234000111'→'081234000222', password '••••••'→'••••••' (masked, no bcrypt/plaintext leak), role 'Staf'→'Super Admin'. Profile update via /profile: name 'Zulfadli Rizal'→'Zulfadli Rizal QA' then reverted; audit rows carry the correct pre-save originals. Delete-snapshot row shows all columns old→null with password masked. Zero console errors on /audit-trail, /audit-trail/{id}, /users, /profile. Branding was again reset to 'AdminKit/AK/Admin panel' between iterations (persists across container resume) — I restored CODEX branding + tagline + brand_initials + meta_title via tinker and cleared cache; recommend the developer add a persistent seed guard so branding survives migrate:fresh or pod resume.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Persist branding (app_name/tagline/brand_initials/meta_title) so it is not silently reset to defaults across pod resumes; consider a seeder or config guard that reapplies CODEX values if the settings row is absent."
+  ],
+  "critical_code_review_comments": [
+    "ActivityLog::diffOf(Model, array $before) is the right shape: forcing callers to pass the pre-save originals prevents Eloquent's syncOriginal() from silently corrupting the audit trail. Consider also removing 'password' from getChanges() in diffOf() early to make masking robust even if MASKED is edited.",
+    "For the destroy snapshot, columns whose value never changed still appear with old=<val>, new=null; that is fine for delete-semantics but consider filtering ignored keys (id, email_verified_at when null, avatar when null, last_login_at when null) to reduce noise in the /audit-trail/{id} UI."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py"
+  ],
+  "success_rate": {
+    "backend": "100% (70/70) stable across 2 consecutive full-suite runs",
+    "frontend": "100% — /users create+update+delete, /profile update+revert, /audit-trail listing, /audit-trail/{id} detail all render with zero console errors; diff values match submitted before/after exactly; password '••••••'; role change recorded"
+  },
+  "seed_data_creation": "Created and deleted via UI: dedicated user qa_fe_diff_user (Staf→Super Admin) then deleted for delete-snapshot verification. Backend suite auto-creates+cleans test_qa_diff_user, test_qa_staf12, TEST_% users, and QA_TEST audit rows via finally-blocks. FINAL CLEANUP DONE: purged 178 test audit rows via tinker (actor_name/action LIKE %QA% / qa_fe_diff), removed leftover TEST_% users. BRANDING RESTORED via tinker: app_name='CODEX', tagline='Core Data Exchange', brand_initials='</>', meta_title='CODEX: Core Data Exchange'. `php artisan cache:clear` executed.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "zulfame / password (Super Admin) — /app/memory/test_credentials.md — password is UNCHANGED and profile name restored to 'Zulfadli Rizal'.",
+  "context_for_next_testing_agent": "Diff feature is now fully working end-to-end. Backend suite is 70/70 stable and strict (old asserted, not just new). If iterating on this feature, remember the previously-observed sequencing gotcha: the delete-snapshot audit row also has a 'password' key with new=null (correct behavior for a delete), so any test scanning latest rows for 'password' in changes must filter by method=PUT/PATCH and the target /users/{uid} URL — this is already done in test_user_password_change_is_masked. Also note: branding tends to get reset to defaults between iterations; run the tinker restore block from seed_data_creation before UI branding checks.",
+  "rca_of_the_issue": "Root cause (iter 15): ActivityLog::diffOf($model) called $model->getOriginal($key) AFTER $model->save(); Eloquent's save() invokes syncOriginal() so 'original' == 'new', making every audit diff old==new. Fix (iter 16): change signature to diffOf(Model $model, array $before) where $before = $model->getOriginal() is captured before save(); UserController::update and ProfileController::update now capture $before prior to fill/save. Verified live: /audit-trail/{id} for a real user update shows genuine pre→post values for every changed column, with MASKED columns rendered as '••••••' on both sides."
+}

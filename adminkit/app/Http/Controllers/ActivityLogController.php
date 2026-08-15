@@ -26,7 +26,7 @@ class ActivityLogController extends Controller
             ->paginate(TableQuery::perPage($request))
             ->withQueryString();
 
-        return Inertia::render('ActivityLog', [
+        return Inertia::render('AuditTrail', [
             'logs' => [
                 'data' => collect($logs->items())->map(fn (ActivityLog $log) => [
                     'id' => $log->id,
@@ -42,6 +42,12 @@ class ActivityLogController extends Controller
                         ? class_basename($log->subject_type).' #'.$log->subject_id
                         : '—',
                     'user_id' => $log->user_id,
+                    'changes' => $log->changes,
+                    'context' => $log->context,
+                    'method' => $log->method,
+                    'url' => $log->url,
+                    'status_code' => $log->status_code,
+                    'user_agent' => $log->user_agent,
                     'created_at_full' => $log->created_at->timezone(config('app.timezone'))
                         ->translatedFormat('l, d F Y H:i:s'),
                 ])->all(),
@@ -60,6 +66,42 @@ class ActivityLogController extends Controller
     /**
      * Hapus log pada rentang tanggal tertentu (inklusif).
      */
+    /** Halaman detail satu jejak audit (untuk pengembang: lengkap & mentah). */
+    public function show(ActivityLog $log): Response
+    {
+        $log->load('user');
+
+        return Inertia::render('AuditDetail', [
+            'log' => [
+                'id' => $log->id,
+                'action' => $log->action,
+                'module' => $log->module,
+                'level' => $log->level,
+                'level_label' => ActivityLog::LEVEL_LABELS[$log->level] ?? $log->level,
+                'level_chip' => ActivityLog::LEVEL_CHIPS[$log->level] ?? '--st-draft',
+                'actor' => $log->actor_name,
+                'user_id' => $log->user_id,
+                'actor_email' => $log->user?->email,
+                'subject_type' => $log->subject_type,
+                'subject_id' => $log->subject_id,
+                'subject' => $log->subject_type
+                    ? class_basename($log->subject_type).' #'.$log->subject_id
+                    : null,
+                'changes' => $log->changes,
+                'context' => $log->context,
+                'ip' => $log->ip,
+                'method' => $log->method,
+                'url' => $log->url,
+                'status_code' => $log->status_code,
+                'user_agent' => $log->user_agent,
+                'created_at_iso' => $log->created_at->toIso8601String(),
+                'created_at_full' => $log->created_at->timezone(config('app.timezone'))
+                    ->translatedFormat('l, d F Y H:i:s'),
+                'created_at_diff' => $log->created_at->diffForHumans(),
+            ],
+        ]);
+    }
+
     public function destroyRange(DestroyRangeRequest $request): RedirectResponse
     {
         $data = $request->validated();

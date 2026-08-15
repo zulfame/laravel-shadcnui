@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue';
-import { Head, useForm, usePage } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { ScrollText, Trash2, X } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
@@ -31,7 +31,7 @@ const columns = [
 ];
 
 const { query, loading, reload, onSearch, onSort, onPage, onPerPage, onFilter, sortState } = useServerTable({
-    url: '/activity',
+    url: '/audit-trail',
     only: ['logs', 'filters'],
     initial: {
         search: props.filters.search ?? '',
@@ -46,8 +46,7 @@ const { query, loading, reload, onSearch, onSort, onPage, onPerPage, onFilter, s
 
 const hasRange = computed(() => Boolean(query.date_from && query.date_to));
 
-/* ── Detail satu baris log ──────────────────────────────────────────── */
-const detail = ref(null);
+const openDetail = (row) => router.get(`/audit-trail/${row.id}`);
 
 /* ── Hapus log pada rentang tanggal ─────────────────────────────────── */
 const purgeOpen = ref(false);
@@ -61,7 +60,7 @@ const openPurge = () => {
 };
 
 const purge = () =>
-    purgeForm.delete('/activity', {
+    purgeForm.delete('/audit-trail', {
         preserveScroll: true,
         onSuccess: () => {
             purgeOpen.value = false;
@@ -69,32 +68,17 @@ const purge = () =>
         },
     });
 
-const detailRows = computed(() => {
-    const d = detail.value;
-    if (!d) return [];
-
-    return [
-        { label: 'Waktu', value: d.created_at_full ?? d.created_at },
-        { label: 'Pelaku', value: d.actor },
-        { label: 'Modul', value: d.module },
-        { label: 'Level', value: d.level_label },
-        { label: 'Objek', value: d.subject },
-        { label: 'Alamat IP', value: d.ip, mono: true },
-        { label: 'ID Log', value: `#${d.id}`, mono: true },
-    ];
-});
-
 const fmt = (iso) =>
     iso ? new Date(`${iso}T00:00:00`).toLocaleDateString('id-ID', { dateStyle: 'medium' }) : '—';
 </script>
 
 <template>
-    <Head title="Log Aktivitas" />
+    <Head title="Audit Trail" />
     <AppLayout>
-        <div class="space-y-6" data-testid="activity-page-view">
+        <div class="space-y-6" data-testid="audit-page-view">
             <DataTableCard
                 server
-                title="Log Aktivitas"
+                title="Audit Trail"
                 testid="activity"
                 :columns="columns"
                 :rows="props.logs.data"
@@ -105,13 +89,13 @@ const fmt = (iso) =>
                 row-clickable
                 :show-refresh="false"
                 :empty-icon="ScrollText"
-                empty-title="Belum ada aktivitas"
-                empty-description="Aktivitas akan tercatat otomatis saat ada perubahan data."
+                empty-title="Belum ada jejak audit"
+                empty-description="Perubahan data, akses ditolak, dan kegagalan sistem tercatat otomatis di sini."
                 @update:search="onSearch"
                 @update:sort="onSort"
                 @update:page="onPage"
                 @update:per-page="onPerPage"
-                @row-click="detail = $event"
+                @row-click="openDetail"
             >
                 <template #filters>
                     <DatePicker
@@ -168,35 +152,6 @@ const fmt = (iso) =>
                     <StateChip :label="row.level_label" :chip="row.level_chip" />
                 </template>
             </DataTableCard>
-
-            <!-- Dialog detail log -->
-            <Dialog
-                :open="Boolean(detail)"
-                title="Detail Aktivitas"
-                class="max-w-lg"
-                @update:open="detail = null"
-            >
-                <div v-if="detail" class="thin-scroll max-h-[60vh] space-y-3 overflow-y-auto pr-1" data-testid="activity-detail">
-                    <div class="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2">
-                        <span class="text-[13px] font-medium">{{ detail.action }}</span>
-                        <StateChip :label="detail.level_label" :chip="detail.level_chip" />
-                    </div>
-                    <dl class="divide-y rounded-lg border">
-                        <div v-for="item in detailRows" :key="item.label" class="grid grid-cols-3 gap-3 px-3 py-2">
-                            <dt class="text-xs text-muted-foreground">{{ item.label }}</dt>
-                            <dd class="col-span-2 break-words text-[13px]" :class="item.mono && 'font-mono text-xs'">
-                                {{ item.value }}
-                            </dd>
-                        </div>
-                    </dl>
-                </div>
-
-                <template #footer>
-                    <Button variant="outline" size="sm" data-testid="activity-detail-close" @click="detail = null">
-                        <X class="size-4" /> {{ ACTION.close }}
-                    </Button>
-                </template>
-            </Dialog>
 
             <!-- Dialog hapus log berdasarkan rentang tanggal -->
             <Dialog v-model:open="purgeOpen" title="Hapus log aktivitas" class="max-w-md">

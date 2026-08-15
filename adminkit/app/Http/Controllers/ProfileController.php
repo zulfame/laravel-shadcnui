@@ -22,9 +22,17 @@ class ProfileController extends Controller
 
     public function update(UpdateProfileRequest $request): RedirectResponse
     {
-        $request->user()->update($request->validated());
+        $user = $request->user();
+        $before = $user->getOriginal();
+        $user->update($request->validated());
 
-        ActivityLog::record('Memperbarui profil sendiri', 'Profil', 'info', $request->user());
+        ActivityLog::record(
+            'Memperbarui profil sendiri',
+            'Profil',
+            'info',
+            $user,
+            ActivityLog::diffOf($user, $before),
+        );
 
         return back()->with('success', 'Profil diperbarui.');
     }
