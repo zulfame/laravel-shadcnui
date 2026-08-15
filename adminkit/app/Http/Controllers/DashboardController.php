@@ -19,7 +19,6 @@ class DashboardController extends Controller
     {
         return Inertia::render('Dashboard', [
             'kpis' => $this->kpis(),
-            'recentUsers' => $this->recentUsers(),
             'activities' => $this->activities(),
             'trend' => $this->trend(),
             'byModule' => $this->byModule(),
@@ -39,7 +38,7 @@ class DashboardController extends Controller
         $weekLogs = ActivityLog::where('created_at', '>=', now()->subDays(7))->count();
         $failures = ActivityLog::whereIn('level', ['danger', 'warning'])
             ->where('created_at', '>=', now()->subDays(7))->count();
-        $unread = Notification::where('user_id', Auth::id())->where('is_read', false)->count();
+        $unread = Notification::where('user_id', Auth::id())->whereNull('read_at')->count();
 
         return [
             [
@@ -73,25 +72,6 @@ class DashboardController extends Controller
                 'hint' => 'belum dibaca',
             ],
         ];
-    }
-
-    private function recentUsers(): array
-    {
-        return User::with('roles:name')->latest()->take(8)->get()
-            ->map(function (User $user) {
-                $filled = collect([$user->username, $user->email, $user->phone, $user->avatar])
-                    ->filter()->count();
-
-                return [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email ?? '—',
-                    'role' => $user->roles->pluck('name')->join(', ') ?: '—',
-                    'completeness' => (int) round($filled / 4 * 100),
-                    'status_label' => $user->is_active ? 'Aktif' : 'Nonaktif',
-                    'status_chip' => $user->is_active ? '--st-done' : '--st-cancelled',
-                ];
-            })->all();
     }
 
     private function activities(): array

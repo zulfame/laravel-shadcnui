@@ -106,8 +106,13 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 **Pengaturan**
 - **Penampilan**: identitas aplikasi (nama, tagline, inisial brand), logo terang/gelap, favicon, SEO & metadata (termasuk Open Graph), kontak & footer.
 
+**Notifikasi**
+- Lonceng di header memuat notifikasi **milik pengguna aktif** saja (share Inertia `notifications`).
+- **Tandai Semua** (`POST /notifications/read-all`) menandai seluruh notifikasi belum dibaca sekaligus; klik satu item menandainya dibaca lalu membuka `url` bila ada.
+- **Penyaring Semua / Belum Dibaca** di dropdown (server menyediakan `items` dan `unread_items`, masing-masing 10 terbaru); teks kosong menyesuaikan konteks ("Semua notifikasi sudah dibaca." vs "Belum ada notifikasi.").
+
 **Dashboard**
-- Widget **data nyata** dari basis data: KPI (pengguna aktif/nonaktif, peranan, izin + jumlah entitas, aktivitas 7 hari + yang perlu ditinjau, notifikasi belum dibaca), Pengguna Terbaru (dengan kelengkapan profil), Aktivitas Terakhir, Tren 7 Hari (pengguna baru vs aktivitas), Aktivitas per Modul, Sebaran Peranan, dan Penyimpanan nyata (berkas unggahan, ukuran basis data, disk server).
+- Widget **data nyata** dari basis data: KPI (pengguna aktif/nonaktif, peranan, izin + jumlah entitas, aktivitas 7 hari + yang perlu ditinjau, notifikasi belum dibaca), Aktivitas Terakhir, Tren 7 Hari (pengguna baru vs aktivitas), Aktivitas per Modul, Sebaran Peranan, dan Penyimpanan nyata (berkas unggahan, ukuran basis data, disk server).
 - **Galeri Komponen** (`components/composite/ComponentGallery.vue`): showcase interaktif seluruh komponen — tombol & status muat, toast 4 varian, lencana + StateChip, avatar, tooltip, isian formulir (Input, error state, PasswordInput, PhoneInput, Textarea), Combobox, DatePicker, Checkbox, Switch, Alert, Progress, Skeleton, Dialog, ConfirmDeleteDialog, DropdownMenu, Tabel + RowActions, dan EmptyState (6 varian dapat dipilih).
 
 **UI**

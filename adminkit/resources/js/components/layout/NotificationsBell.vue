@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { Bell, CheckCheck } from 'lucide-vue-next';
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui';
@@ -11,8 +11,22 @@ const page = usePage();
 
 // Data berasal dari share Inertia dan HANYA memuat notifikasi milik
 // pengguna yang sedang masuk.
-const items = computed(() => page.props.notifications?.items ?? []);
 const unread = computed(() => page.props.notifications?.unread ?? 0);
+const total = computed(() => page.props.notifications?.items?.length ?? 0);
+
+// Penyaring tampilan: seluruh notifikasi atau hanya yang belum dibaca.
+const filter = ref('all');
+
+const items = computed(() =>
+    filter.value === 'unread'
+        ? (page.props.notifications?.unread_items ?? [])
+        : (page.props.notifications?.items ?? []),
+);
+
+const FILTERS = [
+    { value: 'all', label: 'Semua' },
+    { value: 'unread', label: 'Belum Dibaca' },
+];
 
 const reloadOnly = { preserveScroll: true, preserveState: true, only: ['notifications'] };
 
@@ -73,7 +87,26 @@ const DOT = {
                         data-testid="notifications-mark-all"
                         @click="markAll"
                     >
-                        <CheckCheck class="size-4" /> Tandai
+                        <CheckCheck class="size-4" /> Tandai Semua
+                    </Button>
+                </div>
+                <div class="flex items-center gap-1 border-b border-border px-3 py-2" data-testid="notifications-filter">
+                    <Button
+                        v-for="option in FILTERS"
+                        :key="option.value"
+                        :variant="filter === option.value ? 'secondary' : 'ghost'"
+                        size="sm"
+                        class="h-7 px-2.5 text-xs"
+                        :data-testid="`notifications-filter-${option.value}`"
+                        @click="filter = option.value"
+                    >
+                        {{ option.label }}
+                        <span
+                            v-if="option.value === 'unread' && unread"
+                            class="tabular-nums text-muted-foreground"
+                        >
+                            ({{ unread }})
+                        </span>
                     </Button>
                 </div>
                 <ul v-if="items.length" class="thin-scroll max-h-72 divide-y overflow-y-auto">
@@ -105,7 +138,13 @@ const DOT = {
                     </li>
                 </ul>
                 <p v-else class="px-4 py-6 text-center text-xs text-muted-foreground" data-testid="notifications-empty">
-                    Belum ada notifikasi.
+                    {{
+                        filter === 'unread'
+                            ? total
+                                ? 'Semua notifikasi sudah dibaca.'
+                                : 'Belum ada notifikasi.'
+                            : 'Belum ada notifikasi.'
+                    }}
                 </p>
             </PopoverContent>
         </PopoverPortal>

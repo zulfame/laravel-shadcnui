@@ -3,9 +3,11 @@
 namespace App\Http\Middleware;
 
 use App\Enums\RoleName;
+use App\Models\Notification;
 use App\Support\Branding;
 use App\Support\FileStorage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -38,22 +40,31 @@ class HandleInertiaRequests extends Middleware
             'notifications' => $user ? [
                 // Hanya notifikasi milik pengguna yang sedang masuk.
                 'unread' => fn () => $user->notifications()->whereNull('read_at')->count(),
-                'items' => fn () => $user->notifications()->limit(10)->get()->map(fn ($n) => [
-                    'id' => $n->id,
-                    'title' => $n->title,
-                    'body' => $n->body,
-                    'module' => $n->module,
-                    'level' => $n->level,
-                    'url' => $n->url,
-                    'unread' => $n->read_at === null,
-                    'time' => $n->created_at->diffForHumans(),
-                ])->all(),
-            ] : ['unread' => 0, 'items' => []],
+                'items' => fn () => self::mapNotifications($user->notifications()->limit(10)->get()),
+                'unread_items' => fn () => self::mapNotifications(
+                    $user->notifications()->whereNull('read_at')->limit(10)->get()
+                ),
+            ] : ['unread' => 0, 'items' => [], 'unread_items' => []],
             'branding' => Branding::values(),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
             ],
         ]);
+    }
+
+    /** @param  Collection<int, Notification>  $notifications */
+    private static function mapNotifications($notifications): array
+    {
+        return $notifications->map(fn ($n) => [
+            'id' => $n->id,
+            'title' => $n->title,
+            'body' => $n->body,
+            'module' => $n->module,
+            'level' => $n->level,
+            'url' => $n->url,
+            'unread' => $n->read_at === null,
+            'time' => $n->created_at->diffForHumans(),
+        ])->all();
     }
 }

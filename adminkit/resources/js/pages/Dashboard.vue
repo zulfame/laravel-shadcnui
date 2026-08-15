@@ -3,7 +3,6 @@ import { Head, router } from '@inertiajs/vue3';
 import { ArrowRight, BellRing, KeyRound, RefreshCw, ScrollText, ShieldCheck, UserPlus, Users2 } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
-import Avatar from '@/components/ui/Avatar.vue';
 import Badge from '@/components/ui/Badge.vue';
 import Button from '@/components/ui/Button.vue';
 import Card from '@/components/ui/Card.vue';
@@ -14,16 +13,13 @@ import CardTitle from '@/components/ui/CardTitle.vue';
 import Progress from '@/components/ui/Progress.vue';
 import Separator from '@/components/ui/Separator.vue';
 import EmptyState from '@/components/composite/EmptyState.vue';
-import StateChip from '@/components/composite/StateChip.vue';
 import MiniBarChart from '@/components/composite/MiniBarChart.vue';
 import HBarChart from '@/components/composite/HBarChart.vue';
 import ComponentGallery from '@/components/composite/ComponentGallery.vue';
-import { initialsOf } from '@/lib/utils';
 import { ACTION } from '@/constants/labels';
 
 const props = defineProps({
     kpis: { type: Array, default: () => [] },
-    recentUsers: { type: Array, default: () => [] },
     activities: { type: Array, default: () => [] },
     trend: { type: Array, default: () => [] },
     byModule: { type: Array, default: () => [] },
@@ -71,14 +67,13 @@ const totalModule = props.byModule.reduce((a, b) => a + b.count, 0);
                 </Card>
             </div>
 
-            <!-- Kartu daftar: tinggi terkunci + isi bergulir -->
-            <div class="grid gap-6 lg:h-[26rem] lg:grid-cols-3">
+            <div class="grid items-start gap-6 lg:grid-cols-3">
                 <Card class="flex flex-col lg:col-span-2">
                     <CardHeader class="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
                         <CardTitle class="flex items-center gap-2">
-                            Pengguna Terbaru
+                            Aktivitas Terakhir
                             <Badge variant="secondary" class="font-normal tabular-nums">
-                                {{ props.recentUsers.length }}
+                                {{ props.activities.length }}
                             </Badge>
                         </CardTitle>
                         <div class="flex flex-wrap items-center gap-2">
@@ -95,94 +90,47 @@ const totalModule = props.byModule.reduce((a, b) => a + b.count, 0);
                             </Button>
                         </div>
                     </CardHeader>
-                    <CardContent class="min-h-0 flex-1 p-0">
-                        <EmptyState v-if="!props.recentUsers.length" variant="no-data" />
-                        <div v-else class="thin-scroll h-full divide-y overflow-y-auto" data-testid="recent-users">
+                    <CardContent class="p-0">
+                        <EmptyState v-if="!props.activities.length" variant="no-data" />
+                        <div v-else class="thin-scroll max-h-80 divide-y overflow-y-auto" data-testid="recent-activities">
                             <div
-                                v-for="user in props.recentUsers"
-                                :key="user.id"
-                                class="flex items-center gap-3 px-6 py-2 transition-colors hover:bg-muted/40"
-                                :data-testid="`recent-user-${user.id}`"
+                                v-for="log in props.activities"
+                                :key="log.id"
+                                class="flex items-start gap-3 px-6 py-2 transition-colors hover:bg-muted/40"
                             >
-                                <Avatar :fallback="initialsOf(user.name, user.email)" class="size-7" />
+                                <span class="w-11 shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
+                                    {{ log.time }}
+                                </span>
                                 <span class="min-w-0 flex-1">
-                                    <span class="block truncate text-[13px] font-medium">{{ user.name }}</span>
-                                    <span class="block truncate text-xs text-muted-foreground">{{ user.email }}</span>
-                                </span>
-                                <span class="hidden w-28 shrink-0 text-xs text-muted-foreground sm:block">
-                                    {{ user.role }}
-                                </span>
-                                <span class="hidden w-24 shrink-0 items-center gap-2 md:flex">
-                                    <Progress :value="user.completeness" class="h-1.5 flex-1" />
-                                    <span class="w-8 text-right text-xs tabular-nums text-muted-foreground">
-                                        {{ user.completeness }}%
+                                    <span class="block truncate text-[13px] font-medium">{{ log.action }}</span>
+                                    <span class="block truncate text-xs text-muted-foreground">
+                                        {{ log.actor }} · {{ log.module }}
                                     </span>
-                                </span>
-                                <span class="flex w-[5.5rem] shrink-0 justify-end">
-                                    <StateChip :label="user.status_label" :chip="user.status_chip" />
                                 </span>
                             </div>
                         </div>
                     </CardContent>
                     <CardFooter class="justify-end">
-                        <Button as="a" href="/users" variant="outline" size="sm" data-testid="link-all-users">
-                            Lihat Semua Pengguna <ArrowRight class="size-4" />
+                        <Button as="a" href="/audit-trail" variant="outline" size="sm" data-testid="link-all-activities">
+                            Semua Aktivitas <ArrowRight class="size-4" />
                         </Button>
                     </CardFooter>
                 </Card>
 
-                <div class="flex flex-col gap-6 lg:min-h-0">
-                    <Card class="flex min-h-0 flex-[2] flex-col">
-                        <CardHeader>
-                            <CardTitle class="flex items-center gap-2">
-                                Aktivitas Terakhir
-                                <Badge variant="secondary" class="font-normal tabular-nums">
-                                    {{ props.activities.length }}
-                                </Badge>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent class="min-h-0 flex-1 p-0">
-                            <EmptyState v-if="!props.activities.length" variant="no-data" />
-                            <div v-else class="thin-scroll h-full divide-y overflow-y-auto" data-testid="recent-activities">
-                                <div
-                                    v-for="log in props.activities"
-                                    :key="log.id"
-                                    class="flex items-start gap-3 px-6 py-2 transition-colors hover:bg-muted/40"
-                                >
-                                    <span class="w-11 shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
-                                        {{ log.time }}
-                                    </span>
-                                    <span class="min-w-0 flex-1">
-                                        <span class="block truncate text-[13px] font-medium">{{ log.action }}</span>
-                                        <span class="block truncate text-xs text-muted-foreground">
-                                            {{ log.actor }} · {{ log.module }}
-                                        </span>
-                                    </span>
-                                </div>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Penyimpanan</CardTitle>
+                    </CardHeader>
+                    <CardContent class="space-y-3">
+                        <div v-for="item in props.storage" :key="item.label" class="space-y-1.5">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-muted-foreground">{{ item.label }}</span>
+                                <span class="tabular-nums">{{ item.used }} / {{ item.total }}</span>
                             </div>
-                        </CardContent>
-                        <CardFooter class="justify-end">
-                            <Button as="a" href="/audit-trail" variant="outline" size="sm" data-testid="link-all-activities">
-                                Semua Aktivitas <ArrowRight class="size-4" />
-                            </Button>
-                        </CardFooter>
-                    </Card>
-
-                    <Card class="flex min-h-0 flex-1 flex-col">
-                        <CardHeader>
-                            <CardTitle>Penyimpanan</CardTitle>
-                        </CardHeader>
-                        <CardContent class="thin-scroll min-h-0 flex-1 space-y-3 overflow-y-auto">
-                            <div v-for="item in props.storage" :key="item.label" class="space-y-1.5">
-                                <div class="flex items-center justify-between text-xs">
-                                    <span class="text-muted-foreground">{{ item.label }}</span>
-                                    <span class="tabular-nums">{{ item.used }} / {{ item.total }}</span>
-                                </div>
-                                <Progress :value="item.percent" class="h-1.5" />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                            <Progress :value="item.percent" class="h-1.5" />
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             <Card>
