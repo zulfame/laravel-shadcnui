@@ -106,6 +106,10 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 **Pengaturan**
 - **Penampilan**: identitas aplikasi (nama, tagline, inisial brand), logo terang/gelap, favicon, SEO & metadata (termasuk Open Graph), kontak & footer.
 
+**Dashboard**
+- Widget **data nyata** dari basis data: KPI (pengguna aktif/nonaktif, peranan, izin + jumlah entitas, aktivitas 7 hari + yang perlu ditinjau, notifikasi belum dibaca), Pengguna Terbaru (dengan kelengkapan profil), Aktivitas Terakhir, Tren 7 Hari (pengguna baru vs aktivitas), Aktivitas per Modul, Sebaran Peranan, dan Penyimpanan nyata (berkas unggahan, ukuran basis data, disk server).
+- **Galeri Komponen** (`components/composite/ComponentGallery.vue`): showcase interaktif seluruh komponen — tombol & status muat, toast 4 varian, lencana + StateChip, avatar, tooltip, isian formulir (Input, error state, PasswordInput, PhoneInput, Textarea), Combobox, DatePicker, Checkbox, Switch, Alert, Progress, Skeleton, Dialog, ConfirmDeleteDialog, DropdownMenu, Tabel + RowActions, dan EmptyState (6 varian dapat dipilih).
+
 **UI**
 - Dark mode, sidebar dapat di-collapse (mode ikon), breadcrumb otomatis, toast, dialog, combobox dengan pencarian, date picker.
 - Sidebar dua area: **Member Area** (Dashboard) dan **Administrator** (Perizinan → Peranan → Pengguna → Penampilan → Audit Trail). Profil diakses lewat dropdown akun di footer sidebar.
@@ -184,7 +188,7 @@ php artisan cache:clear  # WAJIB setelah mengubah tabel settings langsung dari D
 app/
 ├── Enums/RoleName.php                  # enum nama peranan
 ├── Http/
-│   ├── Controllers/                    # Auth, Dashboard, User, Permission, Role, Notification, Profile, Appearance, ActivityLog
+│   ├── Controllers/                    # Auth, DashboardController, User, Permission, Role, Notification, Profile, Appearance, ActivityLog
 │   ├── Middleware/HandleInertiaRequests.php   # share auth, branding, flash
 │   └── Requests/                       # SATU Form Request per form (lihat Standar Validasi)
 ├── Models/                             # User, Role & Permission (Spatie), ActivityLog, Notification, Setting

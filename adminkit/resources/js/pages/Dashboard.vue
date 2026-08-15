@@ -1,15 +1,6 @@
 <script setup>
-import { Head } from '@inertiajs/vue3';
-import {
-    ArrowRight,
-    Clock,
-    HardDrive,
-    ListChecks,
-    RefreshCw,
-    ShieldCheck,
-    UserPlus,
-    Users2,
-} from 'lucide-vue-next';
+import { Head, router } from '@inertiajs/vue3';
+import { ArrowRight, BellRing, KeyRound, RefreshCw, ScrollText, ShieldCheck, UserPlus, Users2 } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
 import Avatar from '@/components/ui/Avatar.vue';
@@ -21,9 +12,12 @@ import CardFooter from '@/components/ui/CardFooter.vue';
 import CardHeader from '@/components/ui/CardHeader.vue';
 import CardTitle from '@/components/ui/CardTitle.vue';
 import Progress from '@/components/ui/Progress.vue';
+import Separator from '@/components/ui/Separator.vue';
+import EmptyState from '@/components/composite/EmptyState.vue';
 import StateChip from '@/components/composite/StateChip.vue';
 import MiniBarChart from '@/components/composite/MiniBarChart.vue';
 import HBarChart from '@/components/composite/HBarChart.vue';
+import ComponentGallery from '@/components/composite/ComponentGallery.vue';
 import { initialsOf } from '@/lib/utils';
 import { ACTION } from '@/constants/labels';
 
@@ -33,20 +27,21 @@ const props = defineProps({
     activities: { type: Array, default: () => [] },
     trend: { type: Array, default: () => [] },
     byModule: { type: Array, default: () => [] },
+    roleDistribution: { type: Array, default: () => [] },
     storage: { type: Array, default: () => [] },
 });
 
 const ICONS = {
     users: Users2,
     roles: ShieldCheck,
-    sessions: Clock,
-    storage: HardDrive,
-    queue: ListChecks,
+    permissions: KeyRound,
+    activity: ScrollText,
+    notifications: BellRing,
 };
 
 const trendSeries = [
     { key: 'created', label: 'Pengguna baru', token: '--ev-meeting' },
-    { key: 'active', label: 'Aktif harian', token: '--success' },
+    { key: 'active', label: 'Aktivitas', token: '--success' },
 ];
 
 const totalModule = props.byModule.reduce((a, b) => a + b.count, 0);
@@ -77,7 +72,7 @@ const totalModule = props.byModule.reduce((a, b) => a + b.count, 0);
             </div>
 
             <!-- Kartu daftar: tinggi terkunci + isi bergulir -->
-            <div class="grid gap-6 lg:h-[31.5rem] lg:grid-cols-3">
+            <div class="grid gap-6 lg:h-[26rem] lg:grid-cols-3">
                 <Card class="flex flex-col lg:col-span-2">
                     <CardHeader class="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
                         <CardTitle class="flex items-center gap-2">
@@ -87,16 +82,22 @@ const totalModule = props.byModule.reduce((a, b) => a + b.count, 0);
                             </Badge>
                         </CardTitle>
                         <div class="flex flex-wrap items-center gap-2">
-                            <Button variant="outline" size="sm" data-testid="dashboard-refresh">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                data-testid="dashboard-refresh"
+                                @click="router.reload({ preserveScroll: true })"
+                            >
                                 <RefreshCw class="size-4" /> {{ ACTION.refresh }}
                             </Button>
-                            <Button size="sm" data-testid="dashboard-new-user">
+                            <Button as="a" href="/users" size="sm" data-testid="dashboard-new-user">
                                 <UserPlus class="size-4" /> Pengguna Baru
                             </Button>
                         </div>
                     </CardHeader>
                     <CardContent class="min-h-0 flex-1 p-0">
-                        <div class="thin-scroll h-full divide-y overflow-y-auto" data-testid="recent-users">
+                        <EmptyState v-if="!props.recentUsers.length" variant="no-data" />
+                        <div v-else class="thin-scroll h-full divide-y overflow-y-auto" data-testid="recent-users">
                             <div
                                 v-for="user in props.recentUsers"
                                 :key="user.id"
@@ -124,8 +125,8 @@ const totalModule = props.byModule.reduce((a, b) => a + b.count, 0);
                         </div>
                     </CardContent>
                     <CardFooter class="justify-end">
-                        <Button variant="outline" size="sm" data-testid="link-all-users">
-                            Lihat semua pengguna <ArrowRight class="size-4" />
+                        <Button as="a" href="/users" variant="outline" size="sm" data-testid="link-all-users">
+                            Lihat Semua Pengguna <ArrowRight class="size-4" />
                         </Button>
                     </CardFooter>
                 </Card>
@@ -141,7 +142,8 @@ const totalModule = props.byModule.reduce((a, b) => a + b.count, 0);
                             </CardTitle>
                         </CardHeader>
                         <CardContent class="min-h-0 flex-1 p-0">
-                            <div class="thin-scroll h-full divide-y overflow-y-auto" data-testid="recent-activities">
+                            <EmptyState v-if="!props.activities.length" variant="no-data" />
+                            <div v-else class="thin-scroll h-full divide-y overflow-y-auto" data-testid="recent-activities">
                                 <div
                                     v-for="log in props.activities"
                                     :key="log.id"
@@ -160,8 +162,8 @@ const totalModule = props.byModule.reduce((a, b) => a + b.count, 0);
                             </div>
                         </CardContent>
                         <CardFooter class="justify-end">
-                            <Button variant="outline" size="sm">
-                                Semua aktivitas <ArrowRight class="size-4" />
+                            <Button as="a" href="/audit-trail" variant="outline" size="sm" data-testid="link-all-activities">
+                                Semua Aktivitas <ArrowRight class="size-4" />
                             </Button>
                         </CardFooter>
                     </Card>
@@ -210,18 +212,14 @@ const totalModule = props.byModule.reduce((a, b) => a + b.count, 0);
                         <CardTitle>Sebaran Peranan</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <HBarChart
-                            :data="[
-                                { label: 'Staf', count: 96 },
-                                { label: 'Editor', count: 18 },
-                                { label: 'Auditor', count: 5 },
-                                { label: 'Administrator', count: 3 },
-                            ]"
-                            :height="220"
-                        />
+                        <HBarChart :data="props.roleDistribution" :height="220" />
                     </CardContent>
                 </Card>
             </div>
+
+            <Separator />
+
+            <ComponentGallery />
         </div>
     </AppLayout>
 </template>

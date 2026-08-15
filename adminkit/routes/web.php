@@ -3,12 +3,12 @@
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\AppearanceController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
-use App\Support\DemoData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -30,14 +30,8 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
-    Route::get('/', fn () => Inertia::render('Dashboard', [
-        'kpis' => DemoData::kpis(),
-        'recentUsers' => DemoData::recentUsers(),
-        'activities' => DemoData::activities(),
-        'trend' => DemoData::trend(),
-        'byModule' => DemoData::byModule(),
-        'storage' => DemoData::storage(),
-    ]))->middleware('permission:dashboard.view')->name('dashboard');
+    Route::get('/', [DashboardController::class, 'index'])
+        ->middleware('permission:dashboard.view')->name('dashboard');
 
     Route::middleware('permission:profile.view')->group(function () {
         Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])
