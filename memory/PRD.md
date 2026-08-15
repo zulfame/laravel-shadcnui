@@ -279,3 +279,4 @@ Atas permintaan user: **semua style badge kustom DIHAPUS**.
   - 24 setelan (branding + SEO + `permission_entity_order`) sebagai konstanta `SETTINGS`.
 - Uji: `DB_DATABASE=/tmp/seedtest.sqlite php artisan migrate:fresh --seed --force` → users=1, roles=2, perms=12, settings=24, logs=0, password `1` cocok. DB asli tidak disentuh.
 - **PERINGATAN terbuka**: `.env` `TELESCOPE_ALLOWED_EMAILS=zulfadlirizal@gmail.com`, sedangkan email Super Admin kini `studio@jkv.co.id` → `/telescope` akan 403 sampai nilai env diperbarui (menunggu keputusan user).
+- **Resolved**: `TELESCOPE_ALLOWED_EMAILS` diubah ke `studio@jkv.co.id` (email Super Admin baru); `/telescope` terverifikasi 200 setelah login `jkv` / `1`. `env.example` & README ikut disesuaikan.

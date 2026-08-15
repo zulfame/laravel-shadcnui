@@ -541,7 +541,7 @@ Nilai `'all'` dipakai sebagai sentinel filter "semua" karena `reka-ui` melarang 
 
 ```
 TELESCOPE_ENABLED=true
-TELESCOPE_ALLOWED_EMAILS=zulfadlirizal@gmail.com
+TELESCOPE_ALLOWED_EMAILS=studio@jkv.co.id
 ```
 
 Catatan penting: `App\Providers\TelescopeServiceProvider::boot()` mendaftarkan ulang grup middleware `telescope` **tanpa** `Laravel\Sentinel\Http\Middleware\SentinelMiddleware`. Sentinel memblokir `/telescope` dengan 401 ketika `APP_ENV=local` diakses lewat reverse proxy publik (kasus pod preview), padahal otorisasi sudah ditegakkan oleh sesi login + gate email. `authorization()` juga di-override agar gate berlaku di **semua** environment (bawaan Telescope melewati pemeriksaan saat `local`).
