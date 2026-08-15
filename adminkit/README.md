@@ -56,7 +56,12 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 - Halaman profil: ubah data diri, unggah/hapus foto profil, ganti kata sandi.
 
 **Manajemen Pengguna**
-- Tabel server-side: pencarian, sortir, paginasi, filter **Perizinan**
+- Tabel server-side: pencarian, sortir, paginasi, filter **Peranan** (dinamis) dan **Status**.
+- Dialog tambah/ubah dengan validasi cepat; hanya **Nama, Peranan, Kata Sandi** yang wajib.
+- **Impor Excel** (`.xlsx` sesuai template yang dapat diunduh; baris judul diabaikan, baris tidak valid dilewati, kata sandi kosong diisi acak) dan **Ekspor Excel** mengikuti filter aktif.
+- `username`, `email`, `phone` opsional namun **unik**; nomor HP hanya menerima angka (boleh `+`).
+
+**Perizinan**
 - Halaman `/permissions` untuk mengelola permission Spatie: tabel server-side (pencarian, sortir, filter **Entitas** dinamis, paginasi), tambah/ubah/hapus, dan hapus massal.
 - Nama izin wajib berformat `entitas.aksi` huruf kecil (mis. `projects.view`, `projects.delete_any`).
 - **Izin inti** bawaan modul (`Modules::permissions()`) terkunci: ikon kunci, tanpa menu aksi, dan ditolak 403 dari server bila dipaksa diubah/dihapus.
@@ -102,6 +107,8 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 
 **UI**
 - Dark mode, sidebar dapat di-collapse (mode ikon), breadcrumb otomatis, toast, dialog, combobox dengan pencarian, date picker.
+- Sidebar dua area: **Member Area** (Dashboard) dan **Administrator** (Perizinan → Peranan → Pengguna → Penampilan → Audit Trail). Profil diakses lewat dropdown akun di footer sidebar.
+- **Halaman error bertema design system** (`pages/Error.vue`) untuk 401/403/404/419/429/500/503 — bukan tampilan bawaan Laravel.
 - Responsif: kolom tabel sekunder otomatis disembunyikan pada layar kecil.
 
 ---
@@ -122,7 +129,7 @@ git clone <url-repo> adminkit && cd adminkit
 composer install
 yarn install
 
-cp .env.example .env          # bila belum ada .env
+cp env.example .env           # berkas contoh bernama env.example (tanpa titik) agar ikut ter-push ke GitHub
 php artisan key:generate
 
 touch database/database.sqlite
@@ -136,10 +143,17 @@ php artisan serve
 Variabel `.env` yang relevan:
 
 ```env
-APP_LOCALE=id                 # memengaruhi format tanggal & waktu relatif
+APP_LOCALE=id                 # tanggal, waktu relatif, dan pesan validasi (Laravel Lang)
 APP_TIMEZONE=Asia/Jakarta
 DB_CONNECTION=sqlite
 DB_DATABASE=/abs/path/database/database.sqlite
+
+SESSION_SAME_SITE=none        # WAJIB bila aplikasi dimuat di dalam iframe (mis. panel preview)
+SESSION_SECURE_COOKIE=true    # pasangan dari SameSite=none — hanya untuk HTTPS
+
+FILESYSTEM_DISK=local         # local atau s3 (lihat Object Storage)
+TELESCOPE_ENABLED=true
+TELESCOPE_ALLOWED_EMAILS=email@anda.com
 ```
 
 Akun awal dibuat oleh `database/seeders/DatabaseSeeder.php` (lihat berkas tersebut untuk kredensial). **Ganti kata sandi setelah instalasi.**
@@ -165,11 +179,13 @@ php artisan cache:clear  # WAJIB setelah mengubah tabel settings langsung dari D
 app/
 ├── Enums/RoleName.php                  # enum nama peranan
 ├── Http/
-│   ├── Controllers/                    # Auth, Dashboard, User, Permission, Role, Notification, Profile, Appearance, Storage, ActivityLog
+│   ├── Controllers/                    # Auth, Dashboard, User, Permission, Role, Notification, Profile, Appearance, ActivityLog
 │   ├── Middleware/HandleInertiaRequests.php   # share auth, branding, flash
 │   └── Requests/                       # SATU Form Request per form (lihat Standar Validasi)
 ├── Models/                             # User, Role & Permission (Spatie), ActivityLog, Notification, Setting
-├── Providers/AppServiceProvider.php    # branding untuk blade root + locale Carbon
+├── Providers/
+│   ├── AppServiceProvider.php          # branding untuk blade root + locale Carbon
+│   └── TelescopeServiceProvider.php    # gate & middleware Telescope
 └── Support/
     ├── Branding.php                    # pembacaan setelan branding (+cache)
     ├── Excel.php                       # unduhan & pembacaan berkas .xlsx (PhpSpreadsheet)
@@ -190,9 +206,10 @@ resources/
 │   ├── config/navigation.js            # area, menu, breadcrumb (ROUTE_TRAILS)
 │   ├── constants/labels.js             # label aksi (Title Case)
 │   ├── lib/validators.js               # cermin Rules.php untuk validasi cepat UI
-│   └── pages/                          # Dashboard, Users, Permissions, Roles, RoleDetail, AuditTrail, AuditDetail, Appearance, Storage, Profile, auth/Login
+│   └── pages/                          # Dashboard, Users, Permissions, Roles, RoleDetail, AuditTrail, AuditDetail, Appearance, Profile, Error, auth/Login
 └── views/app.blade.php                 # root blade (judul, favicon, meta SEO/OG)
 
+lang/id/, lang/id.json                  # terjemahan Laravel Lang (pesan validasi bawaan)
 routes/web.php
 database/{migrations,seeders,factories}
 ```
@@ -207,7 +224,8 @@ database/{migrations,seeders,factories}
 | `roles`, `permissions`, `model_has_roles`, `role_has_permissions` | standar `spatie/laravel-permission`; nama izin memakai pola `entitas.aksi` |
 | `activity_logs` | `actor_name`, `action`, `module`, `level`, `subject_type/id`, `changes` (JSON diff), `context` (JSON), `ip`, `method`, `url`, `status_code`, `user_agent` |
 | `notifications` | satu baris per penerima: `user_id`, `title`, `body`, `module`, `level`, `url`, `actor_id`, `read_at` |
-| `settings` | `key` (primary), `value` — branding, SEO, dan konfigurasi penyimpanan |
+| `settings` | `key` (primary), `value` — branding, SEO, dan `permission_entity_order` (urutan kartu entitas matriks) |
+| `telescope_entries`, `telescope_entries_tags`, `telescope_monitoring` | penyimpanan Laravel Telescope |
 
 ---
 
@@ -310,6 +328,7 @@ const submit = () => check.submit(() => form.post('/users'));
 - Halaman detail peranan (`/roles/{id}`) menampilkan seluruh izin yang dikelompokkan per **entitas** (bagian sebelum titik) dengan checkbox per aksi, toggle "pilih semua" per entitas, toggle global, pencarian izin, dan penghitung izin terpilih.
 - Disimpan lewat `PUT /roles/{role}/permissions` → `syncPermissions()`; peranan `Super Admin` bersifat **read-only** (kontrol disabled dan server menolak 403).
 - Perubahan dicatat di audit trail sebagai diff daftar izin lama → baru dan memicu notifikasi bertarget `roles.view`.
+- **Kartu entitas dapat digeser** (drag & drop HTML5, ikon `GripVertical`) untuk menyusun urutan tampilnya. Urutan bersifat **global** (berlaku untuk semua peranan), tersimpan otomatis ke `settings.permission_entity_order` lewat `PUT /roles/entity-order` (`SaveEntityOrderRequest`, izin `roles.manage`), dan dipakai `RoleController::matrix()`; entitas baru menyusul di belakang. Drag dinonaktifkan selama kolom pencarian izin terisi.
 
 ### Generator izin standar
 
@@ -489,6 +508,7 @@ Nilai `'all'` dipakai sebagai sentinel filter "semua" karena `reka-ui` melarang 
 | POST | `/users/import` | Impor pengguna dari Excel |
 | GET | `/users/import/template` | Unduh template impor pengguna |
 | PUT | `/roles/{role}/permissions` | Simpan matriks hak akses peranan |
+| PUT | `/roles/entity-order` | Simpan urutan kartu entitas pada matriks |
 | GET | `/roles`, `/roles/{role}` | Daftar & detail peranan |
 | POST/PUT/DELETE | `/roles`, `/roles/{role}` | CRUD peranan |
 | POST | `/roles/import` | Impor peranan dari Excel |
@@ -501,6 +521,8 @@ Nilai `'all'` dipakai sebagai sentinel filter "semua" karena `reka-ui` melarang 
 | GET | `/appearance` | Pengaturan penampilan |
 | PUT | `/appearance/{identity\|seo\|contact}` | Simpan per bagian |
 | POST/DELETE | `/appearance/asset/{key}` | Unggah/hapus aset merek |
+| GET | `/telescope` | Laravel Telescope (login + email diizinkan) |
+| * | selain di atas | `Route::fallback()` → halaman error 404 bertema |
 
 ---
 
@@ -531,8 +553,10 @@ Catatan penting: `App\Providers\TelescopeServiceProvider::boot()` mendaftarkan u
 ## Pengujian
 
 ```bash
-php artisan test          # bila suite Pest/PHPUnit ditambahkan
-./vendor/bin/pint --test  # pemeriksaan gaya kode
+php artisan test                        # seluruh suite
+php artisan test --filter=ExcelIoTest   # ekspor/impor .xlsx & penolakan berkas CSV
+php artisan test --filter=ErrorPageTest # 404/403 memakai halaman error Inertia
+./vendor/bin/pint --test                # pemeriksaan gaya kode
 ```
 
 Catatan pengujian manual/otomatis:
@@ -565,6 +589,10 @@ Catatan pengujian manual/otomatis:
 | Izin baru tidak langsung berlaku | Cache Spatie — controller sudah memanggil `forgetCachedPermissions()`; bila mengubah lewat tinker jalankan `app(PermissionRegistrar::class)->forgetCachedPermissions()` |
 | Impor ditolak "harus berformat Excel" | Simpan berkas sebagai `.xlsx` (Excel/LibreOffice/Google Sheets → Unduh sebagai Excel); `.csv` tidak lagi didukung |
 | Waktu relatif berbahasa Inggris | Setel `APP_LOCALE=id` (locale Carbon mengikuti nilai ini) |
+| Login selalu 419 saat dibuka di iframe | Cookie sesi diblokir lintas situs — setel `SESSION_SAME_SITE=none` + `SESSION_SECURE_COOKIE=true`, lalu `php artisan config:clear` |
+| `/telescope` mengembalikan 401 | `laravel/sentinel` memblokir akses proxy publik saat `APP_ENV=local` — pastikan `TelescopeServiceProvider::boot()` mendaftarkan ulang grup middleware `telescope` (lihat bagian Telescope) |
+| Username numerik tidak bisa masuk | Sudah diperbaiki: kredensial dicari serentak pada `email`/`username`/`phone`, bukan ditebak dari formatnya |
+| Pesan validasi masih berbahasa Inggris | Jalankan `php artisan lang:add id` lalu `php artisan optimize:clear` |
 
 ---
 
