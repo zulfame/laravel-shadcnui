@@ -255,3 +255,10 @@ Atas permintaan user: **semua style badge kustom DIHAPUS**.
 - **BUG LOGIN diperbaiki**: `LoginRequest::authenticate()` sebelumnya menebak kolom dari format masukan, sehingga **username numerik** (`309011221`) dianggap nomor telepon → selalu gagal. Sekarang pengguna dicari sekaligus pada `email`/`username`/`phone`, lalu `Auth::attempt(['id' => ...])`.
 - Kredensial seeder saat ini: username `309011221`, kata sandi `1` (lihat `/app/memory/test_credentials.md`) — `php artisan db:seed` MENIMPA kata sandi.
 - Catatan: `tests/Feature/ExampleTest.php` (bawaan Laravel) gagal karena `/` butuh sesi — bukan regresi.
+
+## Selesai (2026-06-16, Laravel Telescope + Laravel Lang)
+- **Composer dipindah ke `/app/bin/composer`** (symlink ke `/usr/local/bin`) karena `/usr/local` hilang tiap pod restart.
+- **laravel/telescope ^5.22** di `/telescope`: middleware `['web','auth',Authorize::class]`, gate `viewTelescope` hanya untuk email di `TELESCOPE_ALLOWED_EMAILS` (`.env` = zulfadlirizal@gmail.com), `authorization()` di-override agar gate berlaku juga saat `APP_ENV=local`.
+  - **Jebakan penting**: Telescope 5 membawa `laravel/sentinel` yang menyisipkan `SentinelMiddleware:telescope` dan mengembalikan **401** ketika `APP_ENV=local` diakses lewat reverse proxy publik (pod preview). Fix: `TelescopeServiceProvider::boot()` mendaftarkan ulang `Route::middlewareGroup('telescope', config('telescope.middleware'))` tanpa Sentinel.
+  - Terverifikasi: tamu → 302 /login, email diizinkan → UI Telescope 200, pengguna lain → 403 halaman error bertema.
+- **laravel-lang/common ^6.8** + `php artisan lang:add id` → `lang/id/*` & `lang/id.json`; `APP_LOCALE=id` membuat pesan validasi bawaan berbahasa Indonesia. Pesan kustom (`Rules::messages()`, `messages()` tiap Form Request, halaman Login) TIDAK diubah dan tetap menang. Terverifikasi lewat Validator: unique → "Surel sudah ada sebelumnya.", in → "Peran yang dipilih tidak valid.", sedangkan phone.regex tetap pesan kustom.

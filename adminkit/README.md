@@ -26,6 +26,8 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 - [Design System & Konvensi UI](#design-system--konvensi-ui)
 - [Tabel Server-side](#tabel-server-side)
 - [Rute](#rute)
+- [Telescope (Debug)](#telescope-debug)
+- [Bahasa & Pesan Validasi](#bahasa--pesan-validasi)
 - [Pengujian](#pengujian)
 - [Deployment](#deployment)
 - [Pemecahan Masalah](#pemecahan-masalah)
@@ -499,6 +501,30 @@ Nilai `'all'` dipakai sebagai sentinel filter "semua" karena `reka-ui` melarang 
 | GET | `/appearance` | Pengaturan penampilan |
 | PUT | `/appearance/{identity\|seo\|contact}` | Simpan per bagian |
 | POST/DELETE | `/appearance/asset/{key}` | Unggah/hapus aset merek |
+
+---
+
+## Telescope (Debug)
+
+`laravel/telescope` terpasang di `/telescope` dengan **dua lapis** perlindungan:
+
+1. Middleware `['web', 'auth', Authorize::class]` (`config/telescope.php`) → tamu dialihkan ke `/login`.
+2. Gate `viewTelescope` hanya meloloskan email pada `TELESCOPE_ALLOWED_EMAILS` (dipisah koma di `.env`); pengguna lain menerima 403 (halaman error bertema).
+
+```
+TELESCOPE_ENABLED=true
+TELESCOPE_ALLOWED_EMAILS=zulfadlirizal@gmail.com
+```
+
+Catatan penting: `App\Providers\TelescopeServiceProvider::boot()` mendaftarkan ulang grup middleware `telescope` **tanpa** `Laravel\Sentinel\Http\Middleware\SentinelMiddleware`. Sentinel memblokir `/telescope` dengan 401 ketika `APP_ENV=local` diakses lewat reverse proxy publik (kasus pod preview), padahal otorisasi sudah ditegakkan oleh sesi login + gate email. `authorization()` juga di-override agar gate berlaku di **semua** environment (bawaan Telescope melewati pemeriksaan saat `local`).
+
+---
+
+## Bahasa & Pesan Validasi
+
+- `laravel-lang/common` terpasang dan berkas bahasa Indonesia ada di `lang/id/` + `lang/id.json` (`php artisan lang:add id`, perbarui dengan `php artisan lang:update`).
+- `APP_LOCALE=id` → seluruh pesan validasi bawaan Laravel otomatis berbahasa Indonesia (`required`, `email`, `unique`, `in`, `max`, dll).
+- **Pesan kustom tetap menang**: `App\Support\Rules::messages()` dan `messages()` pada setiap Form Request (mis. halaman Login, telepon, username) tidak berubah — Laravel Lang hanya mengisi aturan yang belum punya pesan kustom.
 
 ---
 
