@@ -1,12 +1,11 @@
 <script setup>
-import { DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle, DialogDescription } from 'reka-ui';
+import { DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui';
 import { X } from 'lucide-vue-next';
 import { cn } from '@/lib/utils';
 
 const props = defineProps({
     open: { type: Boolean, default: false },
     title: { type: String, default: '' },
-    description: { type: String, default: '' },
     class: { type: null, default: '' },
 });
 defineEmits(['update:open']);
@@ -32,9 +31,6 @@ defineEmits(['update:open']);
                         <DialogTitle class="text-base font-semibold leading-none tracking-tight">
                             {{ props.title }}
                         </DialogTitle>
-                        <DialogDescription v-if="props.description" class="text-xs text-muted-foreground">
-                            {{ props.description }}
-                        </DialogDescription>
                     </div>
                     <DialogClose
                         class="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"

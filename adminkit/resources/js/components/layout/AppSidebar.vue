@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { Check, ChevronsUpDown, LogOut, UserRound, Waves } from 'lucide-vue-next';
+import { Check, ChevronsUpDown, LogOut, UserRound } from 'lucide-vue-next';
 
 import Avatar from '@/components/ui/Avatar.vue';
 import DropdownMenu from '@/components/ui/DropdownMenu.vue';
@@ -72,6 +72,10 @@ const currentUser = computed(() => ({
     avatar: auth.value.avatar || '',
     initials: initialsOf(auth.value.name, auth.value.email),
 }));
+
+const brandInitials = computed(() =>
+    (branding.value.brand_initials || branding.value.app_name || 'AK').slice(0, 3).toUpperCase(),
+);
 </script>
 
 <template>
@@ -87,9 +91,11 @@ const currentUser = computed(() => ({
                                 data-testid="area-switcher-trigger"
                             >
                                 <div
-                                    class="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground"
+                                    class="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg text-[11px] font-semibold text-primary-foreground"
+                                    :style="{ backgroundColor: branding.brand_color || 'hsl(var(--primary))' }"
                                 >
-                                    <Waves class="size-4" aria-hidden="true" />
+                                    <img v-if="branding.logo_light" :src="branding.logo_light" alt="" class="size-full object-contain" />
+                                    <template v-else>{{ brandInitials }}</template>
                                 </div>
                                 <div class="grid flex-1 text-left text-sm leading-tight">
                                     <span class="truncate font-semibold">{{ branding.app_name || 'AdminKit' }}</span>

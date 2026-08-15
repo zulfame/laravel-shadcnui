@@ -14,11 +14,10 @@ import {
 import Button from '@/components/ui/Button.vue';
 import Card from '@/components/ui/Card.vue';
 import CardContent from '@/components/ui/CardContent.vue';
-import CardDescription from '@/components/ui/CardDescription.vue';
 import CardHeader from '@/components/ui/CardHeader.vue';
 import CardTitle from '@/components/ui/CardTitle.vue';
 import Input from '@/components/ui/Input.vue';
-import Select from '@/components/ui/Select.vue';
+import Combobox from '@/components/ui/Combobox.vue';
 import Table from '@/components/ui/Table.vue';
 import TableBody from '@/components/ui/TableBody.vue';
 import TableCell from '@/components/ui/TableCell.vue';
@@ -42,7 +41,6 @@ import { ACTION } from '@/constants/labels';
  */
 const props = defineProps({
     title: { type: String, required: true },
-    description: { type: String, default: '' },
     columns: { type: Array, required: true },
     rows: { type: Array, default: () => [] },
     rowKey: { type: String, default: 'id' },
@@ -155,7 +153,6 @@ const pageSizeOptions = [
         <CardHeader class="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
             <div class="space-y-1">
                 <CardTitle>{{ props.title }}</CardTitle>
-                <CardDescription v-if="props.description">{{ props.description }}</CardDescription>
             </div>
             <div class="flex flex-wrap items-center gap-2">
                 <slot name="header-action" />
@@ -208,7 +205,6 @@ const pageSizeOptions = [
                     variant="first-time"
                     :icon="props.emptyIcon"
                     :title="props.emptyTitle"
-                    :description="props.emptyDescription"
                 />
                 <Table
                     v-else
@@ -283,7 +279,7 @@ const pageSizeOptions = [
 
             <div v-if="!isEmptySource" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Select
+                    <Combobox
                         :model-value="perPage"
                         :options="pageSizeOptions"
                         class="w-[70px]"

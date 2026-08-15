@@ -1,9 +1,33 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="{{ $branding['language'] ?? 'id' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title inertia>{{ config('app.name', 'AdminKit') }}</title>
+    <title inertia>{{ $branding['app_name'] }}</title>
+
+    <meta name="app-name" content="{{ $branding['app_name'] }}">
+    <meta name="description" content="{{ $branding['meta_description'] }}">
+    <meta name="keywords" content="{{ $branding['meta_keywords'] }}">
+    @unless ($branding['search_indexable'])
+        <meta name="robots" content="noindex, nofollow">
+    @endunless
+    @if ($branding['canonical_url'])
+        <link rel="canonical" href="{{ $branding['canonical_url'] }}">
+    @endif
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ $branding['app_name'] }}">
+    <meta property="og:title" content="{{ $branding['og_title'] }}">
+    <meta property="og:description" content="{{ $branding['og_description'] }}">
+    @if ($branding['og_image'] ?? $branding['thumbnail'])
+        <meta property="og:image" content="{{ url($branding['og_image'] ?? $branding['thumbnail']) }}">
+        <meta name="twitter:card" content="summary_large_image">
+    @endif
+
+    @if ($branding['favicon'])
+        <link rel="icon" href="{{ $branding['favicon'] }}">
+    @endif
+
     <script>
         (function () {
             try {

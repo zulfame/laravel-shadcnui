@@ -99,3 +99,31 @@ Seluruh data pada fase ini **DUMMY/MOCKED** (`app/Support/DemoData.php`). Belum 
   1. `Select.vue` tidak meneruskan atribut (SelectRoot tanpa DOM node) → `inheritAttrs: false` + `v-bind="$attrs"` pada `SelectTrigger`.
   2. `SelectItem` dengan value `''` dilarang reka-ui → sentinel `'all'` di UI, dipetakan ke `''` saat query (filter status kini bisa direset; error konsol hilang).
   3. Tabrakan `data-testid="users-page"` → wrapper halaman menjadi `users-page-view`.
+
+## Selesai (2026-06-15, Penyimpanan + Combobox + DatePicker + urutan menu)
+- **Urutan menu area Administrator** sesuai permintaan: Kelola Peranan → Kelola Pengguna → Penampilan → Penyimpanan → Log Aktivitas.
+- **Halaman Penyimpanan** (`/storage-settings`, izin `storage.view`/`storage.manage`): driver aktif (local/s3), endpoint, access key, secret (write-only, tidak pernah dikirim balik), region, bucket, path-style toggle, URL publik opsional, dan tombol **Uji Koneksi** (tulis+hapus berkas uji) — terverifikasi BERHASIL ke `https://nos.wjv-1.neo.id` bucket `bpr-assets`.
+- Nilai default S3 diisi lewat **seeder** (`Setting::firstOrCreate`, idempoten) sesuai kredensial yang diberikan user.
+- `App\Support\FileStorage` — satu pintu unggahan; **avatar & aset merek kini benar-benar tersimpan ke object storage** saat driver `s3` (terverifikasi: avatar tersimpan di `bpr-assets/avatars/...` dan dapat diakses publik HTTP 200). Paket `league/flysystem-aws-s3-v3` ditambahkan.
+- **Combobox** (`components/ui/Combobox.vue`) — select DENGAN pencarian (Popover + filter + ikon centang), API sama dengan Select lama. `Select.vue` DIHAPUS; seluruh pemakaian (DataTableCard page-size, filter status pengguna, peranan di dialog, filter modul log, Penampilan) sudah memakai Combobox.
+- **DatePicker** (`components/ui/DatePicker.vue`) — kalender compact tanpa dependensi (Senin awal pekan, Hari ini/Bersihkan, nilai `YYYY-MM-DD`). Komponen siap pakai; belum ada field tanggal di halaman yang ada, jadi belum dipasang di mana pun.
+
+## Selesai (2026-06-15, rename menu + hapus deskripsi kartu + audit kode)
+- **Nama & urutan menu**: Penampilan → Penyimpanan → Peranan → Pengguna → Log Aktivitas (breadcrumb, judul `Head`, dan judul kartu ikut disesuaikan; "Profil Pengguna" → "Profil").
+- **Semua deskripsi di header kartu DIHAPUS** (`CardDescription` tidak dipakai lagi di seluruh halaman) termasuk deskripsi di header dialog. Prop `description` pada `DataTableCard` dan `Dialog` ikut dihapus agar tidak ada kode mati.
+- Uji iterasi 5 (Penyimpanan/Combobox/S3): **100% backend & frontend**.
+
+### Audit kode terhadap prinsip yang diminta
+Diterapkan:
+- **DRY** — `App\Support\TableQuery` (parsing query + meta paginasi) dipakai UserController & ActivityLogController; composable `useServerTable` (debounce/urut/paginasi/filter) dipakai halaman Pengguna & Log Aktivitas; `App\Support\FileStorage` satu pintu unggahan; `Modules` satu sumber izin; `Branding` satu sumber branding; `constants/labels.js` satu leksikon aksi.
+- **KISS & YAGNI** — menghapus `Select.vue`, prop `description` yang tak terpakai, `@tanstack/vue-table` & `vue-sonner` yang tidak dipakai; Combobox & DatePicker dibuat sendiri (Popover + logika kecil) alih-alih menambah dependensi berat; tanpa Pinia dan tanpa TypeScript karena belum dibutuhkan.
+- **SOLID & Separation of Concerns** — validasi di Form Request, otorisasi di middleware/permission, transformasi data di controller, logika UI di composable, primitive UI murni presentasional; `RoleController::syncMatrix` memakai transaksi DB.
+- **Composition over Inheritance** — Vue: `<script setup>` + composables + slot (`cell-<key>`, `header-action`, `filters`); PHP: kelas pembantu di `app/Support` alih-alih hierarki warisan.
+- **High Cohesion, Low Coupling** — `DataTableCard` tidak tahu sumber datanya (mode client/server via props+emits); halaman tidak tahu cara request dilakukan (useServerTable).
+- **Clean Architecture secukupnya** — hanya lapisan `app/Support` yang tipis; TANPA repository/service ceremony.
+
+Sengaja TIDAK diterapkan (dengan alasan):
+- **Feature-based folder di frontend** — tetap berbasis tipe (`pages`/`components`/`composables`) agar setia pada referensi FlowDesk; baru relevan bila modul mencapai puluhan.
+- **TypeScript & Pinia** — lihat keputusan sebelumnya (kesetiaan ke FlowDesk; belum ada state lintas halaman).
+
+Backlog kualitas: Pest feature test (auth, CRUD, otorisasi), ESLint + Prettier, PHPStan/Larastan.

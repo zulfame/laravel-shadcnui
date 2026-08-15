@@ -1,4 +1,13 @@
-import { LayoutDashboard, LayoutGrid, ShieldCheck, UserRound, Users2 } from 'lucide-vue-next';
+import {
+    HardDrive,
+    LayoutDashboard,
+    LayoutGrid,
+    Palette,
+    ScrollText,
+    ShieldCheck,
+    UserRound,
+    Users2,
+} from 'lucide-vue-next';
 
 /**
  * Konfigurasi navigasi terpusat.
@@ -17,7 +26,7 @@ export const AREAS = [
                 label: 'Umum',
                 items: [
                     { title: 'Dashboard', href: '/', end: true, icon: LayoutDashboard, perm: 'dashboard.view' },
-                    { title: 'Profil Pengguna', href: '/profile', icon: UserRound, perm: 'profile.view' },
+                    { title: 'Profil', href: '/profile', icon: UserRound, perm: 'profile.view' },
                 ],
             },
         ],
@@ -31,7 +40,13 @@ export const AREAS = [
         sections: [
             {
                 label: 'Pengaturan',
-                items: [{ title: 'Kelola Pengguna', href: '/users', icon: Users2, perm: 'users.view' }],
+                items: [
+                    { title: 'Penampilan', href: '/appearance', icon: Palette, perm: 'appearance.view' },
+                    { title: 'Penyimpanan', href: '/storage-settings', icon: HardDrive, perm: 'storage.view' },
+                    { title: 'Peranan', href: '/roles', icon: ShieldCheck, perm: 'roles.view' },
+                    { title: 'Pengguna', href: '/users', icon: Users2, perm: 'users.view' },
+                    { title: 'Log Aktivitas', href: '/activity', icon: ScrollText, perm: 'activity.view' },
+                ],
             },
         ],
     },
@@ -59,11 +74,15 @@ export const firstRouteOf = (area) => area?.sections?.[0]?.items?.[0]?.href || n
 
 const ROUTE_TRAILS = [
     [/^\/$/, ['Dashboard']],
-    [/^\/profile$/, ['Profil Pengguna']],
-    [/^\/users$/, ['Kelola Pengguna']],
+    [/^\/profile$/, ['Profil']],
+    [/^\/users$/, ['Pengguna']],
+    [/^\/roles$/, ['Peranan']],
+    [/^\/appearance$/, ['Penampilan']],
+    [/^\/storage-settings$/, ['Penyimpanan']],
+    [/^\/activity$/, ['Log Aktivitas']],
 ];
 
-const ADMIN_ROUTES = [/^\/users/];
+const ADMIN_ROUTES = [/^\/users/, /^\/roles/, /^\/appearance/, /^\/storage-settings/, /^\/activity/];
 
 /** Id area yang memiliki sebuah pathname. */
 export const areaIdOf = (pathname) =>

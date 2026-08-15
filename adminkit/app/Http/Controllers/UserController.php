@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\User\StoreUserRequest;
+use App\Models\ActivityLog;
 use App\Models\User;
+use App\Support\TableQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -17,12 +19,10 @@ class UserController extends Controller
 
     public function index(Request $request): Response
     {
-        $search = trim((string) $request->string('search'));
-        $sort = in_array($request->string('sort')->value(), self::SORTABLE, true)
-            ? $request->string('sort')->value()
-            : 'name';
-        $dir = $request->string('dir')->value() === 'desc' ? 'desc' : 'asc';
-        $perPage = min(max((int) $request->integer('per_page', 10), 10), 50);
+        $search = TableQuery::search($request);
+        $sort = TableQuery::sort($request, self::SORTABLE, 'name');
+        $dir = TableQuery::direction($request);
+        $status = TableQuery::filter($request, 'status');
 
         $users = User::query()
             ->with('roles:id,name')
@@ -33,9 +33,9 @@ class UserController extends Controller
                 ->orWhere('phone', 'like', "%{$search}%")
                 ->orWhere('office', 'like', "%{$search}%")
             ))
-            ->when($request->filled('status'), fn ($q) => $q->where('is_active', $request->string('status')->value() === 'aktif'))
+            ->when($status !== '', fn ($q) => $q->where('is_active', $status === 'aktif'))
             ->orderBy($sort, $dir)
-            ->paginate($perPage)
+            ->paginate(TableQuery::perPage($request))
             ->withQueryString();
 
         return Inertia::render('Users', [
@@ -54,18 +54,13 @@ class UserController extends Controller
                     'last_login_at' => $u->last_login_at?->timezone(config('app.timezone'))
                         ->translatedFormat('d M Y, H.i') ?? '—',
                 ])->all(),
-                'meta' => [
-                    'page' => $users->currentPage(),
-                    'per_page' => $users->perPage(),
-                    'total' => $users->total(),
-                    'last_page' => $users->lastPage(),
-                ],
+                'meta' => TableQuery::meta($users),
             ],
             'filters' => [
                 'search' => $search,
                 'sort' => $sort,
                 'dir' => $dir,
-                'status' => $request->string('status')->value(),
+                'status' => $status,
             ],
             'roleOptions' => Role::orderBy('name')->pluck('name')
                 ->map(fn ($n) => ['value' => $n, 'label' => $n])->all(),
@@ -82,6 +77,8 @@ class UserController extends Controller
         ]);
         $user->syncRoles([$data['role']]);
 
+        ActivityLog::record("Menambah pengguna {$user->name}", 'Pengguna', 'success', $user);
+
         return back()->with('success', "Pengguna {$user->name} ditambahkan.");
     }
 
@@ -96,6 +93,8 @@ class UserController extends Controller
         $user->save();
         $user->syncRoles([$data['role']]);
 
+        ActivityLog::record("Memperbarui pengguna {$user->name}", 'Pengguna', 'info', $user);
+
         return back()->with('success', "Pengguna {$user->name} diperbarui.");
     }
 
@@ -107,6 +106,8 @@ class UserController extends Controller
 
         $name = $user->name;
         $user->delete();
+
+        ActivityLog::record("Menghapus pengguna {$name}", 'Pengguna', 'danger');
 
         return back()->with('success', "Pengguna {$name} dihapus.");
     }

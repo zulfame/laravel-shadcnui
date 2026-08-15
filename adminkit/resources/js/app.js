@@ -3,7 +3,7 @@ import '../css/app.css';
 import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
 
-const appName = 'AdminKit';
+const appName = document.querySelector('meta[name="app-name"]')?.content || 'AdminKit';
 
 createInertiaApp({
     title: (title) => (title ? `${title} · ${appName}` : appName),

@@ -9,7 +9,6 @@ import AlertTitle from '@/components/ui/AlertTitle.vue';
 import Button from '@/components/ui/Button.vue';
 import Card from '@/components/ui/Card.vue';
 import CardContent from '@/components/ui/CardContent.vue';
-import CardDescription from '@/components/ui/CardDescription.vue';
 import CardFooter from '@/components/ui/CardFooter.vue';
 import CardHeader from '@/components/ui/CardHeader.vue';
 import CardTitle from '@/components/ui/CardTitle.vue';
@@ -43,7 +42,6 @@ const submit = () =>
         <Card>
             <CardHeader>
                 <CardTitle>Masuk</CardTitle>
-                <CardDescription>Gunakan kredensial akun Anda untuk melanjutkan.</CardDescription>
             </CardHeader>
 
             <form class="form-dense" novalidate @submit.prevent="submit">

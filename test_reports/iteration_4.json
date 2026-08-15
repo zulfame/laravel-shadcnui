@@ -1,0 +1,29 @@
+{
+  "summary": "Iterasi 4 (Kelola Peranan + Matriks Izin, Log Aktivitas, Unggah Foto Profil, halaman Penampilan) diuji end-to-end via Playwright pada preview URL. SELURUH kriteria review LULUS: matriks izin bisa dicentang/di-uncentang dan disimpan (persist setelah reload), kolom Super Admin disabled dan tidak muncul menu aksi, direct PUT/DELETE ke /roles/{superAdmin} ditolak, DELETE /roles/{staf} yang punya 24 pengguna ditolak dengan flash 'Peranan masih dipakai pengguna dan tidak dapat dihapus.'; CRUD peranan via UI (add/edit/delete) berfungsi; setiap aksi tercatat di tabel activity_logs dan tampil di /activity dengan Pelaku 'Zulfadli Rizal', Modul 'Pengguna', level 'Sukses'; unggah foto profil valid berhasil (file tersimpan di storage/app/public/avatars, dapat diakses via /storage/... dan tampil pada profile-avatar), file non-gambar ditolak dengan pesan avatar-error, hapus foto kembali ke inisial; halaman Penampilan (identity/brand/seo/og/contact) menyimpan per section, URL/email/warna hex tidak valid ditolak; meta HTML robots hilang saat toggle indexable ON dan muncul saat OFF; canonical, description, og:title, og:description tersedia di HTML; kontak/footer tampil di /login (auth-support-email selector ada). Otorisasi: user Staf tidak melihat menu Penampilan/Peranan/Pengguna/Aktivitas dan mendapat 403 pada GET /roles, /appearance, /activity, /users serta PUT /appearance/identity. Regresi login username/email/telepon OK. State dikembalikan (25 user, 2 role default, settings kosong, password 'password' dipulihkan, direktori avatars dikosongkan).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AppearanceController::update() memakai back() flash namun mem-forget cache branding lokal setelah update tag <title inertia> tidak ter-refresh secara SPA karena title berasal dari komponen <Head> per halaman; hal ini masih berjalan benar untuk Penampilan (title-nya 'Penampilan · <app_name>'), tetapi untuk halaman lain <title inertia> hanya menampilkan template '<page> · <app_name>' — sudah tepat.",
+    "RoleController::destroy hanya memeriksa role->users()->exists(); untuk keamanan tambahan bisa juga menolak jika role masih terdaftar sebagai default assignment di seeder, tapi ini di luar scope."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "seed_data_creation": "Uji sementara: user 'QA Test User' (qa_test_user) untuk generate log aktivitas + user 'QA Staf' (qa_staf) role Staf untuk uji otorisasi. Kedua user telah dihapus. Role 'Peran QA Baru/Diubah' dibuat lalu dihapus via UI. Settings tabel dikosongkan (kembali ke defaults AdminKit). Direktori storage/app/public/avatars dibersihkan. Password 'zulfame' dikembalikan ke 'password'. Activity logs (13 baris) TETAP disimpan sebagai audit trail (sesuai fungsi Log Aktivitas — tidak dihapus).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "test_credentials": "Super Admin — username: zulfame / kata sandi: password (sudah direset).",
+  "context_for_next_testing_agent": "Semua fitur iterasi 4 LULUS. Perhatian: (1) Sidebar footer memakai selector 'user-menu-trigger' (bukan <aside>), avatar img memang di-render di dalamnya — pengecekan pakai 'aside img' akan false-negative. (2) Ada 13 baris activity_logs sisa dari testing; ini adalah audit trail yang dibuat oleh fitur — sengaja tidak dihapus. Bila ingin state benar-benar bersih, jalankan `App\\Models\\ActivityLog::query()->delete();`. (3) Login page footer/kontak dikembalikan ke defaults (settings kosong).",
+  "rca_of_the_issue": "Tidak ada bug yang perlu di-RCA. Semua fitur bekerja sesuai spesifikasi."
+}

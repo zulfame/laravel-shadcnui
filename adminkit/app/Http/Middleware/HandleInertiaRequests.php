@@ -3,6 +3,8 @@
 namespace App\Http\Middleware;
 
 use App\Enums\RoleName;
+use App\Support\Branding;
+use App\Support\FileStorage;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -26,14 +28,15 @@ class HandleInertiaRequests extends Middleware
                     'email' => $user->email,
                     'phone' => $user->phone,
                     'office' => $user->office,
-                    'avatar' => $user->avatar,
+                    'avatar' => FileStorage::url($user->avatar),
+                    'has_avatar' => (bool) $user->avatar,
                     'role' => $user->getRoleNames()->first(),
                     'roles' => $user->getRoleNames(),
                     'permissions' => $user->getAllPermissions()->pluck('name'),
                     'is_admin' => $user->hasRole(RoleName::SuperAdmin->value),
                 ] : null,
             ],
-            'branding' => config('adminkit.branding'),
+            'branding' => Branding::values(),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { usePage } from '@inertiajs/vue3';
-import { LayoutDashboard, ShieldCheck, SlidersHorizontal, Waves } from 'lucide-vue-next';
+import { LayoutDashboard, ShieldCheck, SlidersHorizontal } from 'lucide-vue-next';
 
 import Separator from '@/components/ui/Separator.vue';
 
@@ -12,6 +12,9 @@ import Separator from '@/components/ui/Separator.vue';
  */
 const page = usePage();
 const branding = computed(() => page.props.branding ?? {});
+const brandInitials = computed(() =>
+    (branding.value.brand_initials || branding.value.app_name || 'AK').slice(0, 3).toUpperCase(),
+);
 
 const highlights = [
     {
@@ -45,16 +48,17 @@ const highlights = [
 
             <div class="relative z-10 flex items-center gap-2.5" data-testid="auth-brand-desktop">
                 <span
-                    class="flex size-9 items-center justify-center rounded-md bg-primary-foreground/10 ring-1 ring-inset ring-primary-foreground/20"
+                    class="flex size-9 items-center justify-center overflow-hidden rounded-md bg-primary-foreground/10 text-xs font-semibold ring-1 ring-inset ring-primary-foreground/20"
                 >
-                    <Waves class="size-5" aria-hidden="true" />
+                    <img v-if="branding.logo_dark || branding.logo_light" :src="branding.logo_dark || branding.logo_light" alt="" class="size-full object-contain" />
+                    <template v-else>{{ brandInitials }}</template>
                 </span>
                 <span class="flex flex-col">
                     <span class="text-sm font-semibold tracking-tight" data-testid="auth-brand-name">
                         {{ branding.app_name || 'AdminKit' }}
                     </span>
                     <span class="text-xs text-primary-foreground/60">
-                        {{ branding.company || 'Admin Panel Starter Kit' }}
+                        {{ branding.tagline || branding.company }}
                     </span>
                 </span>
             </div>
@@ -62,10 +66,10 @@ const highlights = [
             <div class="relative z-10 max-w-md space-y-8">
                 <div class="space-y-3">
                     <h1 class="text-3xl font-semibold leading-tight tracking-tight xl:text-4xl">
-                        Kelola pekerjaan harian dengan tenang.
+                        {{ branding.tagline || 'Kelola pekerjaan harian dengan tenang.' }}
                     </h1>
                     <p class="text-sm leading-relaxed text-primary-foreground/70">
-                        {{ branding.meta_description || 'Sederhana untuk digunakan, kuat di balik layar.' }}
+                        {{ branding.meta_description }}
                     </p>
                 </div>
 
@@ -97,13 +101,14 @@ const highlights = [
         <main class="flex flex-col items-center justify-center bg-background px-4 py-10 sm:px-6 lg:px-8">
             <div class="w-full max-w-md">
                 <div class="mb-8 flex items-center gap-2.5 lg:hidden" data-testid="auth-brand-mobile">
-                    <span class="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                        <Waves class="size-5" aria-hidden="true" />
+                    <span class="flex size-9 items-center justify-center overflow-hidden rounded-md bg-primary text-xs font-semibold text-primary-foreground">
+                        <img v-if="branding.logo_light || branding.logo_dark" :src="branding.logo_light || branding.logo_dark" alt="" class="size-full object-contain" />
+                        <template v-else>{{ brandInitials }}</template>
                     </span>
                     <span class="flex flex-col">
                         <span class="text-sm font-semibold tracking-tight">{{ branding.app_name || 'AdminKit' }}</span>
                         <span class="text-xs text-muted-foreground">
-                            {{ branding.company || 'Admin Panel Starter Kit' }}
+                            {{ branding.tagline || branding.company }}
                         </span>
                     </span>
                 </div>

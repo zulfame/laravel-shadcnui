@@ -1,7 +1,7 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { Save, Upload } from 'lucide-vue-next';
+import { Loader2, Save, Trash2, Upload } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
 import Avatar from '@/components/ui/Avatar.vue';
@@ -43,10 +43,33 @@ const savePassword = () =>
         preserveScroll: true,
         onSuccess: () => password.reset(),
     });
+
+/* ── Foto profil ─────────────────────────────────────────────────────── */
+const fileInput = ref(null);
+const avatarForm = useForm({ avatar: null });
+
+const pickAvatar = () => fileInput.value?.click();
+
+const onAvatarChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    avatarForm.avatar = file;
+    avatarForm.post('/profile/avatar', {
+        preserveScroll: true,
+        forceFormData: true,
+        onSuccess: () => {
+            avatarForm.reset();
+            if (fileInput.value) fileInput.value.value = '';
+        },
+    });
+};
+
+const removeAvatar = () =>
+    avatarForm.delete('/profile/avatar', { preserveScroll: true });
 </script>
 
 <template>
-    <Head title="Profil Pengguna" />
+    <Head title="Profil" />
     <AppLayout>
         <div class="space-y-6" data-testid="profile-page">
             <Card>
@@ -58,12 +81,47 @@ const savePassword = () =>
                         <div class="flex items-center justify-between gap-4">
                             <div class="flex items-center gap-3">
                                 <Avatar
+                                    :src="user.avatar"
                                     :fallback="initialsOf(profile.name, profile.email)"
                                     class="size-11 rounded-lg text-sm"
+                                    data-testid="profile-avatar"
                                 />
-                                <Button variant="outline" size="sm" type="button" data-testid="profile-upload-avatar">
-                                    <Upload class="size-4" /> Unggah Foto
-                                </Button>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <input
+                                        ref="fileInput"
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/webp"
+                                        class="hidden"
+                                        data-testid="profile-avatar-input"
+                                        @change="onAvatarChange"
+                                    />
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        type="button"
+                                        :disabled="avatarForm.processing"
+                                        data-testid="profile-upload-avatar"
+                                        @click="pickAvatar"
+                                    >
+                                        <Loader2 v-if="avatarForm.processing" class="size-4 animate-spin" />
+                                        <Upload v-else class="size-4" />
+                                        Unggah Foto
+                                    </Button>
+                                    <Button
+                                        v-if="user.has_avatar"
+                                        variant="ghost"
+                                        size="sm"
+                                        type="button"
+                                        class="text-destructive hover:text-destructive"
+                                        data-testid="profile-remove-avatar"
+                                        @click="removeAvatar"
+                                    >
+                                        <Trash2 class="size-4" /> {{ ACTION.delete }}
+                                    </Button>
+                                    <p class="w-full text-xs text-muted-foreground">
+                                        JPG, PNG, atau WEBP. Maksimal 1 MB.
+                                    </p>
+                                </div>
                             </div>
                             <div class="flex flex-col items-end gap-1 text-right">
                                 <span class="text-[13px] font-semibold" data-testid="profile-display-name">
@@ -76,6 +134,10 @@ const savePassword = () =>
                         </div>
 
                         <Separator />
+
+                        <p v-if="avatarForm.errors.avatar" class="text-xs font-medium text-destructive" data-testid="avatar-error">
+                            {{ avatarForm.errors.avatar }}
+                        </p>
 
                         <div class="grid gap-[var(--field-gap)] sm:grid-cols-2">
                             <div class="space-y-[var(--item-gap)]">

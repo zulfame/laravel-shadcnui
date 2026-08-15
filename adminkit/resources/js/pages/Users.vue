@@ -1,6 +1,6 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue';
-import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
+import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { Pencil, Plus, Save, Trash2, Users2, X } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
@@ -11,7 +11,7 @@ import Dialog from '@/components/ui/Dialog.vue';
 import DropdownMenuItem from '@/components/ui/DropdownMenuItem.vue';
 import Input from '@/components/ui/Input.vue';
 import Label from '@/components/ui/Label.vue';
-import Select from '@/components/ui/Select.vue';
+import Combobox from '@/components/ui/Combobox.vue';
 import Switch from '@/components/ui/Switch.vue';
 import ConfirmDeleteDialog from '@/components/composite/ConfirmDeleteDialog.vue';
 import DataTableCard from '@/components/composite/DataTableCard.vue';
@@ -20,6 +20,7 @@ import RowActions from '@/components/composite/RowActions.vue';
 import StateChip from '@/components/composite/StateChip.vue';
 import { ACTION } from '@/constants/labels';
 import { initialsOf } from '@/lib/utils';
+import { useServerTable } from '@/composables/useServerTable';
 
 const props = defineProps({
     users: { type: Object, required: true },
@@ -45,60 +46,18 @@ const columns = [
 ];
 
 /* ── Query server-side: pencarian (debounce), urut, paginasi ─────────── */
-const query = reactive({
-    search: props.filters.search ?? '',
-    sort: props.filters.sort ?? 'name',
-    dir: props.filters.dir ?? 'asc',
-    status: props.filters.status ?? '',
-    page: props.users.meta.page ?? 1,
-    per_page: props.users.meta.per_page ?? 10,
+const { query, loading, reload, onSearch, onSort, onPage, onPerPage, onFilter, sortState } = useServerTable({
+    url: '/users',
+    only: ['users', 'filters'],
+    initial: {
+        search: props.filters.search ?? '',
+        sort: props.filters.sort ?? 'name',
+        dir: props.filters.dir ?? 'asc',
+        status: props.filters.status || 'all',
+        page: props.users.meta.page ?? 1,
+        per_page: props.users.meta.per_page ?? 10,
+    },
 });
-
-const loading = ref(false);
-let debounce = null;
-
-const reload = (delay = 0) => {
-    window.clearTimeout(debounce);
-    debounce = window.setTimeout(() => {
-        loading.value = true;
-        router.get('/users', { ...query }, {
-            only: ['users', 'filters'],
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-            onFinish: () => {
-                loading.value = false;
-            },
-        });
-    }, delay);
-};
-
-const onSearch = (value) => {
-    query.search = value;
-    query.page = 1;
-    reload(350);
-};
-const onSort = ({ key, dir }) => {
-    query.sort = key || 'name';
-    query.dir = dir;
-    reload();
-};
-const onPage = (nextPage) => {
-    query.page = nextPage;
-    reload();
-};
-const onPerPage = (value) => {
-    query.per_page = value;
-    query.page = 1;
-    reload();
-};
-const onStatus = (value) => {
-    query.status = value === 'all' ? '' : value;
-    query.page = 1;
-    reload();
-};
-
-const sortState = computed(() => ({ key: query.sort, dir: query.dir }));
 
 // reka-ui melarang value kosong pada item, jadi 'all' dipakai sebagai sentinel.
 const statusOptions = [
@@ -106,7 +65,6 @@ const statusOptions = [
     { value: 'aktif', label: 'Aktif' },
     { value: 'nonaktif', label: 'Nonaktif' },
 ];
-const statusValue = computed(() => query.status || 'all');
 
 /* ── Dialog tambah / ubah ────────────────────────────────────────────── */
 const dialogOpen = ref(false);
@@ -180,13 +138,12 @@ watch(dialogOpen, (open) => {
 </script>
 
 <template>
-    <Head title="Kelola Pengguna" />
+    <Head title="Pengguna" />
     <AppLayout>
         <div class="space-y-6" data-testid="users-page-view">
             <DataTableCard
                 server
-                title="Kelola Pengguna"
-                description="Daftar akun beserta peranan dan status keaktifannya."
+                title="Pengguna"
                 testid="users"
                 :columns="columns"
                 :rows="props.users.data"
@@ -204,13 +161,13 @@ watch(dialogOpen, (open) => {
                 @refresh="reload()"
             >
                 <template #filters>
-                    <Select
-                        :model-value="statusValue"
+                    <Combobox
+                        :model-value="query.status"
                         :options="statusOptions"
                         placeholder="Semua status"
                         class="w-[140px]"
                         data-testid="users-filter-status"
-                        @update:model-value="onStatus"
+                        @update:model-value="onFilter('status', $event)"
                     />
                 </template>
 
@@ -260,11 +217,6 @@ watch(dialogOpen, (open) => {
             <Dialog
                 v-model:open="dialogOpen"
                 :title="editing ? 'Ubah pengguna' : 'Tambah pengguna'"
-                :description="
-                    editing
-                        ? 'Kosongkan kata sandi bila tidak ingin menggantinya.'
-                        : 'Kata sandi minimal 8 karakter.'
-                "
             >
                 <form id="user-form" class="form-dense grid gap-[var(--field-gap)] sm:grid-cols-2" @submit.prevent="submit">
                     <div class="space-y-[var(--item-gap)]">
@@ -296,7 +248,7 @@ watch(dialogOpen, (open) => {
                     </div>
                     <div class="space-y-[var(--item-gap)]">
                         <Label>Peranan</Label>
-                        <Select
+                        <Combobox
                             v-model="form.role"
                             :options="props.roleOptions"
                             placeholder="Pilih peranan"
@@ -344,7 +296,6 @@ watch(dialogOpen, (open) => {
             <ConfirmDeleteDialog
                 :open="Boolean(deleting)"
                 title="Hapus pengguna?"
-                :description="`Pengguna ${deleting?.name ?? ''} akan dihapus permanen beserta peranannya.`"
                 :processing="deleteForm.processing"
                 @update:open="deleting = null"
                 @confirm="confirmDelete"
