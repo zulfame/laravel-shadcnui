@@ -271,3 +271,11 @@ Atas permintaan user: **semua style badge kustom DIHAPUS**.
 - Dialog **Tambah Peranan** kini punya Combobox opsional **Salin Hak Akses Dari** (`data-testid=role-form-copy-from`) berisi daftar peranan + jumlah izinnya, plus teks bantuan dinamis (`role-form-copy-hint`). Hanya muncul saat membuat (tidak pada Ubah).
 - Backend: `StoreRoleRequest` menerima `copy_from` (`nullable|integer|exists:roles,id`); `RoleController::store()` menyalin `syncPermissions()` dari peranan sumber, mencatat konteks audit (`hak_akses_disalin_dari`, `jumlah_izin`), dan flash sukses menyebut jumlah izin + nama sumber.
 - Terverifikasi end-to-end: menyalin dari Super Admin → 12 izin tersalin (dikonfirmasi di halaman detail peranan baru). Peranan uji dibersihkan.
+
+## Selesai (2026-06-16, seeder = snapshot data saat ini)
+- `database/seeders/DatabaseSeeder.php` ditulis ulang sebagai **cetakan data produksi saat ini**, tanpa data contoh/factory:
+  - 12 izin dari `Modules::permissions()`; peranan `Super Admin` (semua izin) & `Guest` (`dashboard.view`, `profile.view`).
+  - 1 pengguna: Super Admin / username `jkv` / `studio@jkv.co.id` / `082320099971`, hash kata sandi disimpan **apa adanya** (`$2y$12$7zX...`, kata sandi saat ini `1`) supaya seeding ulang tak mengubah kredensial. `syncRoles(['Super Admin'])`.
+  - 24 setelan (branding + SEO + `permission_entity_order`) sebagai konstanta `SETTINGS`.
+- Uji: `DB_DATABASE=/tmp/seedtest.sqlite php artisan migrate:fresh --seed --force` → users=1, roles=2, perms=12, settings=24, logs=0, password `1` cocok. DB asli tidak disentuh.
+- **PERINGATAN terbuka**: `.env` `TELESCOPE_ALLOWED_EMAILS=zulfadlirizal@gmail.com`, sedangkan email Super Admin kini `studio@jkv.co.id` → `/telescope` akan 403 sampai nilai env diperbarui (menunggu keputusan user).

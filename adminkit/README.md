@@ -134,7 +134,7 @@ cp env.example .env           # berkas contoh bernama env.example (tanpa titik) 
 php artisan key:generate
 
 touch database/database.sqlite
-php artisan migrate --seed    # membuat peranan, izin, akun awal, dan setelan
+php artisan migrate --seed    # membuat peranan, izin, akun Super Admin, dan setelan
 php artisan storage:link      # agar berkas unggahan lokal dapat diakses
 
 yarn build                    # atau: yarn dev (mode pengembangan)
@@ -157,7 +157,11 @@ TELESCOPE_ENABLED=true
 TELESCOPE_ALLOWED_EMAILS=email@anda.com
 ```
 
-Akun awal dibuat oleh `database/seeders/DatabaseSeeder.php` (lihat berkas tersebut untuk kredensial). **Ganti kata sandi setelah instalasi.**
+`database/seeders/DatabaseSeeder.php` adalah **cetakan data awal proyek** — cerminan data yang sedang dipakai: 1 pengguna Super Admin, peranan `Super Admin` + `Guest`, 12 izin dari `Modules::MAP`, dan seluruh setelan branding/SEO. Tidak ada data contoh/factory yang dibuat.
+
+- Idempoten: `php artisan db:seed` aman diulang (`updateOrCreate`/`findOrCreate`), tidak menghapus data lain.
+- Kata sandi Super Admin disimpan sebagai **hash apa adanya** sehingga seeding ulang tidak mengubah kredensial yang sedang dipakai. **Ganti kata sandi setelah instalasi** dan perbarui hash di seeder bila ingin cetakan barunya ikut berubah.
+- Perubahan setelan (branding/SEO/urutan entitas) yang ingin dijadikan bawaan proyek cukup disalin ke konstanta `SETTINGS` pada seeder.
 
 ---
 
