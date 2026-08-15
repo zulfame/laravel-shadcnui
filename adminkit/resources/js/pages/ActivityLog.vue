@@ -6,7 +6,6 @@ import { ScrollText, Trash2, X } from 'lucide-vue-next';
 import AppLayout from '@/components/layout/AppLayout.vue';
 import Badge from '@/components/ui/Badge.vue';
 import Button from '@/components/ui/Button.vue';
-import Combobox from '@/components/ui/Combobox.vue';
 import DatePicker from '@/components/ui/DatePicker.vue';
 import DataTableCard from '@/components/composite/DataTableCard.vue';
 import Dialog from '@/components/ui/Dialog.vue';
@@ -18,27 +17,26 @@ import { ACTION } from '@/constants/labels';
 const props = defineProps({
     logs: { type: Object, required: true },
     filters: { type: Object, default: () => ({}) },
-    moduleOptions: { type: Array, default: () => [] },
 });
 
 const page = usePage();
 const canManage = computed(() => (page.props.auth?.user?.permissions ?? []).includes('activity.manage'));
 
 const columns = [
-    { key: 'created_at', label: 'Waktu', sortable: false },
-    { key: 'actor', label: 'Pelaku', sortable: false },
-    { key: 'action', label: 'Aksi', sortable: false },
-    { key: 'module', label: 'Modul', sortable: false },
-    { key: 'ip', label: 'Alamat IP', sortable: false },
-    { key: 'level_label', label: 'Level', sortable: false },
+    { key: 'created_at', label: 'Waktu' },
+    { key: 'actor', label: 'Pelaku', sortKey: 'actor_name' },
+    { key: 'action', label: 'Aksi' },
+    { key: 'module', label: 'Modul' },
+    { key: 'level_label', label: 'Level', sortKey: 'level' },
 ];
 
-const { query, loading, reload, onSearch, onPage, onPerPage, onFilter } = useServerTable({
+const { query, loading, reload, onSearch, onSort, onPage, onPerPage, onFilter, sortState } = useServerTable({
     url: '/activity',
-    only: ['logs', 'filters', 'moduleOptions'],
+    only: ['logs', 'filters'],
     initial: {
         search: props.filters.search ?? '',
-        module: props.filters.module || 'all',
+        sort: props.filters.sort ?? 'created_at',
+        dir: props.filters.dir ?? 'desc',
         date_from: props.filters.date_from ?? '',
         date_to: props.filters.date_to ?? '',
         page: props.logs.meta.page ?? 1,
@@ -47,6 +45,9 @@ const { query, loading, reload, onSearch, onPage, onPerPage, onFilter } = useSer
 });
 
 const hasRange = computed(() => Boolean(query.date_from && query.date_to));
+
+/* ── Detail satu baris log ──────────────────────────────────────────── */
+const detail = ref(null);
 
 /* ── Hapus log pada rentang tanggal ─────────────────────────────────── */
 const purgeOpen = ref(false);
@@ -68,6 +69,21 @@ const purge = () =>
         },
     });
 
+const detailRows = computed(() => {
+    const d = detail.value;
+    if (!d) return [];
+
+    return [
+        { label: 'Waktu', value: d.created_at_full ?? d.created_at },
+        { label: 'Pelaku', value: d.actor },
+        { label: 'Modul', value: d.module },
+        { label: 'Level', value: d.level_label },
+        { label: 'Objek', value: d.subject },
+        { label: 'Alamat IP', value: d.ip, mono: true },
+        { label: 'ID Log', value: `#${d.id}`, mono: true },
+    ];
+});
+
 const fmt = (iso) =>
     iso ? new Date(`${iso}T00:00:00`).toLocaleDateString('id-ID', { dateStyle: 'medium' }) : '—';
 </script>
@@ -84,14 +100,18 @@ const fmt = (iso) =>
                 :rows="props.logs.data"
                 :meta="props.logs.meta"
                 :search="query.search"
+                :sort="sortState"
                 :loading="loading"
+                row-clickable
+                :show-refresh="false"
                 :empty-icon="ScrollText"
                 empty-title="Belum ada aktivitas"
                 empty-description="Aktivitas akan tercatat otomatis saat ada perubahan data."
                 @update:search="onSearch"
+                @update:sort="onSort"
                 @update:page="onPage"
                 @update:per-page="onPerPage"
-                @refresh="reload()"
+                @row-click="detail = $event"
             >
                 <template #filters>
                     <DatePicker
@@ -107,14 +127,6 @@ const fmt = (iso) =>
                         class="h-[var(--ctl-h-sm)] w-[150px] text-xs"
                         data-testid="activity-date-to"
                         @update:model-value="onFilter('date_to', $event)"
-                    />
-                    <Combobox
-                        :model-value="query.module"
-                        :options="props.moduleOptions"
-                        placeholder="Semua Modul"
-                        class="w-[150px]"
-                        data-testid="activity-filter-module"
-                        @update:model-value="onFilter('module', $event)"
                     />
                     <Button
                         v-if="hasRange"
@@ -152,14 +164,39 @@ const fmt = (iso) =>
                     <Badge variant="secondary" class="font-normal">{{ row.module }}</Badge>
                 </template>
 
-                <template #cell-ip="{ row }">
-                    <span class="font-mono text-xs text-muted-foreground">{{ row.ip }}</span>
-                </template>
-
                 <template #cell-level_label="{ row }">
                     <StateChip :label="row.level_label" :chip="row.level_chip" />
                 </template>
             </DataTableCard>
+
+            <!-- Dialog detail log -->
+            <Dialog
+                :open="Boolean(detail)"
+                title="Detail Aktivitas"
+                class="max-w-lg"
+                @update:open="detail = null"
+            >
+                <div v-if="detail" class="thin-scroll max-h-[60vh] space-y-3 overflow-y-auto pr-1" data-testid="activity-detail">
+                    <div class="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2">
+                        <span class="text-[13px] font-medium">{{ detail.action }}</span>
+                        <StateChip :label="detail.level_label" :chip="detail.level_chip" />
+                    </div>
+                    <dl class="divide-y rounded-lg border">
+                        <div v-for="item in detailRows" :key="item.label" class="grid grid-cols-3 gap-3 px-3 py-2">
+                            <dt class="text-xs text-muted-foreground">{{ item.label }}</dt>
+                            <dd class="col-span-2 break-words text-[13px]" :class="item.mono && 'font-mono text-xs'">
+                                {{ item.value }}
+                            </dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <template #footer>
+                    <Button variant="outline" size="sm" data-testid="activity-detail-close" @click="detail = null">
+                        <X class="size-4" /> {{ ACTION.close }}
+                    </Button>
+                </template>
+            </Dialog>
 
             <!-- Dialog hapus log berdasarkan rentang tanggal -->
             <Dialog v-model:open="purgeOpen" title="Hapus log aktivitas" class="max-w-md">

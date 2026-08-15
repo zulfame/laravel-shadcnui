@@ -1,0 +1,24 @@
+{
+  "summary": "Iteration 11 verification for AdminKit (Laravel 12 + Vue 3 + Inertia). Backend pytest: 52/52 pass (added 14 new tests in TestIteration11* classes covering role import, users role filter, activity sort keys, and activity detail payload). Frontend Playwright: all requested behavior verified end-to-end — Roles import dialog + CSV parsing (2 added, header 'name' & existing 'Staf' skipped), non-CSV inline validation error mentioning 'CSV', RoleDetail breadcrumb 'Peranan > Detail' (no 'Dashboard'), Users has no refresh button and dynamic users-filter-role with Super Admin/Staf/Semua Peranan applying role=Super Admin | role=Staf | role=all correctly, Activity page has no refresh, no Modul filter combobox and no ALAMAT IP column, all five headers sortable emitting sort=created_at|actor_name|action|module|level with asc/desc toggle, activity-row-* click opens activity-detail dialog with overflow-y=auto (scrollable), containing Waktu/Pelaku/Modul/Level/Alamat IP/ID Log; close button works; purge past-range 2020-01-01..02 executes without 500. No console errors, no blank pages.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Minor: DataTableCard emits `data-testid=sort-${col.key}` (column key), while URL param uses col.sortKey. This creates non-obvious testid names (sort-actor for URL sort=actor_name, sort-level_label for sort=level). Consider aligning testid to sortKey ?? key for clearer QA affordance.",
+    "The old TestUsers::test_create_user_valid_then_delete was not cleaning up, causing 422 uniqueness on reruns. Fixed by adding pre-test cleanup + post-test delete."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py"
+  ],
+  "success_rate": {"backend": "100% (52/52)", "frontend": "100%"},
+  "seed_data_creation": "Temporary during CSV import test: roles 'Auditor Internal' and 'Manajer Cabang' created then deleted (verified only 'Staf' and 'Super Admin' remain). No users created in UI tests; backend test users are self-cleaning.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "zulfame / password (from /app/memory/test_credentials.md, unchanged)",
+  "context_for_next_testing_agent": "backend_test.py now has TestIteration11RoleImport (no_file_422, non_csv_422, csv_adds_and_skips), TestIteration11UsersRoleFilter (options + Super Admin + Staf), TestIteration11ActivitySort (parametric sort keys, dir=desc, detail payload fields, purge past range). Roles import route is POST /roles/import (multipart file). Activity SORTABLE = ['created_at','actor_name','action','module','level']. IMPORTANT testid mapping caveat: Vue DataTableCard sets data-testid=`sort-${col.key}` not sortKey — so testids in DOM are: sort-created_at, sort-actor, sort-action, sort-module, sort-level_label; but backend/URL param uses sortKey. Branding restored to CODEX / 'Core Data Exchange' / '</>' / 'CODEX: Core Data Exchange' via tinker + cache:clear. Login rate limit 5 fails per credential+IP; run 'cd /app/adminkit && php artisan cache:clear' if throttled during retesting.",
+  "rca_of_the_issue": "N/A — all iteration-11 requirements verified working."
+}

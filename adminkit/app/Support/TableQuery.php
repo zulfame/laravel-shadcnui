@@ -34,9 +34,11 @@ class TableQuery
             : $fallback;
     }
 
-    public static function direction(Request $request): string
+    public static function direction(Request $request, string $fallback = 'asc'): string
     {
-        return $request->string('dir')->value() === 'desc' ? 'desc' : 'asc';
+        $dir = $request->string('dir')->value();
+
+        return in_array($dir, ['asc', 'desc'], true) ? $dir : $fallback;
     }
 
     /** Nilai filter; 'all' dianggap tanpa filter. */

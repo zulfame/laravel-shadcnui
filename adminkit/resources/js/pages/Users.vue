@@ -53,6 +53,7 @@ const { query, loading, reload, onSearch, onSort, onPage, onPerPage, onFilter, s
         sort: props.filters.sort ?? 'name',
         dir: props.filters.dir ?? 'asc',
         status: props.filters.status || 'all',
+        role: props.filters.role || 'all',
         page: props.users.meta.page ?? 1,
         per_page: props.users.meta.per_page ?? 10,
     },
@@ -64,6 +65,12 @@ const statusOptions = [
     { value: 'aktif', label: 'Aktif' },
     { value: 'nonaktif', label: 'Nonaktif' },
 ];
+
+// Opsi filter peran diambil dari data peranan (dinamis).
+const roleFilterOptions = computed(() => [
+    { value: 'all', label: 'Semua Peranan' },
+    ...props.roleOptions,
+]);
 
 /* ── Dialog Tambah / Ubah ────────────────────────────────────────────── */
 const dialogOpen = ref(false);
@@ -168,6 +175,7 @@ watch(dialogOpen, (open) => {
                 :empty-icon="Users2"
                 empty-title="Belum ada pengguna"
                 empty-description="Tambahkan pengguna pertama untuk mulai mengelola akses."
+                :show-refresh="false"
                 @update:search="onSearch"
                 @update:sort="onSort"
                 @update:page="onPage"
@@ -175,6 +183,14 @@ watch(dialogOpen, (open) => {
                 @refresh="reload()"
             >
                 <template #filters>
+                    <Combobox
+                        :model-value="query.role"
+                        :options="roleFilterOptions"
+                        placeholder="Semua Peranan"
+                        class="w-[150px]"
+                        data-testid="users-filter-role"
+                        @update:model-value="onFilter('role', $event)"
+                    />
                     <Combobox
                         :model-value="query.status"
                         :options="statusOptions"

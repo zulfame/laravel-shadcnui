@@ -77,6 +77,7 @@ const ROUTE_TRAILS = [
     [/^\/profile$/, ['Profil Pengguna']],
     [/^\/users$/, ['Pengguna']],
     [/^\/roles$/, ['Peranan']],
+    [/^\/roles\/\d+$/, ['Peranan', 'Detail']],
     [/^\/appearance$/, ['Penampilan']],
     [/^\/storage-settings$/, ['Penyimpanan']],
     [/^\/activity$/, ['Log Aktivitas']],

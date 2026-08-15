@@ -61,6 +61,7 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('permission:roles.manage')->group(function () {
         Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
+        Route::post('/roles/import', [RoleController::class, 'import'])->name('roles.import');
         Route::put('/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
         Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
     });

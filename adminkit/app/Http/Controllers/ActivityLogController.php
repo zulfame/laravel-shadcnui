@@ -12,14 +12,17 @@ use Inertia\Response;
 
 class ActivityLogController extends Controller
 {
+    private const SORTABLE = ['created_at', 'actor_name', 'action', 'module', 'level'];
+
     public function index(Request $request): Response
     {
         $search = TableQuery::search($request);
-        $module = TableQuery::filter($request, 'module');
         [$from, $to] = $this->range($request);
+        $sort = TableQuery::sort($request, self::SORTABLE, 'created_at');
+        $dir = TableQuery::direction($request, 'desc');
 
-        $logs = $this->query($search, $module, $from, $to)
-            ->latest('id')
+        $logs = $this->query($search, $from, $to)
+            ->orderBy($sort, $dir)
             ->paginate(TableQuery::perPage($request))
             ->withQueryString();
 
@@ -32,22 +35,25 @@ class ActivityLogController extends Controller
                     'action' => $log->action,
                     'module' => $log->module,
                     'ip' => $log->ip ?? '—',
+                    'level' => $log->level,
                     'level_label' => ActivityLog::LEVEL_LABELS[$log->level] ?? $log->level,
                     'level_chip' => ActivityLog::LEVEL_CHIPS[$log->level] ?? '--st-draft',
+                    'subject' => $log->subject_type
+                        ? class_basename($log->subject_type).' #'.$log->subject_id
+                        : '—',
+                    'user_id' => $log->user_id,
+                    'created_at_full' => $log->created_at->timezone(config('app.timezone'))
+                        ->translatedFormat('l, d F Y H:i:s'),
                 ])->all(),
                 'meta' => TableQuery::meta($logs),
             ],
             'filters' => [
                 'search' => $search,
-                'module' => $module,
+                'sort' => $sort,
+                'dir' => $dir,
                 'date_from' => $from,
                 'date_to' => $to,
             ],
-            'moduleOptions' => ActivityLog::query()
-                ->select('module')->distinct()->orderBy('module')->pluck('module')
-                ->map(fn ($m) => ['value' => $m, 'label' => $m])
-                ->prepend(['value' => 'all', 'label' => 'Semua Modul'])
-                ->values()->all(),
         ]);
     }
 
@@ -81,7 +87,7 @@ class ActivityLogController extends Controller
         ];
     }
 
-    private function query(string $search, string $module, string $from, string $to)
+    private function query(string $search, string $from, string $to)
     {
         return ActivityLog::query()
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
@@ -89,7 +95,6 @@ class ActivityLogController extends Controller
                 ->orWhere('actor_name', 'like', "%{$search}%")
                 ->orWhere('ip', 'like', "%{$search}%")
             ))
-            ->when($module !== '', fn ($q) => $q->where('module', $module))
             ->when($from !== '', fn ($q) => $q->whereDate('created_at', '>=', $from))
             ->when($to !== '', fn ($q) => $q->whereDate('created_at', '<=', $to));
     }

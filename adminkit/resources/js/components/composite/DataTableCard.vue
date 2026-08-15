@@ -49,6 +49,7 @@ const props = defineProps({
     emptyTitle: { type: String, default: '' },
     emptyDescription: { type: String, default: '' },
     showRefresh: { type: Boolean, default: true },
+    rowClickable: { type: Boolean, default: false },
     // ── mode server ──
     server: { type: Boolean, default: false },
     loading: { type: Boolean, default: false },
@@ -57,7 +58,14 @@ const props = defineProps({
     meta: { type: Object, default: () => ({ page: 1, per_page: 10, total: 0, last_page: 1 }) },
 });
 
-const emit = defineEmits(['refresh', 'update:search', 'update:sort', 'update:page', 'update:perPage']);
+const emit = defineEmits([
+    'refresh',
+    'row-click',
+    'update:search',
+    'update:sort',
+    'update:page',
+    'update:perPage',
+]);
 
 const localSearch = ref(props.search);
 const localSort = ref({ ...props.sort });
@@ -248,7 +256,13 @@ const pageSizeOptions = [
                             </TableCell>
                         </TableRow>
                         <template v-else>
-                            <TableRow v-for="row in paged" :key="row[props.rowKey]">
+                            <TableRow
+                                v-for="row in paged"
+                                :key="row[props.rowKey]"
+                                :class="props.rowClickable ? 'cursor-pointer' : ''"
+                                :data-testid="props.rowClickable ? `${props.testid}-row-${row[props.rowKey]}` : undefined"
+                                @click="props.rowClickable && emit('row-click', row)"
+                            >
                                 <TableCell
                                     v-for="col in props.columns"
                                     :key="col.key"

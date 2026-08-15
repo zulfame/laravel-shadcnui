@@ -23,6 +23,7 @@ class UserController extends Controller
         $sort = TableQuery::sort($request, self::SORTABLE, 'name');
         $dir = TableQuery::direction($request);
         $status = TableQuery::filter($request, 'status');
+        $role = TableQuery::filter($request, 'role');
 
         $users = User::query()
             ->with('roles:id,name')
@@ -33,6 +34,7 @@ class UserController extends Controller
                 ->orWhere('phone', 'like', "%{$search}%")
             ))
             ->when($status !== '', fn ($q) => $q->where('is_active', $status === 'aktif'))
+            ->when($role !== '', fn ($q) => $q->whereHas('roles', fn ($r) => $r->where('name', $role)))
             ->when(
                 $sort === 'role',
                 fn ($q) => $q->orderBy(
@@ -70,6 +72,7 @@ class UserController extends Controller
                 'sort' => $sort,
                 'dir' => $dir,
                 'status' => $status,
+                'role' => $role,
             ],
             'roleOptions' => Role::orderBy('name')->pluck('name')
                 ->map(fn ($n) => ['value' => $n, 'label' => $n])->all(),

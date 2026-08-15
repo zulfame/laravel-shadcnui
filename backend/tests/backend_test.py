@@ -324,6 +324,11 @@ class TestUsers:
         assert "phone" in r.json().get("errors", {})
 
     def test_create_user_valid_then_delete(self, client):
+        # cleanup first
+        r0 = client.get(f"{BASE_URL}/users?search=test_user_qa8", headers={"Accept": "text/html"}, timeout=30)
+        for u in _inertia_json(r0)["props"]["users"]["data"]:
+            if u["username"] == "test_user_qa8":
+                client.delete(f"{BASE_URL}/users/{u['id']}", allow_redirects=False, timeout=30)
         payload = {
             "name": "Test User",
             "username": "test_user_qa8",
@@ -336,9 +341,13 @@ class TestUsers:
         r = client.post(f"{BASE_URL}/users", json=payload, allow_redirects=False, timeout=30)
         assert r.status_code in (200, 201, 204, 302), f"{r.status_code}: {r.text[:300]}"
 
-        # Fetch users list and find the created user
-        r2 = client.get(f"{BASE_URL}/users", headers={"Accept": "text/html"}, timeout=30)
-        assert "test_user_qa8" in r2.text or r2.status_code == 200
+        # Fetch users list and find the created user, then cleanup
+        r2 = client.get(f"{BASE_URL}/users?search=test_user_qa8", headers={"Accept": "text/html"}, timeout=30)
+        data = _inertia_json(r2)["props"]["users"]["data"]
+        assert any(u["username"] == "test_user_qa8" for u in data)
+        for u in data:
+            if u["username"] == "test_user_qa8":
+                client.delete(f"{BASE_URL}/users/{u['id']}", allow_redirects=False, timeout=30)
 
 
 # ---------- Regression: roles + activity ----------
@@ -500,3 +509,112 @@ class TestIteration10UsersSort:
         )
         assert r.status_code == 200
         assert _inertia_json(r)["props"]["filters"]["sort"] == "is_active"
+
+
+# ---------- Iteration 11: Role import, users role filter, activity sort/detail ----------
+class TestIteration11RoleImport:
+    def test_import_no_file_422(self, client):
+        r = client.post(f"{BASE_URL}/roles/import", data={}, allow_redirects=False, timeout=30)
+        assert r.status_code == 422, f"{r.status_code}: {r.text[:200]}"
+        assert "file" in r.json().get("errors", {})
+
+    def test_import_non_csv_422(self, client):
+        files = {"file": ("bad.png", b"\x89PNG\r\n\x1a\nfakebinary", "image/png")}
+        # Do not send JSON content-type; use multipart
+        headers = {k: v for k, v in client.headers.items() if k.lower() not in ("content-type", "accept")}
+        headers["Accept"] = "application/json"
+        r = client.post(f"{BASE_URL}/roles/import", files=files, headers=headers, allow_redirects=False, timeout=30)
+        assert r.status_code == 422, f"{r.status_code}: {r.text[:200]}"
+        assert "file" in r.json().get("errors", {})
+
+    def test_import_csv_adds_and_skips(self, client):
+        # Clean pre-existing
+        r0 = client.get(f"{BASE_URL}/roles", headers=_inertia_headers(client), timeout=30)
+        roles0 = {x["name"]: x["id"] for x in _inertia_json(r0)["props"]["roles"]}
+        for n in ("Auditor Internal", "Manajer Cabang"):
+            if n in roles0:
+                client.delete(f"{BASE_URL}/roles/{roles0[n]}", allow_redirects=False, timeout=30)
+
+        csv_bytes = b"name\nAuditor Internal\nManajer Cabang\nStaf\n"
+        files = {"file": ("roles.csv", csv_bytes, "text/csv")}
+        headers = {k: v for k, v in client.headers.items() if k.lower() not in ("content-type",)}
+        headers["Accept"] = "application/json"
+        r = client.post(f"{BASE_URL}/roles/import", files=files, headers=headers,
+                        allow_redirects=False, timeout=30)
+        assert r.status_code in (200, 204, 302), f"{r.status_code}: {r.text[:300]}"
+
+        # Verify roles now include new two and Staf still exists (was unique-skipped)
+        r2 = client.get(f"{BASE_URL}/roles", headers=_inertia_headers(client), timeout=30)
+        names = [x["name"] for x in _inertia_json(r2)["props"]["roles"]]
+        assert "Auditor Internal" in names
+        assert "Manajer Cabang" in names
+        assert names.count("Staf") == 1
+        assert "name" not in names  # header row skipped
+
+        # Cleanup imported roles
+        roles = {x["name"]: x["id"] for x in _inertia_json(r2)["props"]["roles"]}
+        for n in ("Auditor Internal", "Manajer Cabang"):
+            r3 = client.delete(f"{BASE_URL}/roles/{roles[n]}", allow_redirects=False, timeout=30)
+            assert r3.status_code in (200, 204, 302)
+
+
+class TestIteration11UsersRoleFilter:
+    def test_role_options_present(self, client):
+        r = client.get(f"{BASE_URL}/users", headers=_inertia_headers(client), timeout=30)
+        d = _inertia_json(r)
+        opts = d["props"].get("roleOptions", [])
+        labels = {o["label"] for o in opts}
+        assert "Super Admin" in labels and "Staf" in labels
+
+    def test_filter_by_role_super_admin(self, client):
+        r = client.get(f"{BASE_URL}/users?role=Super Admin",
+                       headers=_inertia_headers(client), timeout=30)
+        assert r.status_code == 200
+        d = _inertia_json(r)
+        assert d["props"]["filters"]["role"] == "Super Admin"
+        # every user in data must have role Super Admin
+        for u in d["props"]["users"]["data"]:
+            assert u["role"] == "Super Admin", f"unexpected role: {u['role']}"
+
+    def test_filter_by_role_staf(self, client):
+        r = client.get(f"{BASE_URL}/users?role=Staf",
+                       headers=_inertia_headers(client), timeout=30)
+        d = _inertia_json(r)
+        assert d["props"]["filters"]["role"] == "Staf"
+        for u in d["props"]["users"]["data"]:
+            assert u["role"] == "Staf"
+
+
+class TestIteration11ActivitySort:
+    @pytest.mark.parametrize("key", ["created_at", "actor_name", "action", "module", "level"])
+    def test_sort_key_asc(self, client, key):
+        r = client.get(f"{BASE_URL}/activity?sort={key}&dir=asc",
+                       headers=_inertia_headers(client), timeout=30)
+        assert r.status_code == 200
+        d = _inertia_json(r)
+        assert d["props"]["filters"]["sort"] == key
+        assert d["props"]["filters"]["dir"] == "asc"
+
+    def test_sort_dir_desc(self, client):
+        r = client.get(f"{BASE_URL}/activity?sort=level&dir=desc",
+                       headers=_inertia_headers(client), timeout=30)
+        d = _inertia_json(r)
+        assert d["props"]["filters"]["dir"] == "desc"
+
+    def test_activity_detail_fields_present(self, client):
+        r = client.get(f"{BASE_URL}/activity", headers=_inertia_headers(client), timeout=30)
+        d = _inertia_json(r)
+        rows = d["props"]["logs"]["data"]
+        assert rows, "no activity rows"
+        row = rows[0]
+        # Fields required for detail dialog:
+        for k in ("id", "created_at", "created_at_full", "actor", "action", "module",
+                  "level", "level_label", "level_chip", "subject", "ip"):
+            assert k in row, f"missing {k}"
+
+    def test_purge_past_range_no_500(self, client):
+        r = client.delete(
+            f"{BASE_URL}/activity?date_from=2020-01-01&date_to=2020-01-02",
+            allow_redirects=False, timeout=30,
+        )
+        assert r.status_code in (200, 204, 302), f"{r.status_code}: {r.text[:200]}"
