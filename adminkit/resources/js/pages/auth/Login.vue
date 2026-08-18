@@ -62,7 +62,7 @@ const submit = () =>
                     </Alert>
 
                     <div class="space-y-[var(--item-gap)]">
-                        <Label for="credential" class="text-sm">Kredensial</Label>
+                        <Label for="credential">Kredensial</Label>
                         <Input
                             id="credential"
                             v-model="form.credential"
@@ -78,7 +78,7 @@ const submit = () =>
                     </div>
 
                     <div class="space-y-[var(--item-gap)]">
-                        <Label for="password" class="text-sm">Kata Sandi</Label>
+                        <Label for="password">Kata Sandi</Label>
                         <PasswordInput
                             id="password"
                             v-model="form.password"
@@ -92,7 +92,7 @@ const submit = () =>
 
                     <div class="flex items-center gap-2">
                         <Checkbox id="remember" v-model="form.remember" data-testid="login-remember-checkbox" />
-                        <Label for="remember" class="text-sm font-normal text-muted-foreground">
+                        <Label for="remember" class="normal-case tracking-normal font-normal text-muted-foreground">
                             Ingat saya
                         </Label>
                     </div>

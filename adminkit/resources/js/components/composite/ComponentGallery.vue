@@ -230,9 +230,9 @@ const runLoading = () => {
                         <DatePicker v-model="date" />
                     </div>
                     <Separator />
-                    <label class="flex cursor-pointer items-center gap-2 text-sm">
+                    <Label class="flex cursor-pointer items-center gap-2 normal-case tracking-normal font-normal">
                         <Checkbox v-model="checked" /> Kirim ringkasan mingguan
-                    </label>
+                    </Label>
                     <div class="flex items-center justify-between text-sm">
                         <span>Mode ringkas tabel</span>
                         <Switch v-model="toggled" />

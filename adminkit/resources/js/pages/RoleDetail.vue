@@ -137,7 +137,7 @@ const save = () => form.put(`/roles/${props.role.id}/permissions`, { preserveScr
                             data-testid="role-permissions-search"
                         />
                         <div class="flex items-center gap-2">
-                            <Label class="text-xs text-muted-foreground">Pilih Semua</Label>
+                            <Label>Pilih Semua</Label>
                             <Switch
                                 :model-value="allChecked"
                                 :disabled="props.role.locked"

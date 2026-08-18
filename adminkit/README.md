@@ -118,6 +118,7 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 **UI**
 - Dark mode, sidebar dapat di-collapse (mode ikon), breadcrumb otomatis, toast, dialog, combobox dengan pencarian, date picker.
 - **Tinggi kontrol seragam**: seluruh Input, Combobox, DatePicker, FileInput, dan Button (`sm`/`default`/`icon`) memakai token `--ctl-h` (2rem/32px) sehingga sejajar di dialog maupun toolbar tabel. Jangan meng-override tinggi kontrol secara lokal.
+- **Label formulir — ATURAN BAKU**: semua label memakai komponen `components/ui/Label.vue` yang sudah membawa gaya wajib **12px (`--label-size`), UPPERCASE, letter-spacing `--label-tracking` (0.06em), `font-weight` `--label-weight` (500), warna `text-foreground`**. Berlaku di seluruh halaman & dialog (Pengguna, Peranan, Perizinan, Audit Trail, Penampilan, Menu Sidebar, Object Storage, Profil, Login, Galeri Komponen). Jangan menulis `<label>` mentah dan jangan meng-override ukuran/huruf/spasi label per halaman — ubah tokennya di `resources/css/app.css` bila perlu penyesuaian global. Pengecualian tunggal: teks pendamping checkbox berupa kalimat (mis. "Ingat saya" di Login) boleh memakai `normal-case tracking-normal font-normal`.
 - **Menu sidebar dari basis data**: modul **Menu Sidebar** (`/menus`) menyusun menu dengan drag & drop hingga **3 tingkat** (grup → menu → submenu); atur label, alamat, ikon (registry lucide), izin, area (Member/Administrator), dan status aktif. Item tanpa alamat otomatis menjadi grup yang dapat dibuka-tutup; grup yang seluruh anaknya tidak berizin otomatis disembunyikan.
 - Sidebar dua area: **Member Area** (Dashboard) dan **Administrator** (Perizinan → Peranan → Pengguna → Penampilan → Audit Trail). Profil diakses lewat dropdown akun di footer sidebar.
 - **Halaman error bertema design system** (`pages/Error.vue`) untuk 401/403/404/419/429/500 — dua kolom: narasi + tindakan di kiri, panel kode status (angka mono besar, arsir diagonal, animasi masuk bertahap) dan **Pintasan Cepat** ke modul utama di kanan; header brand + toggle tema, footer `HTTP <status>`.
@@ -471,7 +472,7 @@ AWS_USE_PATH_STYLE_ENDPOINT=false
 
 ## Design System & Konvensi UI
 
-- Token warna, densitas, dan tipografi ada di `resources/css/app.css` (`--ctl-h`, `--field-gap`, `--item-gap`, `.form-dense`, `.tbl-density`).
+- Token warna, densitas, dan tipografi ada di `resources/css/app.css` (`--ctl-h`, `--field-gap`, `--item-gap`, `--label-size`, `--label-tracking`, `--label-weight`, `.form-dense`, `.tbl-density`).
 - **Badge** memakai referensi asli shadcn/ui (`default`, `secondary`, `destructive`, `outline`) dengan padding compact — tanpa palet warna kustom.
 - **Label dan judul memakai Title Case** (mis. `Nama Pengguna`, `Kata Sandi`, `Tambah Pengguna`), bukan Sentence case.
 - Jangan menambahkan `CardDescription` di bawah judul kartu.

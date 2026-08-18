@@ -321,3 +321,11 @@ Atas permintaan user: **semua style badge kustom DIHAPUS**.
 - **Bug penting**: dialog Ganti Nama tak menampilkan galat & tombol loading terus → butuh `preserveState: true` (tanpa itu komponen remount & error bag hilang) + aturan `bail` supaya regex tidak memicu 2 panggilan S3. Catatan: operasi Object Storage butuh 3-10 detik (dev server single-thread + latensi S3) — jangan simpulkan gagal terlalu cepat.
 - **php.ini**: `upload_max_filesize`/`post_max_size` = 64M lewat `/etc/php/8.3/cli/conf.d/99-adminkit.ini` (sudah masuk `/app/memory/restore_php.sh`).
 - Uji: iterasi 26-30. **Iterasi 30: 100% lulus, 0 bug.**
+
+## Selesai (2026-06-19, ATURAN BAKU label formulir)
+- User menyetujui gaya label hasil eksperimen di halaman Profil → dijadikan **aturan baku global**.
+- Token baru di `resources/css/app.css`: `--label-size: 0.75rem` (12px), `--label-tracking: 0.06em`, `--label-weight: 500`.
+- `components/ui/Label.vue` kini membawa gaya wajib: `block uppercase leading-none text-foreground` + ketiga token di atas. Semua halaman/dialog otomatis ikut (Pengguna, Peranan, Perizinan, Audit Trail, Penampilan, Menu Sidebar, Object Storage, Profil, Login, Galeri Komponen).
+- Override lokal dibersihkan: 7 label di `pages/Profile.vue`, `pages/RoleDetail.vue` ("Pilih Semua"), 2 label di `pages/auth/Login.vue`; `<label>` mentah di `ComponentGallery.vue` diganti komponen `Label`.
+- Pengecualian tunggal: teks pendamping checkbox berbentuk kalimat ("Ingat saya", "Kirim ringkasan mingguan") memakai `normal-case tracking-normal font-normal`.
+- Dokumentasi README diperbarui (bagian **UI** + daftar token desain). Verifikasi via screenshot: Login, Profil, dialog Tambah Pengguna, Penampilan — konsisten 12px uppercase.
