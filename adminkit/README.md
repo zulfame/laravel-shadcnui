@@ -118,7 +118,9 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 **UI**
 - Dark mode, sidebar dapat di-collapse (mode ikon), breadcrumb otomatis, toast, dialog, combobox dengan pencarian, date picker.
 - Sidebar dua area: **Member Area** (Dashboard) dan **Administrator** (Perizinan → Peranan → Pengguna → Penampilan → Audit Trail). Profil diakses lewat dropdown akun di footer sidebar.
-- **Halaman error bertema design system** (`pages/Error.vue`) untuk 401/403/404/419/429/500/503 — bukan tampilan bawaan Laravel.
+- **Halaman error bertema design system** (`pages/Error.vue`) untuk 401/403/404/419/429/500 — dua kolom: narasi + tindakan di kiri, panel kode status (angka mono besar, arsir diagonal, animasi masuk bertahap) dan **Pintasan Cepat** ke modul utama di kanan; header brand + toggle tema, footer `HTTP <status>`.
+- **Halaman pemeliharaan** (`resources/views/errors/503.blade.php`) tampil saat `php artisan down` — mandiri tanpa Vite/DB, senada tema (kisi latar, panel 503, bilah progres bergerak, daftar "Yang Sedang Kami Lakukan"), mendukung mode gelap otomatis, auto-refresh sesuai `--retry`.
+- **Deteksi koneksi**: banner offline di bawah header + toast saat koneksi terputus/pulih (`composables/useNetworkStatus.js`, `components/layout/OfflineBanner.vue`).
 - Responsif: kolom tabel sekunder otomatis disembunyikan pada layar kecil.
 
 ---
@@ -602,6 +604,7 @@ Catatan pengujian manual/otomatis:
 | Gambar aset 404 setelah pindah driver | Nilai lama tanpa awalan disk; unggah ulang aset agar tersimpan sebagai `local:`/`s3:` |
 | `php: not found` | Instal PHP 8.2+ beserta ekstensi pada bagian Persyaratan |
 | Izin baru tidak langsung berlaku | Cache Spatie — controller sudah memanggil `forgetCachedPermissions()`; bila mengubah lewat tinker jalankan `app(PermissionRegistrar::class)->forgetCachedPermissions()` |
+| `php artisan down` masih tampil bawaan Laravel | Pastikan `resources/views/errors/503.blade.php` ada dan hook `respond()` di `bootstrap/app.php` TIDAK menangani 503 |
 | Impor ditolak "harus berformat Excel" | Simpan berkas sebagai `.xlsx` (Excel/LibreOffice/Google Sheets → Unduh sebagai Excel); `.csv` tidak lagi didukung |
 | Waktu relatif berbahasa Inggris | Setel `APP_LOCALE=id` (locale Carbon mengikuti nilai ini) |
 | Login selalu 419 saat dibuka di iframe | Cookie sesi diblokir lintas situs — setel `SESSION_SAME_SITE=none` + `SESSION_SECURE_COOKIE=true`, lalu `php artisan config:clear` |

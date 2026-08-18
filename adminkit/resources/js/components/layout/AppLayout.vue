@@ -9,6 +9,7 @@ import SidebarInset from '@/components/ui/sidebar/SidebarInset.vue';
 import SidebarTrigger from '@/components/ui/sidebar/SidebarTrigger.vue';
 import AppSidebar from '@/components/layout/AppSidebar.vue';
 import NotificationsBell from '@/components/layout/NotificationsBell.vue';
+import OfflineBanner from '@/components/layout/OfflineBanner.vue';
 import ModeToggle from '@/components/ModeToggle.vue';
 import Toaster from '@/components/ui/Toaster.vue';
 import { getBreadcrumb } from '@/config/navigation';
@@ -60,6 +61,8 @@ useFlashToast();
                     <ModeToggle />
                 </div>
             </header>
+
+            <OfflineBanner />
 
             <div class="flex-1 overflow-y-auto p-4 lg:p-6">
                 <slot />

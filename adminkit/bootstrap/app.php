@@ -77,7 +77,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->respond(function (Response $response, Throwable $e, Request $request) {
             $status = $response->getStatusCode();
 
-            if (! in_array($status, [401, 403, 404, 419, 429, 500, 503], true)) {
+            // 503 memakai view mandiri resources/views/errors/503.blade.php
+            // (mode pemeliharaan tidak boleh bergantung pada sesi/DB/Vite).
+            if (! in_array($status, [401, 403, 404, 419, 429, 500], true)) {
                 return $response;
             }
 
@@ -85,7 +87,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return $response;
             }
 
-            if ($status >= 500 && config('app.debug')) {
+            if ($status === 500 && config('app.debug')) {
                 return $response;
             }
 

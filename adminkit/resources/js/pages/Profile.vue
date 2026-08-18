@@ -90,7 +90,7 @@ const removeAvatar = () => avatarForm.delete('/profile/avatar', { preserveScroll
 </script>
 
 <template>
-    <Head title="Profil Pengguna" />
+    <Head title="Profil" />
     <AppLayout>
         <div class="space-y-6" data-testid="profile-page">
             <Card>

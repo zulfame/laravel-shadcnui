@@ -75,7 +75,7 @@ class DatabaseSeeder extends Seeder
                 'avatar' => null,
                 'is_active' => true,
                 'email_verified_at' => now(),
-                'password' => '$2y$12$7zXgEEFyoa2ct4SFZGU7FujbMMeFAQSDcZgM5thg0fB75fePP7zya',
+                'password' => 'JKV@4dm1n',
             ]
         );
 
