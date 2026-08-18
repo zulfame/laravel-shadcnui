@@ -4,6 +4,7 @@ import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { Download, KeyRound, Lock, Pencil, Plus, Save, Trash2, Wand2, X } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
+import { menuLabelOf } from '@/composables/useMenuLabel';
 import Badge from '@/components/ui/Badge.vue';
 import Button from '@/components/ui/Button.vue';
 import Checkbox from '@/components/ui/Checkbox.vue';
@@ -149,15 +150,17 @@ const runBulkDelete = () => {
         },
     });
 };
+
+const pageTitle = computed(() => menuLabelOf('/permissions', 'Perizinan'));
 </script>
 
 <template>
-    <Head title="Perizinan" />
+    <Head :title="pageTitle" />
     <AppLayout>
         <div class="space-y-6" data-testid="permissions-page-view">
             <DataTableCard
                 server
-                title="Perizinan"
+                :title="pageTitle"
                 testid="permissions"
                 :columns="columns"
                 :rows="props.permissions.data"

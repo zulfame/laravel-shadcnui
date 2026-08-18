@@ -4,6 +4,7 @@ import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { Eye, FileDown, Loader2, Lock, Pencil, Plus, Save, ShieldCheck, Trash2, Upload, X } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
+import { menuLabelOf } from '@/composables/useMenuLabel';
 import Button from '@/components/ui/Button.vue';
 import Dialog from '@/components/ui/Dialog.vue';
 import DropdownMenuItem from '@/components/ui/DropdownMenuItem.vue';
@@ -13,6 +14,7 @@ import FileInput from '@/components/ui/FileInput.vue';
 import Input from '@/components/ui/Input.vue';
 import Label from '@/components/ui/Label.vue';
 import ConfirmDeleteDialog from '@/components/composite/ConfirmDeleteDialog.vue';
+import UploadProgress from '@/components/composite/UploadProgress.vue';
 import DataTableCard from '@/components/composite/DataTableCard.vue';
 import RowActions from '@/components/composite/RowActions.vue';
 import { ACTION } from '@/constants/labels';
@@ -134,14 +136,16 @@ const confirmDelete = () =>
         preserveScroll: true,
         onFinish: () => (deleting.value = null),
     });
+
+const pageTitle = computed(() => menuLabelOf('/roles', 'Peranan'));
 </script>
 
 <template>
-    <Head title="Peranan" />
+    <Head :title="pageTitle" />
     <AppLayout>
         <div class="space-y-6" data-testid="roles-page-view">
             <DataTableCard
-                title="Peranan"
+                :title="pageTitle"
                 testid="roles"
                 :columns="columns"
                 :rows="props.roles"
@@ -281,6 +285,11 @@ const confirmDelete = () =>
                             accept=".xlsx,.xls"
                             data-testid="role-import-file"
                             @change="onImportFile"
+                        />
+                        <UploadProgress
+                            :progress="importForm.progress"
+                            label="Mengunggah berkas Excel"
+                            testid="role-import-progress"
                         />
                         <p v-if="importForm.errors.file" class="text-xs font-medium text-destructive" data-testid="role-import-error">
                             {{ importForm.errors.file }}

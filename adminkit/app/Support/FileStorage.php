@@ -5,6 +5,7 @@ namespace App\Support;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * Satu pintu untuk seluruh unggahan berkas (avatar, aset merek).
@@ -31,6 +32,20 @@ class FileStorage
         $driver = self::driver();
 
         return $driver.':'.self::disk($driver)->putFile($folder, $file);
+    }
+
+    /**
+     * Simpan dengan nama asli yang dirapikan (slug) + akhiran pendek agar unik —
+     * dipakai modul Object Storage supaya berkas tetap mudah dikenali.
+     */
+    public static function storeReadable(UploadedFile $file, string $folder): string
+    {
+        $driver = self::driver();
+        $extension = mb_strtolower($file->getClientOriginalExtension() ?: $file->extension());
+        $name = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) ?: 'berkas';
+        $filename = $name.'-'.Str::lower(Str::random(6)).($extension ? '.'.$extension : '');
+
+        return $driver.':'.self::disk($driver)->putFileAs($folder, $file, $filename);
     }
 
     public static function delete(?string $value): void

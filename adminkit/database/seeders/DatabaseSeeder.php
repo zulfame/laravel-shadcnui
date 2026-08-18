@@ -66,6 +66,7 @@ class DatabaseSeeder extends Seeder
         ['admin', 'Pengguna', '/users', 'Users2', 'users.view', []],
         ['admin', 'Penampilan', '/appearance', 'Palette', 'appearance.view', []],
         ['admin', 'Menu Sidebar', '/menus', 'ListTree', 'menus.view', []],
+        ['admin', 'Object Storage', '/object-storage', 'Database', 'storage.view', []],
         ['admin', 'Audit Trail', '/audit-trail', 'ScrollText', 'activity.view', []],
     ];
 

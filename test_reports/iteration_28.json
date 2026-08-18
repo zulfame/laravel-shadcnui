@@ -1,0 +1,34 @@
+{
+  "summary": "Iterasi 28 — regresi Laravel 12 + Vue 3 + Inertia (AdminKit). Fokus: konsistensi penamaan halaman mengikuti label menu (dinamis), redesain identitas /profile, label 13px global, /object-storage tanpa blok informasi & memakai DataTable standar, dan 2 perbaikan iterasi 27 (validasi Ganti Nama + Kirim Email Sambutan). Hasil: 8 dari 10 sub-tugas LULUS. Yang belum tuntas: (1) Kirim Email Sambutan melempar ReferenceError 'router is not defined' pada Users.vue sehingga POST /users/{id}/welcome-email tidak pernah dikirim; (2) Pesan validasi dialog Ganti Nama Object Storage masih tidak muncul di UI meski server mengembalikan 303 dengan error bag — dialog malah tersangkut di state 'renaming' (spinner terus).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /object-storage/rename", "issue": "Server mengembalikan 303 (redirect) untuk validasi gagal, tetapi client Inertia melakukan follow-up GET tanpa header X-Inertia sehingga response follow-up tidak mengembalikan errors dalam page.props.errors. Akibatnya renameForm.errors kosong dan pesan validasi tidak ditampilkan. RenameObjectRequest sudah benar (rules + pesan), masalah pada penyaluran errors ke UI."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Users.vue sendWelcomeEmail", "issue": "'ReferenceError: router is not defined' terlempar saat klik users-welcome-email-<id>. File resources/js/pages/Users.vue baris 101 memanggil router.post(...) tapi 'router' TIDAK diimpor pada blok import (hanya Head, useForm, usePage yang diimpor dari @inertiajs/vue3). Menu handler onSelect gagal → tidak ada POST, tidak ada toast, tidak ada audit trail entry. Tambah `router` ke import: `import { Head, router, useForm, usePage } from '@inertiajs/vue3';` lalu `yarn build`.", "selector": "[data-testid^='users-welcome-email-']", "priority": "CRITICAL"},
+      {"component": "ObjectStorage.vue dialog Ganti Nama", "issue": "Pesan galat [data-testid=storage-rename-error] tidak pernah tampil untuk (a) nama duplikat maupun (b) karakter tidak sah. Server balas 303 dengan Location header, Inertia melakukan follow-up GET normal (tanpa X-Inertia) sehingga errors tidak sampai ke renameForm/renameErrors. Tombol Simpan tetap loading (renaming=true) — onError/onSuccess/onFinish callback tidak terpicu. Sarankan pakai useForm('rename', {...}).put(route, { onError, onFinish }) alih-alih router.put, atau baca usePage().props.errors setelah submit, dan set renaming=false secara defensif.", "selector": "[data-testid='storage-rename-error']", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Tambahkan `router` ke import @inertiajs/vue3 pada resources/js/pages/Users.vue (line 3), lalu jalankan `cd /app/adminkit && yarn build` untuk mengaktifkan aksi Kirim Email Sambutan.",
+    "Perbaiki alur penyaluran validation errors di ObjectStorage.vue Ganti Nama: konversi router.put → useForm('rename',...).put(route, { onError, onFinish, onSuccess }); pastikan `renaming` di-reset via onFinish; opsional baca usePage().props.errors.target jika bag kosong."
+  ],
+  "critical_code_review_comments": [
+    "Users.vue memakai global identifier `router` tanpa import — kelas bug lint yang seharusnya ditangkap ESLint. Aktifkan aturan no-undef atau vue/no-undef-components untuk mencegah regresi.",
+    "ObjectStorage.vue: pola router.put untuk dialog validasi rentan; standarkan semua form dialog memakai useForm dengan errorBag unik agar errors selalu terkirim ke UI."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "80%"},
+  "seed_data_creation": "Tidak ada berkas/pengguna baru dibuat. Label menu 'Pengguna' sempat diubah ke 'Kelola Pengguna' untuk uji dinamis lalu DIKEMBALIKAN ke 'Pengguna' (diverifikasi tab title kembali 'Pengguna · JKV Studio').",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "qatest / qatest123 (Super Admin)",
+  "context_for_next_testing_agent": "Login: qatest/qatest123. Yang sudah LULUS iterasi 28: (a) tab/breadcrumb/card title = label menu untuk /users /roles /permissions /audit-trail /object-storage; (b) uji dinamis rename label /users → 'Kelola Pengguna' → tab & judul kartu ikut berubah; (c) /object-storage tanpa [data-testid=storage-meta], header tabel = ['','Berkas','Jenis','Folder','Ukuran','Diubah','']; (d) toolbar storage berisi storage-search + storage-filter-folder + storage-upload-open (sama seperti /users); (e) profile-identity, profile-display-name, profile-role, profile-upload-avatar semuanya ada; (f) semua label body card = 13px (Profile, dialog Tambah Users, dialog Unggah storage, Appearance), tinggi input 32px; (g) mobile 390x844 tidak overflow pada /object-storage & /profile. YANG MASIH GAGAL: (1) welcome-email ReferenceError router — hanya butuh menambah `router` ke import di Users.vue; (2) rename validation errors tidak sampai ke UI (root cause di RCA). Setelah 2 fix, cukup regres kedua flow tersebut.",
+  "rca_of_the_issue": "1) Users.vue: import statement pada baris 3 tidak menyertakan `router`, sehingga saat DropdownMenuItem @select memanggil sendWelcomeEmail → router.post → ReferenceError. Tidak ada POST yang keluar. Perbaikan minimal: ubah `import { Head, useForm, usePage } from '@inertiajs/vue3';` menjadi `import { Head, router, useForm, usePage } from '@inertiajs/vue3';`. 2) ObjectStorage rename: PUT /object-storage/rename saat validasi gagal → Laravel exception handler kembalikan redirect back dengan errors flash. Inertia middleware mengubah menjadi 303 + Location; namun follow-up GET dari client Inertia terpantau TANPA header X-Inertia (kemungkinan router.put + preserveScroll tanpa preserveState + versi Inertia yang butuh handling khusus untuk 303 external), sehingga response follow-up jadi HTML utuh dan errors dari session tidak dibaca sebagai props Inertia. Effect: renameErrors kosong, dialog terjebak di renaming=true (onFinish tidak terpanggil). Solusi disarankan: gunakan useForm('rename', {...}) dan panggil .put(route('storage.rename'), { onError: e => renameErrors.value = e, onFinish: () => renaming.value=false }); atau dispatch permintaan via Inertia visit dengan preserveState:true agar client Inertia menangani chain redirect dengan benar."
+}

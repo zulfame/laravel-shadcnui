@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ObjectStorageController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoleController;
@@ -56,6 +57,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::post('/users/bulk', [UserController::class, 'bulk'])->name('users.bulk');
         Route::post('/users/import', [UserController::class, 'import'])->name('users.import');
+        Route::post('/users/{user}/welcome-email', [UserController::class, 'sendWelcomeEmail'])
+            ->name('users.welcome-email');
         Route::get('/users/import/template', [UserController::class, 'importTemplate'])
             ->name('users.import.template');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
@@ -114,6 +117,15 @@ Route::middleware('auth')->group(function () {
         Route::put('/appearance/contact', [AppearanceController::class, 'updateContact'])->name('appearance.contact');
         Route::post('/appearance/asset/{key}', [AppearanceController::class, 'uploadAsset'])->name('appearance.asset');
         Route::delete('/appearance/asset/{key}', [AppearanceController::class, 'destroyAsset'])->name('appearance.asset.destroy');
+    });
+
+    Route::get('/object-storage', [ObjectStorageController::class, 'index'])
+        ->middleware('permission:storage.view')->name('storage');
+
+    Route::middleware('permission:storage.manage')->group(function () {
+        Route::post('/object-storage', [ObjectStorageController::class, 'store'])->name('storage.store');
+        Route::put('/object-storage/rename', [ObjectStorageController::class, 'rename'])->name('storage.rename');
+        Route::delete('/object-storage', [ObjectStorageController::class, 'destroy'])->name('storage.destroy');
     });
 
     Route::get('/menus', [MenuController::class, 'index'])

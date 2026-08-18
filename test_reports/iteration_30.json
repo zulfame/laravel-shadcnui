@@ -1,0 +1,20 @@
+{
+  "summary": "Iterasi 30 — verifikasi fix bug 'Ganti Nama' Object Storage AdminKit. HASIL: SEMUA skenario perbaikan LULUS. (1) Validasi regex: pesan 'Nama baru hanya boleh huruf, angka, titik, garis bawah, tanda hubung, dan garis miring.' MUNCUL pada data-testid=storage-rename-error setelah ~10s dan tombol Simpan kembali aktif (disabled=false). (2) Validasi duplikat: pesan 'Sudah ada berkas dengan nama tersebut.' MUNCUL dan tombol kembali aktif. (3) Rename valid (uploads/uji-qa-rename-*.txt): dialog TERTUTUP setelah ~12s, nama baru TERLIHAT di tabel tanpa reload manual. (4) Reopen dialog untuk berkas lain: input terisi path yang benar, TIDAK ada pesan galat nyangkut, tombol aktif. Regresi upload 3MB dengan progress indicator, hapus berkas, dan halaman /users semua normal tanpa error konsol. preserveState:true + computed renameErrors (form.errors OR page.props.errors) + rules 'bail' berhasil menyelesaikan bug iterasi 27-29.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped per request)", "frontend": "100%"},
+  "seed_data_creation": "Sementara diunggah uploads/qa-regression-3mb-*.bin (3MB) dan hasil rename uploads/uji-qa-rename-1787077325.txt. KEDUANYA sudah dihapus. State final: hanya berkas pre-existing healthcheck/uji-ganti-nama.txt tersisa (sama seperti sebelum uji).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "test_credentials": "qatest / qatest123 via data-testid=login-credential-input + login-password-input + login-submit-button",
+  "context_for_next_testing_agent": "Bug rename dialog Object Storage (iterasi 27→29) TERTUTUP. Yang perlu diingat: submit rename butuh 8-12 detik karena verifikasi ke S3 dua kali (walau 'bail' sudah aktif, closure exists/dup masih call S3 sekali). Perbaikan komplet dan seluruh alur (regex, duplikat, valid, reopen, upload progress, delete, /users regression) sudah lulus tanpa error konsol.",
+  "rca_of_the_issue": "Fix yang berhasil (dari main agent): (a) renameForm.put(..., { preserveState: true }) mempertahankan state form setelah redirect Inertia sehingga error bag tidak hilang saat komponen dipasang ulang; (b) computed renameErrors membaca dari form.errors ATAU page.props.errors sebagai fallback; (c) uploadForm juga preserveState:true; (d) RenameObjectRequest menerapkan 'bail' agar validasi regex short-circuit sebelum memanggil S3, menurunkan latensi validasi error. Pada iterasi 29 kesimpulan salah karena test hanya menunggu <9s padahal validasi S3 butuh 3-8s; kini dengan wait 10-12s semua asersi lulus."
+}

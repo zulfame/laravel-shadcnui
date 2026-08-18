@@ -13,6 +13,7 @@ import OfflineBanner from '@/components/layout/OfflineBanner.vue';
 import ModeToggle from '@/components/ModeToggle.vue';
 import Toaster from '@/components/ui/Toaster.vue';
 import { getBreadcrumb } from '@/config/navigation';
+import { menuLabelOf } from '@/composables/useMenuLabel';
 import { useFlashToast } from '@/composables/useFlashToast';
 
 /**
@@ -22,7 +23,15 @@ import { useFlashToast } from '@/composables/useFlashToast';
  * Kerapatan permanen Compact — tidak ada pemilih kerapatan di header.
  */
 const page = usePage();
-const trail = computed(() => getBreadcrumb(page.url.split('?')[0]).trail);
+// Segmen terakhir memakai label menu (bila halaman terdaftar di Menu Sidebar)
+// supaya breadcrumb otomatis mengikuti penamaan yang dipilih pengguna.
+const trail = computed(() => {
+    const path = page.url.split('?')[0];
+    const items = getBreadcrumb(path).trail;
+    const label = menuLabelOf(path);
+
+    return label ? [...items.slice(0, -1), label] : items;
+});
 
 useFlashToast();
 </script>

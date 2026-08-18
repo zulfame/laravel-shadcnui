@@ -1,0 +1,38 @@
+{
+  "summary": "Regresi iterasi 27 terhadap Laravel 12 + Inertia (JKV Studio AdminKit). Fokus: (1) progres UI pada setiap unggahan, (2) service email + template welcome, (3) verifikasi perbaikan iterasi 26 (nama berkas terbaca, testid unik per path, pesan validasi Ganti Nama). Hasil: 8 dari 10 sub-tugas LULUS. Yang bermasalah: (a) pesan validasi dialog Ganti Nama masih tidak muncul (regresi belum tuntas), (b) menu Kirim Email Sambutan pada dropdown tidak memicu POST /users/{user}/welcome-email meski item tampil dan tidak disabled — kemungkinan konflik Radix DropdownMenuItem @click. Progres unggahan bekerja di semua modul (Object Storage, Profile Avatar, Aset Merek, Import User, Import Peranan). Email sambutan otomatis saat pembuatan user TERKIRIM (audit trail modul 'Surel' level Sukses: 'Email sambutan ke qa-welcome-fpdjul@example.com terkirim'). Template email me-render tema JKV (nama merek, inisial, kredensial, tombol Masuk Ke Aplikasi ke /login, footer_text, support email) tanpa placeholder Blade bocor. Nama berkas hasil unggah manusiawi ('contoh-media-qa-msdrf3.png') dan testid baris pakai path lengkap ('storage-row-uploads-contoh-media-qa-msdrf3-png').",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /object-storage/rename", "issue": "Validasi FormRequest berjalan (303) tapi pesan error tidak sampai ke useForm.errors di UI: regex message 'Nama baru hanya boleh huruf, angka, ...' dan closure 'Sudah ada berkas dengan nama tersebut.' tidak dirender di [data-testid=storage-rename-error]. Sama seperti temuan iterasi 26 — perbaikan belum efektif. Server sudah benar (file tidak dipindah saat invalid); masalah ada di penyaluran errors."},
+      {"endpoint": "POST /users/{user}/welcome-email", "issue": "Tidak sempat terverifikasi end-to-end via UI. Item dropdown 'users-welcome-email-{id}' terlihat dan tidak disabled untuk user dengan email, tapi klik (baik normal Playwright click maupun dispatch native click) TIDAK memicu POST — kemungkinan Radix DropdownMenuItem menutup portal sebelum handler @click='sendWelcomeEmail' berjalan. Perlu diverifikasi manual atau tambahkan onSelect handler pada DropdownMenuItem (bukan @click)."},
+      {"endpoint": "audit log delete", "issue": "ActivityLog::record untuk aksi hapus (Object Storage / Pengguna / Peranan) selalu memakai level 'danger' sehingga muncul badge 'Gagal' meski operasi berhasil (misal file benar-benar terhapus, user terhapus). Membingungkan: badge 'Gagal' semestinya berarti operasi gagal. Sarankan pakai level 'warning' atau 'info' untuk destructive-success dan 'danger' hanya jika benar-benar exception."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ObjectStorage.vue dialog Ganti Nama", "issue": "Setelah PUT rename 303 dengan validation error, renameForm.errors tetap kosong sehingga pesan tidak muncul; dialog tidak tertutup meski submit berikutnya sukses (screenshot menunjukkan file terrename tapi dialog tetap terbuka). Kemungkinan onSuccess Inertia tidak dipanggil ketika response berupa redirect back tanpa perubahan errors — atau errorBag konflik dengan uploadForm/deleteForm default bag. Sarankan set errorBag unik pada setiap useForm, atau assertion di submitRename untuk membaca page.props.errors.target manual.", "selector": "[data-testid=\"storage-rename-error\"]", "priority": "HIGH"},
+      {"component": "Users.vue dropdown aksi", "issue": "DropdownMenuItem [data-testid^=users-welcome-email-] muncul tetapi klik tidak mengirim POST — request tidak pernah keluar. Pengguna manual bisa terpengaruh jika Radix menutup portal sebelum handler bekerja.", "selector": "[data-testid=\"users-welcome-email-2\"]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Perbaiki penyaluran validation errors dialog Ganti Nama: gunakan errorBag unik untuk renameForm (mis. useForm('rename', {...})), atau baca errors.target langsung dari usePage() setelah PUT; pastikan onSuccess menutup dialog SETELAH server sukses (kini sukses tapi dialog tetap terbuka).",
+    "Ubah pemicu menu 'Kirim Email Sambutan' dari @click ke @select (RadixVue DropdownMenuItem) atau tambahkan e.preventDefault + panggil handler secara eksplisit, agar POST /users/{user}/welcome-email benar-benar dikirim.",
+    "Bedakan level audit trail untuk aksi hapus yang berhasil vs gagal (bukan selalu 'danger'); hindari badge 'Gagal' pada operasi yang sebenarnya sukses."
+  ],
+  "critical_code_review_comments": [
+    "RenameObjectRequest closure duplikat masih memanggil FileStorage::disk()->exists($target) tanpa mengecualikan $target === $path (source), sehingga jika user menekan Simpan tanpa mengubah nama, akan gagal dengan pesan 'Sudah ada berkas dengan nama tersebut.'.",
+    "ObjectStorageController::destroy dan analog delete lain memakai level='danger' pada audit meski operasi sukses — level menjadi salah satu penyebab UX 'Gagal' membingungkan.",
+    "Beberapa useForm pada satu halaman (uploadForm/renameForm/deleteForm) berbagi errorBag default sehingga validation errors bisa tercampur; sebaiknya beri nama bag berbeda."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "88%", "frontend": "82%"},
+  "seed_data_creation": "Membuat: user 'qawelcomefpdjul' (qa-welcome-fpdjul@example.com) → sudah dihapus (audit menandai Gagal karena convention level). Peranan 'QA Role <ts>' dari import → sudah dihapus. Berkas QA di Object Storage (contoh-media-qa-*.png, besar1/besar2.bin, qa-rename-dup, qa-valid-rename.png, qa-renamed-ok-*.png) → sudah dihapus bulk. Sisa berkas hanya milik pengguna (contoh-dokumen.txt, pub-*.txt, dsb). Avatar profil qatest sekarang berupa gambar random PNG hasil uji (bisa direset dari UI Profile).",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "qatest / qatest123 (Super Admin)",
+  "context_for_next_testing_agent": "Kredensial: qatest/qatest123. Selectors terpakai: login-credential-input, login-password-input, login-submit-button. Progres unggah: storage-upload-progress + storage-upload-progress-value; profile-avatar-progress; asset-progress-<key>; user-import-progress; role-import-progress. Semua terbukti muncul saat unggah berkas ≥3–8 MB (untuk berkas kecil bisa terlalu cepat). Email sambutan otomatis saat POST /users dibuktikan dari audit trail entri 'Email sambutan ke ... terkirim' modul 'Surel' level 'Sukses'. Untuk manual resend, gunakan Radix onSelect (bukan @click) — playwright .click() saat ini tidak memicu handler. Rename validation error masih belum ditampilkan di UI walau server merespons 303 dengan error bag; investigasi errorBag/useForm shared bag. Berkas uji besar sudah dihapus, jangan hapus contoh-dokumen.txt, pub-*.txt, atau berkas milik jkv.",
+  "rca_of_the_issue": "1) Rename validation error tidak muncul: renameForm.errors kosong setelah PUT 303 — kemungkinan (a) errors sesi tidak ter-share ke halaman karena redirect back merender ulang Inertia props tapi useForm scoping tak menangkapnya (kemungkinan salah bag), atau (b) dialog Inertia menutup preservestate menyebabkan re-mount hilang errors. Sarankan: unique errorBag per form + baca dari usePage().props.errors.target langsung, dan tambahkan onError callback pada .put(). 2) Menu welcome-email click no-op: Radix DropdownMenuItem me-listen onSelect (pointerdown) bukan click; @click Vue kadang di-preventDefault oleh Radix ketika portal menutup. Ganti ke @select atau bungkus dengan tombol biasa di dalam item."
+}

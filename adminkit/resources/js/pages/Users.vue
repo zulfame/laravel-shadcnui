@@ -1,9 +1,10 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
-import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { Download, FileDown, Loader2, Pencil, Plus, Save, ToggleLeft, ToggleRight, Trash2, Upload, Users2, X } from 'lucide-vue-next';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { Download, FileDown, Loader2, MailCheck, Pencil, Plus, Save, ToggleLeft, ToggleRight, Trash2, Upload, Users2, X } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
+import { menuLabelOf } from '@/composables/useMenuLabel';
 import Badge from '@/components/ui/Badge.vue';
 import Button from '@/components/ui/Button.vue';
 import Dialog from '@/components/ui/Dialog.vue';
@@ -16,6 +17,7 @@ import PhoneInput from '@/components/ui/PhoneInput.vue';
 import Combobox from '@/components/ui/Combobox.vue';
 import Switch from '@/components/ui/Switch.vue';
 import ConfirmDeleteDialog from '@/components/composite/ConfirmDeleteDialog.vue';
+import UploadProgress from '@/components/composite/UploadProgress.vue';
 import DataTableCard from '@/components/composite/DataTableCard.vue';
 import PasswordInput from '@/components/composite/PasswordInput.vue';
 import RowActions from '@/components/composite/RowActions.vue';
@@ -94,6 +96,9 @@ const openCreate = () => {
     form.role = props.roleOptions[0]?.value ?? '';
     dialogOpen.value = true;
 };
+
+const sendWelcomeEmail = (row) =>
+    router.post(`/users/${row.id}/welcome-email`, {}, { preserveScroll: true, preserveState: true });
 
 const openEdit = (row) => {
     editing.value = row;
@@ -210,15 +215,17 @@ const confirmDelete = () => {
 watch(dialogOpen, (open) => {
     if (!open) editing.value = null;
 });
+
+const pageTitle = computed(() => menuLabelOf('/users', 'Pengguna'));
 </script>
 
 <template>
-    <Head title="Pengguna" />
+    <Head :title="pageTitle" />
     <AppLayout>
         <div class="space-y-6" data-testid="users-page-view">
             <DataTableCard
                 server
-                title="Pengguna"
+                :title="pageTitle"
                 testid="users"
                 :columns="columns"
                 :rows="props.users.data"
@@ -332,6 +339,13 @@ watch(dialogOpen, (open) => {
                     <RowActions v-if="canManage" :testid="`users-actions-${row.id}`">
                         <DropdownMenuItem :data-testid="`users-edit-${row.id}`" @click="openEdit(row)">
                             <Pencil />{{ ACTION.edit }}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            :disabled="!row.email"
+                            :data-testid="`users-welcome-email-${row.id}`"
+                            @select="sendWelcomeEmail(row)"
+                        >
+                            <MailCheck />Kirim Email Sambutan
                         </DropdownMenuItem>
                         <template v-if="row.id !== currentUserId">
                             <DropdownMenuSeparator />
@@ -479,6 +493,11 @@ watch(dialogOpen, (open) => {
                             accept=".xlsx,.xls"
                             data-testid="user-import-file"
                             @change="onImportFile"
+                        />
+                        <UploadProgress
+                            :progress="importForm.progress"
+                            label="Mengunggah berkas Excel"
+                            testid="user-import-progress"
                         />
                         <p v-if="importForm.errors.file" class="text-xs font-medium text-destructive" data-testid="user-import-error">
                             {{ importForm.errors.file }}

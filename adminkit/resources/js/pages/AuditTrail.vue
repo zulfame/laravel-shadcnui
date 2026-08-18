@@ -4,6 +4,7 @@ import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { Download, ScrollText, Trash2, X } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
+import { menuLabelOf } from '@/composables/useMenuLabel';
 import Badge from '@/components/ui/Badge.vue';
 import Button from '@/components/ui/Button.vue';
 import DatePicker from '@/components/ui/DatePicker.vue';
@@ -81,15 +82,17 @@ const purge = () =>
 
 const fmt = (iso) =>
     iso ? new Date(`${iso}T00:00:00`).toLocaleDateString('id-ID', { dateStyle: 'medium' }) : '—';
+
+const pageTitle = computed(() => menuLabelOf('/audit-trail', 'Audit Trail'));
 </script>
 
 <template>
-    <Head title="Audit Trail" />
+    <Head :title="pageTitle" />
     <AppLayout>
         <div class="space-y-6" data-testid="audit-page-view">
             <DataTableCard
                 server
-                title="Audit Trail"
+                :title="pageTitle"
                 testid="activity"
                 :columns="columns"
                 :rows="props.logs.data"

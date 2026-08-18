@@ -22,6 +22,7 @@ class Modules
         'appearance' => ['label' => 'Penampilan', 'abilities' => ['view', 'manage']],
         'activity' => ['label' => 'Audit Trail', 'abilities' => ['view', 'manage']],
         'menus' => ['label' => 'Menu Sidebar', 'abilities' => ['view', 'manage']],
+        'storage' => ['label' => 'Object Storage', 'abilities' => ['view', 'manage']],
         'profile' => ['label' => 'Profil Pengguna', 'abilities' => ['view']],
     ];
 

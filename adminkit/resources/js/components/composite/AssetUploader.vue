@@ -5,6 +5,7 @@ import { ImageIcon, Loader2, Upload, X } from 'lucide-vue-next';
 
 import Button from '@/components/ui/Button.vue';
 import Label from '@/components/ui/Label.vue';
+import UploadProgress from '@/components/composite/UploadProgress.vue';
 import { ACTION } from '@/constants/labels';
 
 /**
@@ -51,6 +52,11 @@ const remove = () => form.delete(`/appearance/asset/${props.assetKey}`, { preser
     <div class="space-y-[var(--item-gap)]">
         <Label>{{ props.label }}</Label>
         <p v-if="props.hint" class="text-xs text-muted-foreground">{{ props.hint }}</p>
+        <UploadProgress
+            :progress="form.progress"
+            :label="`Mengunggah ${props.label}`"
+            :testid="`asset-progress-${props.assetKey}`"
+        />
         <div class="flex flex-wrap items-center gap-2">
             <span
                 class="flex size-9 items-center justify-center overflow-hidden rounded-md border"

@@ -1,0 +1,41 @@
+{
+  "summary": "Diuji end-to-end modul baru Object Storage (Laravel 12 + Inertia + S3-compatible Neo NOS) dan integrasi avatar profil. Semua alur inti berhasil: sidebar menu 'Object Storage' muncul di area Administrator; /object-storage menampilkan meta (Driver=S3, Bucket=bpr-assets, Prefix=adminkit, Total); CRUD unggah/baca/ganti nama/hapus (per baris & massal) berjalan; salin tautan menampilkan toast 'Tautan berkas disalin.'; pencarian dan filter folder memperbarui URL query dan hasil; unggah avatar profil tersimpan langsung ke S3 (users.avatar prefix 's3:' & URL host nos.wjv-1.neo.id, HTTP 200), avatar tampil di halaman profil dan footer sidebar, tombol Hapus mengembalikan ke inisial; regresi /appearance, /users, /roles, /permissions, /menus, /audit-trail, dashboard tetap OK; mobile 390x844 tanpa overflow horizontal. Ditemukan dua isu UX/bug menengah pada modul Object Storage.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /object-storage/rename", "issue": "Pesan validasi tidak selalu diteruskan ke UI. Diuji: input 'uploads/bad name!!!.txt' (harus gagal regex) → server merespon 303 tapi dialog tidak menampilkan pesan apa pun; input 'uploads/contoh-dokumen.txt' (harus gagal karena sudah ada) → dialog menampilkan pesan REGEX ('Nama baru hanya boleh huruf, angka, ...') alih-alih 'Sudah ada berkas dengan nama tersebut.'. File tidak jadi dipindah (bagus), tapi pesan yang muncul salah/tidak muncul (membingungkan user)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ObjectStorage.vue (dialog Ganti Nama)", "issue": "Error validasi tidak konsisten ditampilkan. Input berisi karakter aneh tidak menampilkan pesan; input yang sebenarnya duplikat menampilkan pesan regex (stale/salah). Kemungkinan renameForm.clearErrors() tidak berjalan ketika dialog dibuka ulang, atau error dari request sebelumnya tersimpan.", "selector": "[data-testid=\"storage-rename-submit\"] / renameForm.errors.target", "priority": "MEDIUM"},
+      {"component": "ObjectStorageController::store / FileStorage::store", "issue": "Nama berkas yang diunggah DIACAK (putFile menghasilkan hash 40-char). Untuk modul manajer object storage, pengguna tidak dapat mengenali berkas mereka setelah unggah (mis. 'qa-sample.png' → 'dtOXAxxIUAwtp5XRWDQtnDdsNWH5lM6KzBco2W6F.png'). Disarankan pertahankan original filename (putFileAs + slug) untuk modul ini, atau minimal tampilkan original filename di kolom nama.", "selector": "app/Support/FileStorage.php:33", "priority": "MEDIUM"},
+      {"component": "ObjectStorage.vue baris berkas", "issue": "Testid berbasis basename saja (`storage-rename-${file.name}`, `storage-open-${file.name}`, `storage-copy-`, `storage-check-`, `storage-delete-`). Bila terdapat berkas dengan basename sama di folder berbeda (mis. uploads/a.txt & qa/a.txt) testid akan bentrok dan Playwright/label ARIA menjadi ambigu. Sebaiknya pakai path lengkap atau id yang unik.", "selector": "[data-testid^=\"storage-rename-\"]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/storage_page.png",
+    "/app/test_reports/after_delete.png",
+    "/app/test_reports/profile_uploaded.png",
+    "/app/test_reports/mobile_storage.png"
+  ],
+  "action_items": [
+    "Perbaiki penyampaian pesan validasi pada dialog Ganti Nama: pastikan renameForm.clearErrors() dipanggil sebelum setiap submit atau pastikan Inertia mengganti error yang lama; pesan 'Sudah ada berkas dengan nama tersebut.' HARUS muncul pada input duplikat, pesan regex HARUS muncul pada input yang mengandung spasi/karakter khusus.",
+    "Pertimbangkan mempertahankan original filename saat unggah lewat modul Object Storage: gunakan Str::slug pada basename + timestamp/uuid pendek agar tetap unik namun tetap terbaca manusia. Modul ini akan menjadi manajer media untuk semua jenis file, sehingga nama acak akan mempersulit pengelolaan.",
+    "Gunakan path lengkap (atau id/hash pendek) pada semua data-testid baris berkas untuk mencegah bentrok saat basename sama di folder berbeda."
+  ],
+  "critical_code_review_comments": [
+    "RenameObjectRequest closure validation memanggil FileStorage::disk()->exists($value) tanpa mengecualikan target sama dengan source; jika user menekan Simpan tanpa mengubah target, akan selalu gagal dengan pesan 'Sudah ada berkas dengan nama tersebut.'. Tambahkan cek 'target !== path' sebelum melempar error.",
+    "ObjectStorageController::index memuat allFiles() dua kali (map size & totalSize) dan memanggil disk()->size + lastModified per file di describe() — pada bucket besar akan sangat lambat & mahal (banyak HEAD request). Cache metadata atau pakai Storage::files() dengan listing terbatas."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "95%", "frontend": "90%"},
+  "seed_data_creation": "Berkas uji QA (qa-sample.png, qa-note.txt, qa-avatar.png) sudah dibuat dan dibersihkan dari S3 di akhir pengujian (allFiles() sekarang tinggal healthcheck/pub-*.txt dan uploads/contoh-dokumen.txt).",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "qatest / qatest123",
+  "context_for_next_testing_agent": "Kredensial dari /app/memory/test_credentials.md (qatest/qatest123). Object storage aktif ke S3 Neo NOS (bucket bpr-assets, prefix adminkit). Untuk pengujian rename validation, gunakan pola: (1) buka dialog via [data-testid=\"storage-rename-<basename>\"], (2) fill [data-testid=\"storage-rename-input\"], (3) klik [data-testid=\"storage-rename-submit\"], (4) baca isi dialog via document.querySelector('[role=\"dialog\"]').innerText. Bulk delete: check [data-testid=\"storage-check-<basename>\"] lalu [data-testid=\"storage-bulk-delete\"] → tombol konfirmasi 'Hapus' di dialog. Profile avatar: [data-testid=\"profile-avatar-input\"] (file) + [data-testid=\"profile-upload-avatar\"]; hapus via tombol 'Hapus'. Search: fill [data-testid=\"storage-search\"] + Enter → URL berisi ?search=. Folder filter: klik [data-testid=\"storage-filter-folder\"] lalu klik elemen popover berteks nama folder (Combobox shadcn-vue tanpa role=option — cari via get_by_text).",
+  "rca_of_the_issue": "Bug tampilan error rename: dugaan renameForm (useForm Inertia) tetap menyimpan errors dari request sebelumnya. Saat submit baru dilakukan tanpa clearErrors, Vue merender error lama sampai response baru datang; jika response baru mengubah field yang sama, error lama tergantikan tapi jika field berbeda / validasi berbeda, error lama masih muncul. Bad chars menghasilkan target.regex error, dialog tidak menampilkannya (kemungkinan renderer error tidak menampilkan target.regex bawaan, atau closure gagal jalan). Perlu: (a) validasi manual di submitRename untuk trim & regex sebelum kirim; (b) pastikan template menampilkan renameForm.errors.target segera setelah response 302/303 diterima; (c) tambahkan renameForm.clearErrors() di submitRename() sebelum PUT."
+}

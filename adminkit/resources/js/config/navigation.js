@@ -22,11 +22,12 @@ const ROUTE_TRAILS = [
     [/^\/roles\/\d+$/, ['Peranan', 'Detail']],
     [/^\/appearance$/, ['Penampilan']],
     [/^\/menus$/, ['Menu Sidebar']],
+    [/^\/object-storage$/, ['Object Storage']],
     [/^\/audit-trail$/, ['Audit Trail']],
     [/^\/audit-trail\/\d+$/, ['Audit Trail', 'Detail']],
 ];
 
-const ADMIN_ROUTES = [/^\/users/, /^\/permissions/, /^\/roles/, /^\/appearance/, /^\/menus/, /^\/audit-trail/];
+const ADMIN_ROUTES = [/^\/users/, /^\/permissions/, /^\/roles/, /^\/appearance/, /^\/menus/, /^\/object-storage/, /^\/audit-trail/];
 
 /** Id area yang memiliki sebuah pathname. */
 export const areaIdOf = (pathname) =>

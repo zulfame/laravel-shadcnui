@@ -5,6 +5,7 @@ import { Loader2, Save, Trash2, Upload } from 'lucide-vue-next';
 
 import AppLayout from '@/components/layout/AppLayout.vue';
 import Avatar from '@/components/ui/Avatar.vue';
+import UploadProgress from '@/components/composite/UploadProgress.vue';
 import Badge from '@/components/ui/Badge.vue';
 import Button from '@/components/ui/Button.vue';
 import Card from '@/components/ui/Card.vue';
@@ -99,15 +100,38 @@ const removeAvatar = () => avatarForm.delete('/profile/avatar', { preserveScroll
                 </CardHeader>
                 <form class="form-dense" novalidate @submit.prevent="saveProfile">
                     <CardContent class="space-y-4">
-                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div class="flex items-center gap-3">
+                        <div
+                            class="flex flex-col gap-4 rounded-lg border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between"
+                            data-testid="profile-identity"
+                        >
+                            <div class="flex min-w-0 items-center gap-3">
                                 <Avatar
                                     :src="user.avatar"
                                     :fallback="initialsOf(profile.name, profile.email)"
-                                    class="size-11 rounded-lg text-sm"
+                                    class="size-12 shrink-0 rounded-lg text-sm"
                                     data-testid="profile-avatar"
                                 />
-                                <div class="flex flex-wrap items-center gap-2">
+                                <div class="min-w-0 space-y-1">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span
+                                            class="truncate text-[13px] font-semibold"
+                                            data-testid="profile-display-name"
+                                        >
+                                            {{ user.name }}
+                                        </span>
+                                        <Badge variant="secondary" class="font-normal" data-testid="profile-role">
+                                            {{ user.role || 'Pengguna' }}
+                                        </Badge>
+                                    </div>
+                                    <p class="truncate text-xs text-muted-foreground">
+                                        {{ user.email || 'Tanpa alamat email' }}
+                                    </p>
+                                    <p class="text-xs text-muted-foreground">JPG, PNG, atau WEBP · maksimal 1 MB.</p>
+                                </div>
+                            </div>
+
+                            <div class="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
+                                <div class="flex flex-wrap items-center gap-2 sm:justify-end">
                                     <input
                                         ref="fileInput"
                                         type="file"
@@ -139,18 +163,13 @@ const removeAvatar = () => avatarForm.delete('/profile/avatar', { preserveScroll
                                     >
                                         <Trash2 class="size-4" /> {{ ACTION.delete }}
                                     </Button>
-                                    <p class="w-full text-xs text-muted-foreground">
-                                        JPG, PNG, atau WEBP. Maksimal 1 MB.
-                                    </p>
                                 </div>
-                            </div>
-                            <div class="flex items-center gap-2 sm:flex-col sm:items-end sm:gap-1 sm:text-right">
-                                <span class="whitespace-nowrap text-[13px] font-semibold" data-testid="profile-display-name">
-                                    {{ user.name }}
-                                </span>
-                                <Badge variant="secondary" class="whitespace-nowrap font-normal" data-testid="profile-role">
-                                    {{ user.role || 'Pengguna' }}
-                                </Badge>
+                                <UploadProgress
+                                    :progress="avatarForm.progress"
+                                    label="Mengunggah foto profil"
+                                    testid="profile-avatar-progress"
+                                    class="sm:w-56"
+                                />
                             </div>
                         </div>
 

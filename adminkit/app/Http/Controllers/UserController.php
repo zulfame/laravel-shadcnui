@@ -8,6 +8,7 @@ use App\Http\Requests\User\StoreUserRequest;
 use App\Models\ActivityLog;
 use App\Models\User;
 use App\Support\Excel;
+use App\Support\Mailer;
 use App\Support\Notify;
 use App\Support\Rules;
 use App\Support\TableQuery;
@@ -108,6 +109,8 @@ class UserController extends Controller
             ActivityLog::snapshotOf($user) + ['role' => ['old' => null, 'new' => $data['role']]],
         );
 
+        Mailer::welcome($user, $data['password']);
+
         Notify::toPermission(
             permission: 'users.view',
             title: 'Pengguna baru terdaftar',
@@ -142,6 +145,18 @@ class UserController extends Controller
         ActivityLog::record("Memperbarui pengguna {$user->name}", 'Pengguna', 'info', $user, $changes);
 
         return back()->with('success', "Pengguna {$user->name} diperbarui.");
+    }
+
+    /** Kirim ulang email sambutan ke pengguna tertentu. */
+    public function sendWelcomeEmail(User $user): RedirectResponse
+    {
+        if (! $user->email) {
+            return back()->with('error', "Pengguna {$user->name} belum memiliki alamat email.");
+        }
+
+        return Mailer::welcome($user)
+            ? back()->with('success', "Email sambutan dikirim ke {$user->email}.")
+            : back()->with('error', 'Email sambutan gagal dikirim. Periksa audit trail untuk detailnya.');
     }
 
     /** Berkas Excel contoh untuk impor pengguna. */
