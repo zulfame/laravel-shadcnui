@@ -56,12 +56,10 @@ const firstHrefOf = (items = []) => {
 
 const pathname = computed(() => page.url.split('?')[0]);
 
+// Area mengikuti halaman yang sedang dibuka agar titik awal selalu konsisten
+// (mis. setelah masuk, halaman dashboard selalu menampilkan Member Area).
 onMounted(() => {
-    try {
-        areaId.value = window.localStorage.getItem(AREA_KEY) || areaIdOf(pathname.value);
-    } catch (e) {
-        areaId.value = areaIdOf(pathname.value);
-    }
+    areaId.value = areaIdOf(pathname.value);
 });
 
 watch(pathname, (next) => {

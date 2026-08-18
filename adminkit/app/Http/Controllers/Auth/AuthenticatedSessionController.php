@@ -22,7 +22,11 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard'))
+        // Setelah masuk selalu ke dashboard: alamat "intended" dari kunjungan
+        // tamu sebelumnya diabaikan agar titik awal selalu sama.
+        $request->session()->forget('url.intended');
+
+        return redirect()->route('dashboard')
             ->with('success', 'Selamat datang kembali, '.$request->user()->name.'.');
     }
 
