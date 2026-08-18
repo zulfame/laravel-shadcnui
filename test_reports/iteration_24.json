@@ -1,0 +1,26 @@
+{
+  "summary": "Verifikasi konsistensi tinggi kontrol (32px) di AdminKit setelah perbaikan Combobox/FileInput/Button size sm + regresi Menus reactivity. Login qatest/qatest123 sukses, semua alur yang diminta LULUS. Ukuran hasil getBoundingClientRect (px): (A) Dialog /menus (Ubah): #menu-label=32, menu-form-area=32, menu-form-parent=32, #menu-href=32, menu-form-icon=32, menu-form-permission=32, menu-form-save=32. (B) Dialog Impor Pengguna /users: #user-import-file=32, user-import-template=32, user-import-cancel=32. (C) Dialog Impor Peranan /roles: #role-import-file=31.95 (=32, subpixel). (D) Dialog Tambah Pengguna /users: nama=32, username=32, email=32, phone=32, role combobox=32, password=32, last-login=32, save=32. (E) Toolbar /users: search=32, combobox 'Semua Peranan'=32, 'Semua Status'=32, per-page '10'=32, tombol Impor=32, Tambah=32, users-prev=32x32, users-next=32x32. (F) Toolbar /audit-trail: 'Dari Tanggal'=32, 'Sampai Tanggal'=32, Ekspor=32, Hapus Log=32, combobox '10'=32. (G) Toolbar /roles & /permissions: header Impor/Tambah/Ekspor=32, combobox filter=32. REGRESI: (1) Combobox filter role di /users benar-benar menyaring (rows 2 -> 0 setelah pilih Guest). (2) Perpage 10 -> 25 mengubah tabel. (3) Combobox pencarian 'Key' di dropdown ikon menampilkan 'KeyRound' (search berfungsi). (4) FileInput: setelah pilih .xlsx tombol Impor menjadi enabled; setelah Escape lalu buka ulang dialog, input file kosong ('') -> reset via clear() BERFUNGSI. (5) Menus /menus: Tambah 'QA Konsistensi' di Member Area -> langsung tampil tanpa reload; Ubah label -> tampil 'QA Konsistensi Edit' tanpa reload; Hapus -> DB dikonfirmasi kosong (tinker: 0 baris). (6) Mobile 390x844 /users: scrollWidth-clientWidth = 0 (tanpa overflow). (7) Dashboard OK. Hanya 1 console error selama semua alur (Failed to load resource 404 — favicon/asset non-kritis).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Global (opsional, minor)", "issues": [
+        "Beberapa tombol ikon berukuran 28x28 (bukan 32) — sidebar-trigger di header, dialog-close (X) di dalam dialog, user-form-password-toggle (mata) di dalam input password, dan tombol aksi baris tabel users-actions-N. Ini bukan bagian dari kontrol form yang dikeluhkan user (semua kontrol form kini 32px konsisten), tapi jika ingin sepenuhnya seragam, pertimbangkan menaikkan ke 32 juga."
+      ]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "OPSIONAL: naikkan tombol ikon berukuran 28px (sidebar-trigger header, dialog-close X, password-toggle di PasswordInput, users-actions-N row action) ke 32px agar sepenuhnya konsisten dengan --ctl-h. Bukan bug user; kontrol form sudah 32 semua."
+  ],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (tidak diuji sesuai instruksi)", "frontend": "100% (semua verifikasi ukuran & regresi lulus)"},
+  "seed_data_creation": "Membuat & menghapus menu uji 'QA Konsistensi' -> 'QA Konsistensi Edit' di area Member Area (dihapus, DB dikonfirmasi bersih via tinker).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "qatest / qatest123 (login field menerima username, email, atau nomor HP).",
+  "context_for_next_testing_agent": "Bug utama konsistensi tinggi kontrol (32px) sudah RESOLVED. Semua Input/Combobox/FileInput/Button size sm/DatePicker/pagination icon = 32px. Sisa 28px hanya di tombol ikon dekoratif (X close, mata password, row action, sidebar toggle) yang bukan bagian keluhan. Menus reactivity (iteration 23 finding) juga LULUS: add/edit langsung tampil tanpa reload; delete dikonfirmasi persist di DB. Tidak ada console error kritis.",
+  "rca_of_the_issue": "Perbaikan menyeragamkan seluruh trigger kontrol ke tinggi var(--ctl-h)=2rem (32px): Combobox trigger, FileInput baru dengan h-[var(--ctl-h)] + file:h-[calc(var(--ctl-h)-2px)], Button size sm dinaikkan dari 28 ke 32, dan override h-7/text-xs pada DataTableCard search/pagination + DatePicker Audit Trail dihapus. Hasil pengukuran ulang: 100% kontrol form pada semua halaman/dialog yang diuji = 32px."
+}

@@ -1,0 +1,26 @@
+{
+  "summary": "E2E frontend + backend integrasi Menu Builder (Laravel 12 + Inertia + Vue 3) diuji end-to-end dengan akun qatest/qatest123 pada preview URL. Semua alur yang diminta LULUS: (1) Login sukses; (2) Sidebar terbaca dari DB — area Member Area punya 5 baris (Dashboard, grup Level 1 berisi grup Level 2 → Level 3 & tautan Level 2 Tautan) dan Administrator punya 6 baris (Perizinan/Peranan/Pengguna/Penampilan/Menu Sidebar/Audit Trail). Chevron memutar (rotate-90) saat grup dibuka, area-switcher berfungsi (area-option-member/-admin). (3) Halaman /menus [menus-page] menampilkan dua kartu: badge 'Tingkat 1/2/3' dan 'Grup' untuk item tanpa alamat, jumlah baris 5/6. (4) Tambah menu 'QA Contoh' → /contoh-qa: DB persist, tampil di sidebar (nav-contoh-qa) setelah reload. (5) Ubah menu + validasi: label kosong menampilkan 'Label menu wajib diisi.' dan alamat 'abc' ditolak dengan pesan 'Alamat harus dimulai dengan \"/\" tanpa spasi, mis. /users.'; simpan valid mengubah label. (6) Indent/outdent: badge Tingkat berubah, DIBATASI pada Tingkat 3 walau ditekan 3x. (7) Nonaktifkan menu (menu-form-active switch off): badge 'Nonaktif' muncul di /menus dan item HILANG dari sidebar. (8) Hapus menu dengan konfirmasi Hapus → item hilang setelah reload. (9) Regresi /users /roles /permissions /appearance /audit-trail / semua status 200 tanpa console error. (10) Mobile 390x844: overflow horizontal = 0, tombol sidebar-trigger membuka Sheet sidebar. 0 error konsol sepanjang seluruh alur.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Menus.vue create/update", "issue": "Setelah 'Simpan' pada Tambah Menu, kartu daftar kadang belum menampilkan item baru sampai halaman di-reload (rows di-init sekali dari props.areas di setup, tidak ada watch(() => props.areas)). Toast 'Sukses' muncul dan data tersimpan di DB, tetapi UX terasa stale — pengguna mungkin mengira gagal. Setelah reload/menuju halaman lain, item pasti muncul. Saran: tambahkan watch untuk sync rows dari props.areas setelah setiap sukses, atau pakai preserveState:false eksplisit.", "affected_selectors": ["[data-testid=\"menu-list-member\"]", "[data-testid=\"menu-list-admin\"]"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Sinkronisasi ref 'rows' di resources/js/pages/Menus.vue dengan props.areas (watch mendalam) supaya kartu langsung update setelah create/update/delete tanpa reload manual."
+  ],
+  "critical_code_review_comments": [
+    "Menus.vue: 'rows' hanya di-hydrate satu kali di setup. Setelah Inertia back()+redirect, komponen tidak selalu di-remount → daftar bisa stale. Tambahkan watch(() => props.areas, (val) => rows.value = val.reduce(...), { deep: true }) atau reset ulang di onSuccess."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (diuji lewat integrasi UI; semua rute 200)", "frontend": "100% flow yang diminta lulus (drag reorder tidak disimulasikan penuh; atribut draggable dan endpoint reorder terbukti bekerja via indent/outdent + reload)"},
+  "seed_data_creation": "Menu uji 'QA Contoh' (/contoh-qa) di area member dibuat lalu dihapus kembali. Tidak menyentuh item bawaan (Dashboard/Perizinan/Peranan/Pengguna/Penampilan/Menu Sidebar/Audit Trail/Level 1/Level 2/Level 3/Level 2 Tautan).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "qatest / qatest123 (per /app/memory/test_credentials.md).",
+  "context_for_next_testing_agent": "Menu Builder lulus semua alur. Satu-satunya catatan: rows di Menus.vue tidak reaktif terhadap props.areas — perbaiki dengan watcher agar UI langsung refresh setelah create/update/delete. Drag reorder tidak disimulasikan HTML5 dragstart penuh (kompleks di Playwright), namun endpoint PUT /menus/reorder terbukti bekerja karena indent/outdent memanggilnya dan urutan/parent tetap konsisten setelah reload.",
+  "rca_of_the_issue": "Pada Menus.vue: `const rows = ref(props.areas.reduce(...))` hanya dieksekusi saat setup. Inertia useForm.post default preserveState:false hanya untuk error state; ketika create sukses props.areas terbarui tetapi rows tidak di-refresh otomatis, sehingga daftar tampak stale sampai user memicu remount (navigate/reload)."
+}

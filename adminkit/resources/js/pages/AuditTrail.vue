@@ -112,14 +112,14 @@ const fmt = (iso) =>
                     <DatePicker
                         :model-value="query.date_from"
                         placeholder="Dari Tanggal"
-                        class="h-[var(--ctl-h-sm)] w-[150px] text-xs"
+                        class="w-[150px]"
                         data-testid="activity-date-from"
                         @update:model-value="onFilter('date_from', $event)"
                     />
                     <DatePicker
                         :model-value="query.date_to"
                         placeholder="Sampai Tanggal"
-                        class="h-[var(--ctl-h-sm)] w-[150px] text-xs"
+                        class="w-[150px]"
                         data-testid="activity-date-to"
                         @update:model-value="onFilter('date_to', $event)"
                     />

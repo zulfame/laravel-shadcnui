@@ -117,6 +117,8 @@ Starter kit panel admin **compact UI** yang siap dikembangkan: Laravel 12 + Vue 
 
 **UI**
 - Dark mode, sidebar dapat di-collapse (mode ikon), breadcrumb otomatis, toast, dialog, combobox dengan pencarian, date picker.
+- **Tinggi kontrol seragam**: seluruh Input, Combobox, DatePicker, FileInput, dan Button (`sm`/`default`/`icon`) memakai token `--ctl-h` (2rem/32px) sehingga sejajar di dialog maupun toolbar tabel. Jangan meng-override tinggi kontrol secara lokal.
+- **Menu sidebar dari basis data**: modul **Menu Sidebar** (`/menus`) menyusun menu dengan drag & drop hingga **3 tingkat** (grup → menu → submenu); atur label, alamat, ikon (registry lucide), izin, area (Member/Administrator), dan status aktif. Item tanpa alamat otomatis menjadi grup yang dapat dibuka-tutup; grup yang seluruh anaknya tidak berizin otomatis disembunyikan.
 - Sidebar dua area: **Member Area** (Dashboard) dan **Administrator** (Perizinan → Peranan → Pengguna → Penampilan → Audit Trail). Profil diakses lewat dropdown akun di footer sidebar.
 - **Halaman error bertema design system** (`pages/Error.vue`) untuk 401/403/404/419/429/500 — dua kolom: narasi + tindakan di kiri, panel kode status (angka mono besar, arsir diagonal, animasi masuk bertahap) dan **Pintasan Cepat** ke modul utama di kanan; header brand + toggle tema, footer `HTTP <status>`.
 - **Halaman pemeliharaan** (`resources/views/errors/503.blade.php`) tampil saat `php artisan down` — mandiri tanpa Vite/DB, senada tema (kisi latar, panel 503, bilah progres bergerak, daftar "Yang Sedang Kami Lakukan"), mendukung mode gelap otomatis, auto-refresh sesuai `--retry`.

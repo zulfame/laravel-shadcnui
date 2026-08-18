@@ -1,0 +1,58 @@
+import {
+    Activity,
+    Bell,
+    Building2,
+    ClipboardList,
+    Cog,
+    Database,
+    FileText,
+    Folder,
+    FolderOpen,
+    Gauge,
+    KeyRound,
+    LayoutDashboard,
+    ListTree,
+    Mail,
+    Package,
+    Palette,
+    ScrollText,
+    Settings,
+    ShieldCheck,
+    ShoppingCart,
+    Store,
+    Tag,
+    Users2,
+    Wallet,
+} from 'lucide-vue-next';
+
+/** Ikon yang tersedia untuk item menu (nama disimpan di kolom `icon`). */
+export const MENU_ICONS = {
+    LayoutDashboard,
+    Users2,
+    ShieldCheck,
+    KeyRound,
+    Palette,
+    ScrollText,
+    ListTree,
+    Folder,
+    FolderOpen,
+    FileText,
+    Settings,
+    Cog,
+    Gauge,
+    Activity,
+    Bell,
+    Mail,
+    Database,
+    ClipboardList,
+    Package,
+    ShoppingCart,
+    Store,
+    Tag,
+    Wallet,
+    Building2,
+};
+
+export const MENU_ICON_OPTIONS = Object.keys(MENU_ICONS).map((name) => ({ value: name, label: name }));
+
+export const iconOf = (name) => MENU_ICONS[name] ?? Folder;

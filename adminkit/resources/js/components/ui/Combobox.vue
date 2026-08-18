@@ -62,7 +62,7 @@ watch(open, async (isOpen) => {
                     v-bind="$attrs"
                     :class="
                         cn(
-                            'flex h-[var(--ctl-h-sm)] w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-2.5 text-xs shadow-sm transition-colors hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+                            'flex h-[var(--ctl-h)] w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm transition-colors hover:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
                             props.class,
                         )
                     "
@@ -88,7 +88,7 @@ watch(open, async (isOpen) => {
                         v-model="term"
                         type="text"
                         :placeholder="props.searchPlaceholder"
-                        class="h-6 w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+                        class="h-6 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                         data-testid="combobox-search"
                     />
                 </div>
@@ -97,7 +97,7 @@ watch(open, async (isOpen) => {
                         v-for="option in filtered"
                         :key="option.value"
                         type="button"
-                        class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent hover:text-accent-foreground"
+                        class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
                         :data-testid="`combobox-option-${option.value}`"
                         @click="choose(option)"
                     >
@@ -108,7 +108,7 @@ watch(open, async (isOpen) => {
                         />
                         <span class="truncate">{{ option.label }}</span>
                     </button>
-                    <p v-if="filtered.length === 0" class="px-2 py-3 text-center text-xs text-muted-foreground">
+                    <p v-if="filtered.length === 0" class="px-2 py-3 text-center text-sm text-muted-foreground">
                         {{ props.emptyText }}
                     </p>
                 </div>

@@ -21,6 +21,7 @@ class Modules
         'roles' => ['label' => 'Kelola Peranan', 'abilities' => ['view', 'manage']],
         'appearance' => ['label' => 'Penampilan', 'abilities' => ['view', 'manage']],
         'activity' => ['label' => 'Audit Trail', 'abilities' => ['view', 'manage']],
+        'menus' => ['label' => 'Menu Sidebar', 'abilities' => ['view', 'manage']],
         'profile' => ['label' => 'Profil Pengguna', 'abilities' => ['view']],
     ];
 

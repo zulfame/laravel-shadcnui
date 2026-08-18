@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\RoleName;
+use App\Models\Menu;
 use App\Models\Setting;
 use App\Models\User;
 use App\Support\Modules;
@@ -51,6 +52,40 @@ class DatabaseSeeder extends Seeder
         'timezone' => 'Asia/Jakarta',
     ];
 
+    /** Menu sidebar bawaan: [area, label, href, icon, permission, anak-anak]. */
+    private const MENUS = [
+        ['member', 'Dashboard', '/', 'LayoutDashboard', 'dashboard.view', []],
+        ['member', 'Level 1', null, 'Folder', null, [
+            ['Level 2', null, 'FolderOpen', null, [
+                ['Level 3', '/level-3', 'FileText', null, []],
+            ]],
+            ['Level 2 Tautan', '/level-2', 'FileText', null, []],
+        ]],
+        ['admin', 'Perizinan', '/permissions', 'KeyRound', 'permissions.view', []],
+        ['admin', 'Peranan', '/roles', 'ShieldCheck', 'roles.view', []],
+        ['admin', 'Pengguna', '/users', 'Users2', 'users.view', []],
+        ['admin', 'Penampilan', '/appearance', 'Palette', 'appearance.view', []],
+        ['admin', 'Menu Sidebar', '/menus', 'ListTree', 'menus.view', []],
+        ['admin', 'Audit Trail', '/audit-trail', 'ScrollText', 'activity.view', []],
+    ];
+
+    /** Idempoten: item dikenali dari kombinasi area + label + induk. */
+    private function seedMenus(array $items, string $area, ?int $parentId = null): void
+    {
+        foreach ($items as $index => $item) {
+            [$label, $href, $icon, $permission, $children] = $parentId === null
+                ? [$item[1], $item[2], $item[3], $item[4], $item[5]]
+                : $item;
+
+            $menu = Menu::updateOrCreate(
+                ['area' => $area, 'parent_id' => $parentId, 'label' => $label],
+                ['href' => $href, 'icon' => $icon, 'permission' => $permission, 'sort' => $index, 'is_active' => true],
+            );
+
+            $this->seedMenus($children, $area, $menu->id);
+        }
+    }
+
     public function run(): void
     {
         foreach (Modules::permissions() as $permission) {
@@ -83,6 +118,10 @@ class DatabaseSeeder extends Seeder
 
         foreach (self::SETTINGS as $key => $value) {
             Setting::updateOrCreate(['key' => $key], ['value' => $value]);
+        }
+
+        foreach (array_keys(Menu::AREAS) as $area) {
+            $this->seedMenus(array_values(array_filter(self::MENUS, fn (array $m) => $m[0] === $area)), $area);
         }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();

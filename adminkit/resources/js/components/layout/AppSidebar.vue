@@ -21,7 +21,8 @@ import SidebarMenu from '@/components/ui/sidebar/SidebarMenu.vue';
 import SidebarMenuButton from '@/components/ui/sidebar/SidebarMenuButton.vue';
 import SidebarMenuItem from '@/components/ui/sidebar/SidebarMenuItem.vue';
 import SidebarRail from '@/components/ui/sidebar/SidebarRail.vue';
-import { areaIdOf, DEFAULT_AREA_ID, firstRouteOf, getArea, getAreas } from '@/config/navigation';
+import MenuNode from '@/components/layout/MenuNode.vue';
+import { areaIdOf, AREA_META, DEFAULT_AREA_ID } from '@/config/navigation';
 import { initialsOf } from '@/lib/utils';
 
 const AREA_KEY = 'adminkit.activeArea';
@@ -30,12 +31,28 @@ const page = usePage();
 const auth = computed(() => page.props.auth?.user ?? {});
 const branding = computed(() => page.props.branding ?? {});
 const isAdmin = computed(() => Boolean(auth.value.is_admin));
-const permissions = computed(() => auth.value.permissions ?? []);
-const can = (perm) => permissions.value.includes(perm);
 
-const areas = computed(() => getAreas(can));
+// Menu dirender dari basis data (modul Menu Sidebar), sudah tersaring per izin.
+const areas = computed(() =>
+    (page.props.menu ?? [])
+        .filter((area) => area.items.length)
+        .map((area) => ({ ...area, ...(AREA_META[area.id] ?? {}) })),
+);
+
 const areaId = ref(DEFAULT_AREA_ID);
-const activeArea = computed(() => getArea(areaId.value, can));
+const activeArea = computed(
+    () => areas.value.find((area) => area.id === areaId.value) ?? areas.value[0],
+);
+
+const firstHrefOf = (items = []) => {
+    for (const item of items) {
+        if (item.href) return item.href;
+        const nested = firstHrefOf(item.children);
+        if (nested) return nested;
+    }
+
+    return null;
+};
 
 const pathname = computed(() => page.url.split('?')[0]);
 
@@ -60,12 +77,9 @@ const changeArea = (nextId) => {
     } catch (e) {
         /* penyimpanan tidak tersedia */
     }
-    const target = firstRouteOf(getArea(nextId, can));
+    const target = firstHrefOf(areas.value.find((area) => area.id === nextId)?.items);
     if (target && target !== pathname.value) router.visit(target);
 };
-
-const isActive = (href, end) =>
-    end ? pathname.value === href : pathname.value.startsWith(href);
 
 const currentUser = computed(() => ({
     name: auth.value.name || 'Pengguna',
@@ -134,22 +148,16 @@ const currentUser = computed(() => ({
         </SidebarHeader>
 
         <SidebarContent>
-            <template v-if="activeArea?.sections?.length">
-                <SidebarGroup v-for="section in activeArea.sections" :key="section.label">
-                    <SidebarGroupLabel class="uppercase tracking-wide">{{ section.label }}</SidebarGroupLabel>
+            <template v-if="activeArea?.items?.length">
+                <SidebarGroup>
+                    <SidebarGroupLabel class="uppercase tracking-wide">{{ activeArea.label }}</SidebarGroupLabel>
                     <SidebarMenu>
-                        <SidebarMenuItem v-for="item in section.items" :key="item.href">
-                            <SidebarMenuButton
-                                :as="Link"
-                                :href="item.href"
-                                :is-active="isActive(item.href, item.end)"
-                                :tooltip="item.title"
-                                :data-testid="`nav-${item.href === '/' ? 'dashboard' : item.href.slice(1)}`"
-                            >
-                                <component :is="item.icon" aria-hidden="true" />
-                                <span>{{ item.title }}</span>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
+                        <MenuNode
+                            v-for="item in activeArea.items"
+                            :key="item.id"
+                            :item="item"
+                            :pathname="pathname"
+                        />
                     </SidebarMenu>
                 </SidebarGroup>
             </template>
@@ -159,7 +167,7 @@ const currentUser = computed(() => ({
                     class="px-2 text-xs leading-relaxed text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden"
                     data-testid="area-empty-note"
                 >
-                    Menu area ini ditambahkan bertahap sesuai proses pengembangan.
+                    Belum ada menu untuk area ini. Tambahkan lewat modul Menu Sidebar.
                 </p>
             </SidebarGroup>
         </SidebarContent>

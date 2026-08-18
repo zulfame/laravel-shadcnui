@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button.vue';
 import Dialog from '@/components/ui/Dialog.vue';
 import DropdownMenuItem from '@/components/ui/DropdownMenuItem.vue';
 import DropdownMenuSeparator from '@/components/ui/DropdownMenuSeparator.vue';
+import FileInput from '@/components/ui/FileInput.vue';
 import Input from '@/components/ui/Input.vue';
 import Label from '@/components/ui/Label.vue';
 import PhoneInput from '@/components/ui/PhoneInput.vue';
@@ -172,7 +173,7 @@ const submitImport = () =>
         onSuccess: () => {
             importOpen.value = false;
             importForm.reset();
-            if (importInput.value) importInput.value.value = '';
+            importInput.value?.clear();
         },
     });
 
@@ -472,12 +473,10 @@ watch(dialogOpen, (open) => {
                     </p>
                     <div class="space-y-[var(--item-gap)]">
                         <Label for="user-import-file">Berkas Excel</Label>
-                        <input
+                        <FileInput
                             id="user-import-file"
                             ref="importInput"
-                            type="file"
                             accept=".xlsx,.xls"
-                            class="block w-full cursor-pointer rounded-md border border-input bg-transparent px-3 py-1.5 text-[13px] file:mr-3 file:rounded file:border-0 file:bg-secondary file:px-2 file:py-1 file:text-xs"
                             data-testid="user-import-file"
                             @change="onImportFile"
                         />

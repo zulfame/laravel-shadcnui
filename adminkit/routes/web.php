@@ -4,6 +4,7 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\AppearanceController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MenuController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
@@ -113,6 +114,16 @@ Route::middleware('auth')->group(function () {
         Route::put('/appearance/contact', [AppearanceController::class, 'updateContact'])->name('appearance.contact');
         Route::post('/appearance/asset/{key}', [AppearanceController::class, 'uploadAsset'])->name('appearance.asset');
         Route::delete('/appearance/asset/{key}', [AppearanceController::class, 'destroyAsset'])->name('appearance.asset.destroy');
+    });
+
+    Route::get('/menus', [MenuController::class, 'index'])
+        ->middleware('permission:menus.view')->name('menus');
+
+    Route::middleware('permission:menus.manage')->group(function () {
+        Route::post('/menus', [MenuController::class, 'store'])->name('menus.store');
+        Route::put('/menus/reorder', [MenuController::class, 'reorder'])->name('menus.reorder');
+        Route::put('/menus/{menu}', [MenuController::class, 'update'])->name('menus.update');
+        Route::delete('/menus/{menu}', [MenuController::class, 'destroy'])->name('menus.destroy');
     });
 
 });

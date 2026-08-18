@@ -225,7 +225,7 @@ const pageSizeOptions = [
                     <Input
                         :model-value="localSearch"
                         :placeholder="ACTION.search"
-                        class="h-[var(--ctl-h-sm)] pl-8 text-xs"
+                        class="pl-8"
                         :data-testid="`${props.testid}-search`"
                         @update:model-value="setSearch"
                     />
@@ -385,7 +385,7 @@ const pageSizeOptions = [
                         <Button
                             variant="outline"
                             size="icon"
-                            class="size-[var(--ctl-h-sm)]"
+                            class="size-[var(--ctl-h)]"
                             aria-label="Halaman sebelumnya"
                             :disabled="pageIndex === 0"
                             :data-testid="`${props.testid}-prev`"
@@ -396,7 +396,7 @@ const pageSizeOptions = [
                         <Button
                             variant="outline"
                             size="icon"
-                            class="size-[var(--ctl-h-sm)]"
+                            class="size-[var(--ctl-h)]"
                             aria-label="Halaman berikutnya"
                             :disabled="pageIndex + 1 >= pageCount"
                             :data-testid="`${props.testid}-next`"

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Enums\RoleName;
+use App\Models\Menu;
 use App\Models\Notification;
 use App\Support\Branding;
 use App\Support\FileStorage;
@@ -45,6 +46,7 @@ class HandleInertiaRequests extends Middleware
                     $user->notifications()->whereNull('read_at')->limit(10)->get()
                 ),
             ] : ['unread' => 0, 'items' => [], 'unread_items' => []],
+            'menu' => fn () => Menu::treeFor($user),
             'branding' => Branding::values(),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
