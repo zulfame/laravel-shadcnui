@@ -54,6 +54,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('permission:users.manage')->group(function () {
+        Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::post('/users/bulk', [UserController::class, 'bulk'])->name('users.bulk');
         Route::post('/users/import', [UserController::class, 'import'])->name('users.import');
@@ -61,8 +62,13 @@ Route::middleware('auth')->group(function () {
             ->name('users.welcome-email');
         Route::get('/users/import/template', [UserController::class, 'importTemplate'])
             ->name('users.import.template');
+        Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+        Route::post('/users/{user}/restore', [UserController::class, 'restore'])
+            ->withTrashed()->name('users.restore');
+        Route::delete('/users/{user}/force', [UserController::class, 'forceDestroy'])
+            ->withTrashed()->name('users.force-destroy');
     });
 
     Route::middleware('permission:permissions.view')->group(function () {

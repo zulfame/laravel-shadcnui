@@ -232,7 +232,51 @@ const removeAvatar = () => avatarForm.delete('/profile/avatar', { preserveScroll
                                     {{ profile.errors.phone }}
                                 </p>
                             </div>
+                            <div class="space-y-[var(--item-gap)]">
+                                <Label for="p-office">Kantor</Label>
+                                <Input
+                                    id="p-office"
+                                    :model-value="user.office ?? '—'"
+                                    readonly
+                                    disabled
+                                    data-testid="profile-office"
+                                />
+                            </div>
+                            <div class="space-y-[var(--item-gap)]">
+                                <Label for="p-alias">Alias</Label>
+                                <Input
+                                    id="p-alias"
+                                    :model-value="user.alias ?? '—'"
+                                    readonly
+                                    disabled
+                                    data-testid="profile-alias"
+                                />
+                            </div>
+                            <div class="space-y-[var(--item-gap)]">
+                                <Label for="p-mso">Kode MSO</Label>
+                                <Input
+                                    id="p-mso"
+                                    :model-value="user.mso_code ?? '—'"
+                                    readonly
+                                    disabled
+                                    data-testid="profile-mso-code"
+                                />
+                            </div>
+                            <div class="space-y-[var(--item-gap)]">
+                                <Label for="p-collector">Kode Kolektor</Label>
+                                <Input
+                                    id="p-collector"
+                                    :model-value="user.collector_code ?? '—'"
+                                    readonly
+                                    disabled
+                                    data-testid="profile-collector-code"
+                                />
+                            </div>
                         </div>
+
+                        <p class="text-xs text-muted-foreground">
+                            Kantor, alias, kode MSO, dan kode kolektor hanya dapat diubah oleh pengelola pengguna.
+                        </p>
                     </CardContent>
                     <CardFooter class="justify-end">
                         <Button size="sm" type="submit" :disabled="profile.processing" data-testid="profile-save">

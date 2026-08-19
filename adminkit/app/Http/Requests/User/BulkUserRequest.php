@@ -9,7 +9,7 @@ class BulkUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'action' => ['required', 'in:delete,activate,deactivate'],
+            'action' => ['required', 'in:archive,restore,force-delete'],
             'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['integer', 'exists:users,id'],
         ];

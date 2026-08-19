@@ -336,3 +336,14 @@ Atas permintaan user: **semua style badge kustom DIHAPUS**.
 - **env.example**: blok SMTP (MAIL_SCHEME=smtp catatan penting, host/port) dan blok S3 (region/endpoint/bucket/AWS_PATH + `FILESYSTEM_DISK=s3`) ditambahkan dengan **nilai rahasia dikosongkan** agar aman dipush ke GitHub.
 - `TELESCOPE_ALLOWED_EMAILS` di `.env` diperbarui ke `sa@bprbangunarta.co.id` (akun lama sudah dihapus user). README bagian Seeder ditulis ulang; `/app/memory/test_credentials.md` diperbarui.
 - Catatan lingkungan: pod restart menghapus PHP lagi → dipulihkan dengan `/app/memory/restore_php.sh` (recurrence ke-4).
+
+## Selesai (2026-06-19, skema users baru + CRUD pengguna berbasis halaman)
+Persiapan sistem baru (branch baru), berdasarkan migrasi `users` yang diubah user:
+- **Skema users**: name, username(unik), email(unik, nullable), email_verified_at, **phone(16, unik — dikembalikan atas permintaan user)**, **role** (denormalisasi nama peranan Spatie, diisi otomatis lewat `User::setRoleName()`), **office**, **alias(3, unik)**, **mso_code(4, unik)**, **collector_code(3, unik)**, avatar, password, remember_token, last_login_at, timestamps, **softDeletes**. `is_active` DIHAPUS → status memakai SoftDelete (Aktif / Terarsip).
+- Migrasi lama `2026_08_15_030000_drop_office_from_users_table` & `2026_08_15_040000_relax_user_identity_columns` DIHAPUS (migrasi dasar jadi sumber kebenaran). DB sudah `migrate:fresh --seed`.
+- **Kelola Pengguna**: Tambah/Ubah kini **halaman** `/users/create` & `/users/{id}/edit` (`pages/UserForm.vue`, 3 kartu: identitas, Penempatan & Kode, Keamanan) — bukan modal lagi. Filter status Aktif/Terarsip/Semua, aksi baris Arsipkan/Pulihkan/Hapus Permanen, aksi massal ketiganya (akun sendiri selalu dilewati, hapus permanen hanya untuk yang terarsip). Ekspor XLSX 11 kolom, template impor 10 kolom. Kode pegawai otomatis HURUF BESAR (`Rules::code()` + validator `code()` di frontend).
+- Pengguna terarsip **tidak dapat login** (soft delete otomatis tersaring guard). `Notify`, Dashboard KPI ("N aktif · M terarsip"), factory, dan `UserSeeder` disesuaikan.
+- **Profil**: Kantor, Alias, Kode MSO, Kode Kolektor tampil read-only (hanya pengelola pengguna yang bisa mengubah); nama/username/email/telepon tetap bisa diedit.
+- Konvensi UI baru didokumentasikan: footer dengan tepat dua tombol memakai `justify-between` (Batal kiri, Simpan kanan) — diperbaiki di `UserForm.vue`; `DataTableCard` kini meneruskan `emptyDescription` ke `EmptyState`.
+- **Uji**: testing agent iterasi 31 → 26 tes backend lulus + seluruh alur frontend lulus. Bug HIGH yang ditemukan (aksi massal Hapus Permanen bisa menghapus pengguna aktif) SUDAH DIPERBAIKI dengan guard `trashed()`.
+- Sisa temuan minor (belum dikerjakan): aturan unik belum `withoutTrashed()` (pengguna terarsip masih memegang email/username/kode), email sambutan dikirim sinkron (~5s saat simpan), Combobox belum ber-`role="option"`.

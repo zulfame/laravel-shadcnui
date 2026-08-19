@@ -53,6 +53,15 @@ class Rules
         ];
     }
 
+    /** Kode pegawai berukuran tetap (alias, kode MSO, kode kolektor): huruf/angka, unik. */
+    public static function code(int $length, string $column, ?int $ignoreId = null): array
+    {
+        return [
+            'nullable', 'string', "size:{$length}", 'alpha_num',
+            Rule::unique('users', $column)->ignore($ignoreId),
+        ];
+    }
+
     public static function password(bool $required = true): array
     {
         return [$required ? 'required' : 'nullable', 'string', Password::min(8)];

@@ -48,6 +48,15 @@ export const path = (label) => (v) =>
         ? `${label} hanya boleh huruf, angka, garis bawah, tanda hubung, dan garis miring.`
         : '';
 
+/** Kode pegawai berukuran tetap: huruf/angka saja, panjang persis. */
+export const code = (n, label) => (v) => {
+    if (isBlank(v)) return '';
+    const value = String(v).trim();
+    if (!/^[A-Za-z0-9]+$/.test(value)) return `${label} hanya boleh huruf dan angka.`;
+
+    return value.length !== n ? `${label} harus tepat ${n} karakter.` : '';
+};
+
 export const sameAs = (field, label) => (v, form) =>
     !isBlank(v) && v !== form[field] ? `${label} tidak cocok.` : '';
 

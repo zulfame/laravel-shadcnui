@@ -30,7 +30,7 @@ class DashboardController extends Controller
     private function kpis(): array
     {
         $users = User::count();
-        $active = User::where('is_active', true)->count();
+        $archived = User::onlyTrashed()->count();
         $permissions = Permission::count();
         $entities = Permission::pluck('name')
             ->map(fn (string $name) => str($name)->before('.')->value())
@@ -45,7 +45,7 @@ class DashboardController extends Controller
                 'key' => 'users',
                 'label' => 'Total Pengguna',
                 'value' => number_format($users, 0, ',', '.'),
-                'hint' => "{$active} aktif · ".($users - $active).' nonaktif',
+                'hint' => "{$users} aktif · {$archived} terarsip",
             ],
             [
                 'key' => 'roles',

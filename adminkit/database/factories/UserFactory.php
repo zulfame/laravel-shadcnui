@@ -17,7 +17,7 @@ class UserFactory extends Factory
             'username' => Str::slug(Str::of($name)->explode(' ')->take(2)->implode(' '), '.').fake()->numberBetween(1, 99),
             'email' => fake()->unique()->safeEmail(),
             'phone' => '08'.fake()->numerify('##########'),
-            'is_active' => fake()->boolean(80),
+            'office' => fake()->randomElement(['Kantor Pusat', 'Kantor Cabang', 'Kantor Kas']),
             'email_verified_at' => now(),
             'password' => Hash::make('password'),
             'last_login_at' => fake()->boolean(70) ? fake()->dateTimeBetween('-30 days') : null,

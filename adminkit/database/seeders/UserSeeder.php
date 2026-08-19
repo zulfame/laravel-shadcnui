@@ -12,30 +12,31 @@ use Illuminate\Database\Seeder;
  */
 class UserSeeder extends Seeder
 {
-    /** [nama, username, email, telepon, kata sandi awal, peranan] */
+    /** [nama, username, email, telepon, kantor, kata sandi awal, peranan] */
     private const USERS = [
-        ['IT Support', 'superadmin', 'sa@bprbangunarta.co.id', null, 'SA@4dm1n', RoleName::SuperAdmin->value],
+        ['IT Support', 'superadmin', 'sa@bprbangunarta.co.id', null, 'Kantor Pusat', 'SA@4dm1n', RoleName::SuperAdmin->value],
     ];
 
     public function run(): void
     {
-        foreach (self::USERS as [$name, $username, $email, $phone, $password, $role]) {
-            $user = User::firstOrNew(['email' => $email]);
+        foreach (self::USERS as [$name, $username, $email, $phone, $office, $password, $role]) {
+            $user = User::withTrashed()->firstOrNew(['email' => $email]);
 
             $user->fill([
                 'name' => $name,
                 'username' => $username,
                 'phone' => $phone,
-                'is_active' => true,
+                'office' => $office,
                 'email_verified_at' => $user->email_verified_at ?? now(),
             ]);
+            $user->deleted_at = null;
 
             if (! $user->exists) {
                 $user->password = $password;
             }
 
             $user->save();
-            $user->syncRoles([$role]);
+            $user->setRoleName($role);
         }
     }
 }

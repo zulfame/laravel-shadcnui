@@ -17,6 +17,8 @@ const ROUTE_TRAILS = [
     [/^\/$/, ['Dashboard']],
     [/^\/profile$/, ['Profil Pengguna']],
     [/^\/users$/, ['Pengguna']],
+    [/^\/users\/create$/, ['Pengguna', 'Tambah']],
+    [/^\/users\/\d+\/edit$/, ['Pengguna', 'Ubah']],
     [/^\/permissions$/, ['Perizinan']],
     [/^\/roles$/, ['Peranan']],
     [/^\/roles\/\d+$/, ['Peranan', 'Detail']],

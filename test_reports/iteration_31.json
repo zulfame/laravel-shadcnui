@@ -1,0 +1,46 @@
+{
+  "summary": "Full backend + frontend regression of the new users schema (role/office/alias/mso_code/collector_code, SoftDeletes instead of is_active) and the new dedicated Tambah/Ubah pages. Backend: rewrote /app/backend/tests/backend_test.py as a pytest suite (26 tests, 100% pass) covering login, dashboard KPI hint, /users index columns, status filter aktif|terarsip|semua, store/update validation (alias size, non-alnum codes, short password, duplicate codes), uppercase normalisation, update keeping the old password, archive->login blocked->restore->login OK, force-delete guard, bulk archive/restore/force-delete with self-skip, export (11 headers) + import template (10 headers) verified with openpyxl, non-xlsx import rejected, profile props, and 6 regression pages. Frontend (Playwright, 1920x800): login -> Dashboard hint '1 aktif · 0 terarsip', users table columns, Tambah opens /users/create as a real page (0 dialogs, 3 cards: identitas / 'Penempatan & Kode' / 'Keamanan'), live + server validation messages, user created with lowercase codes stored UPPERCASE (verified on edit page), edit page prefilled and Kantor/Kode MSO update persisted, row archive -> confirm -> disappears from Aktif, Terarsip filter shows Terarsip badge with Pulihkan + Hapus Permanen only (Ubah hidden), restore works, force-delete works, bulk archive skips own account, bulk restore + bulk force-delete work, profile read-only fields disabled, profile save OK, all 6 regression pages load with 0 console errors. Test data fully cleaned up (only superadmin remains).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /users/bulk (action=force-delete)", "issue": "Bulk 'Hapus Permanen' permanently deletes ACTIVE (non-archived) users. Single-row forceDestroy() blocks this with 'Arsipkan pengguna terlebih dahulu...', so the bulk path bypasses the archive-first policy. Reproduced from UI: 3 active users (QA Dua/QA Lima/QA Satu) were force-deleted straight from the Aktif filter."},
+      {"endpoint": "POST /users, PUT /users/{id}", "issue": "Uniqueness rules (email/username/phone/alias/mso_code/collector_code) also match soft-deleted (Terarsip) users, so a code freed by archiving can never be reused and the error only says 'sudah ada sebelumnya' without hinting that the conflicting account is archived. Confirm this is intended."},
+      {"endpoint": "POST /users", "issue": "Mailer::welcome() runs synchronously inside the request (real SMTP); user creation took ~5s in preview. Consider queueing to keep the request fast."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "PasswordInput / Input.vue", "issue": "Value set programmatically (Playwright fill, and typically browser/password-manager autofill) does not sync into the v-model, so live validation keeps showing 'Kata Sandi minimal 8 karakter.' and Simpan silently does nothing (no POST). Typing works. Suggest also handling @change (or a watcher on the native value) in Input.vue.", "selector": "[data-testid=\"user-form-password\"]", "priority": "MEDIUM"},
+      {"component": "Users.vue bulk actions", "issue": "'Hapus Permanen' bulk button is enabled while the Aktif filter is active and permanently deletes non-archived users (see backend note). Either hide it unless the Terarsip filter is on, or make the server refuse non-trashed rows.", "selector": "[data-testid=\"users-bulk-force-delete\"]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/users (Terarsip filter, no rows)", "issues": ["Empty state shows the unfiltered copy 'Belum ada pengguna — Buat item pertama Anda untuk memulai.' instead of a filter-aware message such as 'Tidak ada pengguna terarsip'."]},
+      {"screen": "/users filter comboboxes", "issues": ["Dropdown items are not exposed with role=\"option\" (get_by_role('option') fails); a11y/testability gap in Combobox.vue."]},
+      {"screen": "/users table", "issues": ["Column header text is CSS-uppercased (NAMA LENGKAP etc.) - matches the 12px uppercase label rule, no defect; noted only because assertions must be case-insensitive."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/users_schema_results.xml"
+  ],
+  "action_items": [
+    "Decide/fix bulk force-delete on active users (guard with trashed() in UserController::bulk or hide the button outside the Terarsip filter)",
+    "Make Input.vue/PasswordInput sync programmatic value changes (autofill) so validation/submit is not silently blocked",
+    "Use a filter-aware empty state on /users when status=terarsip returns no rows",
+    "Optional: queue the welcome email so POST /users returns fast; expose role=\"option\" on Combobox items"
+  ],
+  "critical_code_review_comments": [
+    "UserController::bulk() has no trashed() check for action=force-delete while forceDestroy() does - inconsistent destructive-action policy.",
+    "Rules::code()/email()/username()/phone() use Rule::unique without withoutTrashed(), so archived users keep reserving unique codes; add ->withoutTrashed() or a clearer message if reuse should be allowed.",
+    "UserController::store() sends the welcome email synchronously inside the HTTP request (SMTP) - blocking I/O in a web request."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "100% (26/26 pytest)", "frontend": "~95% (all flows pass; 1 medium input-sync bug, 1 high-risk bulk destructive gap)"},
+  "seed_data_creation": "Created and then fully removed test users (testqa*, QA Satu/Dua/Empat/Lima). Final DB state: only sa@bprbangunarta.co.id (id 1, active). No data left behind.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "sa@bprbangunarta.co.id / SA@4dm1n (Super Admin) - valid, login works",
+  "context_for_next_testing_agent": "Backend suite lives at /app/backend/tests/backend_test.py (Laravel session + XSRF header; Inertia props parsed from the <script data-page=\"app\" type=\"application/json\"> tag, NOT a data-page attribute). pytest.ini forces -n 2 --dist loadscope; run serial with -n 0. Note: 'name' must contain letters only (personName regex), and alias/collector_code are 3 chars so unique per-test codes are required. In Playwright, login testids are login-credential-input / login-password-input / login-submit-button; status filter options are not role=option, click by text; always type (keyboard) into password fields, page.fill does not update the Vue model.",
+  "rca_of_the_issue": "Password field 'stuck form': Input.vue only emits update:modelValue on @input from user typing; when the value is set programmatically the DOM value changes but form.password keeps the old value, so useLiveValidation().validateAll() fails and form.post() is never called - the UI shows no new error, appearing as a dead Simpan button. Bulk force-delete gap: UserController::bulk() deletes User::withTrashed()->whereIn(ids) with forceDelete() and never checks trashed(), unlike forceDestroy() which requires an archived user."
+}

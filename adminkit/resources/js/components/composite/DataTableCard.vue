@@ -271,6 +271,7 @@ const pageSizeOptions = [
                     variant="first-time"
                     :icon="props.emptyIcon"
                     :title="props.emptyTitle"
+                    :description="props.emptyDescription"
                 />
                 <Table
                     v-else

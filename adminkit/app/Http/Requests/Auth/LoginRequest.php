@@ -48,6 +48,7 @@ class LoginRequest extends FormRequest
      * Kolom TIDAK ditebak dari format masukan (username numerik pernah salah
      * dianggap nomor telepon) — pengguna dicari pada ketiga kolom sekaligus,
      * lalu kata sandi diverifikasi oleh guard lewat `Auth::attempt`.
+     * Pengguna terarsip (soft deleted) otomatis tidak ditemukan.
      */
     public function authenticate(): void
     {
@@ -62,7 +63,7 @@ class LoginRequest extends FormRequest
             ->value('id');
 
         $attempted = $userId !== null && Auth::attempt(
-            ['id' => $userId, 'password' => $this->input('password'), 'is_active' => true],
+            ['id' => $userId, 'password' => $this->input('password')],
             $this->boolean('remember')
         );
 

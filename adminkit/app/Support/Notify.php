@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Auth;
  */
 class Notify
 {
-    /** Kirim ke semua pengguna aktif yang memiliki izin tertentu. */
+    /** Kirim ke semua pengguna aktif (tidak terarsip) yang memiliki izin tertentu. */
     public static function toPermission(
         string $permission,
         string $title,
@@ -25,7 +25,6 @@ class Notify
         $actor = Auth::user();
 
         $recipients = User::query()
-            ->where('is_active', true)
             ->when($actor, fn ($q) => $q->whereKeyNot($actor->getKey()))
             ->get()
             ->filter(fn (User $user) => $user->can($permission));

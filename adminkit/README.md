@@ -493,6 +493,7 @@ AWS_USE_PATH_STYLE_ENDPOINT=false
 - **Badge** memakai referensi asli shadcn/ui (`default`, `secondary`, `destructive`, `outline`) dengan padding compact — tanpa palet warna kustom.
 - **Label dan judul memakai Title Case** (mis. `Nama Pengguna`, `Kata Sandi`, `Tambah Pengguna`), bukan Sentence case.
 - **Tombol aksi utama di header/toolbar memakai kata kerja pendek** — `Tambah`, `Ekspor`, `Impor`, `Simpan` (tanpa mengulang nama entitas), sedangkan **judul dialognya lengkap** (`Tambah Menu`, `Tambah Pengguna`, `Ubah Peranan`).
+- **Footer kartu/halaman dengan tepat dua tombol memakai `justify-between`** — tombol sekunder (`Batal`) menempel di pojok kiri, aksi utama (`Simpan`) di pojok kanan. Bila hanya satu tombol, pakai `justify-end`. (Footer dialog tetap rata kanan mengikuti komponen `Dialog`.)
 - Jangan menambahkan `CardDescription` di bawah judul kartu.
 - Header dialog (`ui/Dialog.vue`): judul dan tombol tutup sejajar vertikal (`items-center`, judul `leading-6`, tombol tutup kotak `size-7`). Judul dialog memakai Title Case dan diakhiri `?` untuk konfirmasi.
 - Ikon memakai `lucide-vue-next`; jangan memakai emoji.
