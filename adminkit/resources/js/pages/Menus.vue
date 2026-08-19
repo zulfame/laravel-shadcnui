@@ -28,7 +28,7 @@ import Label from '@/components/ui/Label.vue';
 import Switch from '@/components/ui/Switch.vue';
 import ConfirmDeleteDialog from '@/components/composite/ConfirmDeleteDialog.vue';
 import EmptyState from '@/components/composite/EmptyState.vue';
-import { MENU_ICON_OPTIONS, iconOf } from '@/lib/menuIcons';
+import { iconOf, isKnownIcon } from '@/lib/menuIcons';
 
 const props = defineProps({
     areas: { type: Array, default: () => [] },
@@ -336,12 +336,34 @@ const destroy = () => {
                     </div>
                     <div class="grid gap-3 sm:grid-cols-2">
                         <div class="space-y-[var(--item-gap)]">
-                            <Label>Ikon</Label>
-                            <Combobox
-                                v-model="form.icon"
-                                :options="[{ value: '', label: 'Bawaan' }, ...MENU_ICON_OPTIONS]"
-                                data-testid="menu-form-icon"
-                            />
+                            <Label for="menu-icon">Ikon</Label>
+                            <div class="flex items-center gap-2">
+                                <span
+                                    class="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground"
+                                    data-testid="menu-form-icon-preview"
+                                >
+                                    <component :is="iconOf(form.icon)" class="size-4" aria-hidden="true" />
+                                </span>
+                                <Input
+                                    id="menu-icon"
+                                    v-model="form.icon"
+                                    placeholder="house-wifi"
+                                    autocapitalize="off"
+                                    autocomplete="off"
+                                    spellcheck="false"
+                                    data-testid="menu-form-icon"
+                                />
+                            </div>
+                            <p v-if="form.errors.icon" class="text-xs font-medium text-destructive">
+                                {{ form.errors.icon }}
+                            </p>
+                            <p
+                                v-else-if="!isKnownIcon(form.icon)"
+                                class="text-xs font-medium text-destructive"
+                                data-testid="menu-form-icon-unknown"
+                            >
+                                Ikon tidak ditemukan di Lucide.
+                            </p>
                         </div>
                         <div class="space-y-[var(--item-gap)]">
                             <Label>Izin</Label>

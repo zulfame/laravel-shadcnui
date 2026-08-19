@@ -1,58 +1,44 @@
-import {
-    Activity,
-    Bell,
-    Building2,
-    ClipboardList,
-    Cog,
-    Database,
-    FileText,
-    Folder,
-    FolderOpen,
-    Gauge,
-    KeyRound,
-    LayoutDashboard,
-    ListTree,
-    Mail,
-    Package,
-    Palette,
-    ScrollText,
-    Settings,
-    ShieldCheck,
-    ShoppingCart,
-    Store,
-    Tag,
-    Users2,
-    Wallet,
-} from 'lucide-vue-next';
+import { defineAsyncComponent } from 'vue';
+import { Folder } from 'lucide-vue-next';
 
-/** Ikon yang tersedia untuk item menu (nama disimpan di kolom `icon`). */
-export const MENU_ICONS = {
-    LayoutDashboard,
-    Users2,
-    ShieldCheck,
-    KeyRound,
-    Palette,
-    ScrollText,
-    ListTree,
-    Folder,
-    FolderOpen,
-    FileText,
-    Settings,
-    Cog,
-    Gauge,
-    Activity,
-    Bell,
-    Mail,
-    Database,
-    ClipboardList,
-    Package,
-    ShoppingCart,
-    Store,
-    Tag,
-    Wallet,
-    Building2,
+/**
+ * Ikon menu memakai nama ikon Lucide apa pun (https://lucide.dev), ditulis
+ * kebab-case (`house-wifi`) maupun PascalCase (`HouseWifi`) — alias lama seperti
+ * `Users2` juga dikenali. Setiap ikon dimuat sebagai chunk terpisah saat dipakai
+ * sehingga seluruh koleksi tersedia tanpa membengkakkan bundel utama.
+ */
+const loaders = import.meta.glob('/node_modules/lucide-vue-next/dist/esm/icons/*.js');
+
+const normalize = (value) => String(value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+const registry = new Map();
+for (const [path, loader] of Object.entries(loaders)) {
+    registry.set(normalize(path.split('/').pop().replace(/\.js$/, '')), loader);
+}
+
+// Beberapa nama lama Lucide berakhiran angka (Users2 → UsersRound).
+const ALIASES = { users2: 'usersround', user2: 'userround', shield2: 'shield' };
+
+const loaderOf = (name) => {
+    const key = normalize(name).replace(/^lucide/, '').replace(/icon$/, '');
+
+    return registry.get(key) ?? registry.get(ALIASES[key] ?? '') ?? null;
 };
 
-export const MENU_ICON_OPTIONS = Object.keys(MENU_ICONS).map((name) => ({ value: name, label: name }));
+const cache = new Map();
 
-export const iconOf = (name) => MENU_ICONS[name] ?? Folder;
+/** Komponen ikon untuk sebuah nama; `Folder` bila nama tidak dikenali. */
+export const iconOf = (name) => {
+    const loader = loaderOf(name);
+    if (!loader) return Folder;
+
+    const key = normalize(name);
+    if (!cache.has(key)) {
+        cache.set(key, defineAsyncComponent({ loader, loadingComponent: Folder }));
+    }
+
+    return cache.get(key);
+};
+
+/** Apakah nama ikon dikenali Lucide (kosong dianggap sah = ikon bawaan). */
+export const isKnownIcon = (name) => !name || Boolean(loaderOf(name));

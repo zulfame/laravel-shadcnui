@@ -19,7 +19,7 @@ class MenuSeeder extends Seeder
         'admin' => [
             ['Kelola Perizinan', '/permissions', 'KeyRound', 'permissions.view', []],
             ['Kelola Peranan', '/roles', 'ShieldCheck', 'roles.view', []],
-            ['Kelola Pengguna', '/users', 'Users2', 'users.view', []],
+            ['Kelola Pengguna', '/users', 'UsersRound', 'users.view', []],
             ['Penampilan UI', '/appearance', 'Palette', 'appearance.view', []],
             ['Menu Navigasi', '/menus', 'ListTree', 'menus.view', []],
             ['Object Storage', '/object-storage', 'Database', 'storage.view', []],
