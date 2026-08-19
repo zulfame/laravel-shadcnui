@@ -210,7 +210,7 @@ const destroy = () => {
                         </Badge>
                     </CardTitle>
                     <Button size="sm" :data-testid="`menu-add-${area.id}`" @click="openCreate(area.id)">
-                        <Plus class="size-4" /> Tambah Menu
+                        <Plus class="size-4" /> Tambah
                     </Button>
                 </CardHeader>
                 <CardContent class="p-0">
@@ -302,7 +302,7 @@ const destroy = () => {
 
             <Dialog
                 v-model:open="dialogOpen"
-                :title="editing ? 'Ubah Menu' : 'Tambah Menu'"
+                :title="editing ? 'Ubah Menu' : 'Tambah'"
                 class="max-w-lg"
             >
                 <form class="space-y-3" @submit.prevent="submit">

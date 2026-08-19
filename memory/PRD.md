@@ -329,3 +329,10 @@ Atas permintaan user: **semua style badge kustom DIHAPUS**.
 - Override lokal dibersihkan: 7 label di `pages/Profile.vue`, `pages/RoleDetail.vue` ("Pilih Semua"), 2 label di `pages/auth/Login.vue`; `<label>` mentah di `ComponentGallery.vue` diganti komponen `Label`.
 - Pengecualian tunggal: teks pendamping checkbox berbentuk kalimat ("Ingat saya", "Kirim ringkasan mingguan") memakai `normal-case tracking-normal font-normal`.
 - Dokumentasi README diperbarui (bagian **UI** + daftar token desain). Verifikasi via screenshot: Login, Profil, dialog Tambah Pengguna, Penampilan — konsisten 12px uppercase.
+
+## Selesai (2026-06-19, seeder modular + env.example)
+- **Seeder dipecah per domain** (`database/seeders/`): `PermissionSeeder` (16 izin dari `Modules::MAP`), `RoleSeeder` (Super Admin sinkron semua izin + Guest + 43 peranan struktur organisasi BPR), `UserSeeder` (IT Support / superadmin / sa@bprbangunarta.co.id, Super Admin), `SettingSeeder` (branding CODEX + SEO/OG + kontak), `MenuSeeder` (Dashboard + 7 menu Administrator dengan label baru: Kelola Perizinan/Peranan/Pengguna, Penampilan UI, Menu Navigasi, Object Storage, Audit Trail Log). `DatabaseSeeder` hanya memanggil kelima seeder.
+- Sifat: idempoten; **kata sandi hanya disetel saat akun dibuat** (`firstOrNew`) dan **izin peranan tidak ditimpa** bila sudah ada → seeding ulang tidak merusak data hidup. Diuji: `db:seed` pada DB aktif (data utuh, kata sandi valid) + `migrate:fresh --seed` pada DB sementara (1 user/45 peranan/16 izin/8 menu/24 setelan, login Super Admin valid).
+- **env.example**: blok SMTP (MAIL_SCHEME=smtp catatan penting, host/port) dan blok S3 (region/endpoint/bucket/AWS_PATH + `FILESYSTEM_DISK=s3`) ditambahkan dengan **nilai rahasia dikosongkan** agar aman dipush ke GitHub.
+- `TELESCOPE_ALLOWED_EMAILS` di `.env` diperbarui ke `sa@bprbangunarta.co.id` (akun lama sudah dihapus user). README bagian Seeder ditulis ulang; `/app/memory/test_credentials.md` diperbarui.
+- Catatan lingkungan: pod restart menghapus PHP lagi → dipulihkan dengan `/app/memory/restore_php.sh` (recurrence ke-4).

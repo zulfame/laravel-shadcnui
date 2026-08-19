@@ -171,11 +171,28 @@ TELESCOPE_ENABLED=true
 TELESCOPE_ALLOWED_EMAILS=email@anda.com
 ```
 
-`database/seeders/DatabaseSeeder.php` adalah **cetakan data awal proyek** — cerminan data yang sedang dipakai: 1 pengguna Super Admin, peranan `Super Admin` + `Guest`, 12 izin dari `Modules::MAP`, dan seluruh setelan branding/SEO. Tidak ada data contoh/factory yang dibuat.
+### Seeder (data awal)
 
-- Idempoten: `php artisan db:seed` aman diulang (`updateOrCreate`/`findOrCreate`), tidak menghapus data lain.
-- Kata sandi Super Admin disimpan sebagai **hash apa adanya** sehingga seeding ulang tidak mengubah kredensial yang sedang dipakai. **Ganti kata sandi setelah instalasi** dan perbarui hash di seeder bila ingin cetakan barunya ikut berubah.
-- Perubahan setelan (branding/SEO/urutan entitas) yang ingin dijadikan bawaan proyek cukup disalin ke konstanta `SETTINGS` pada seeder.
+`DatabaseSeeder` hanya memanggil **seeder terpisah per domain** supaya mudah diubah dan bisa dijalankan sendiri-sendiri:
+
+| Seeder | Isi |
+|---|---|
+| `PermissionSeeder` | 16 izin (`view`/`manage` per entitas) diturunkan dari `App\Support\Modules::MAP` |
+| `RoleSeeder` | `Super Admin` (selalu sinkron dengan SELURUH izin) + `Guest` + 43 peranan struktur organisasi (tanpa izin) |
+| `UserSeeder` | Akun bawaan `IT Support` / `superadmin` / `sa@bprbangunarta.co.id` (peranan Super Admin) |
+| `SettingSeeder` | Identitas merek CODEX, SEO/OG, kontak, zona waktu, urutan entitas izin |
+| `MenuSeeder` | Menu sidebar: `Dashboard` (Member) + 7 menu Administrator |
+
+```bash
+php artisan db:seed                          # semua seeder (idempoten)
+php artisan db:seed --class=MenuSeeder       # hanya satu domain
+php artisan migrate:fresh --seed --force     # instalasi bersih
+```
+
+- **Idempoten**: `updateOrCreate`/`findOrCreate`, tidak menghapus data lain.
+- **Kata sandi hanya disetel saat akun dibuat** (`firstOrNew`), jadi seeding ulang tidak menimpa kata sandi yang sedang dipakai. Ganti kata sandi bawaan setelah instalasi.
+- **Izin peranan tambahan tidak ditimpa** bila peranan sudah punya izin — aman diubah dari modul Peranan.
+- Ingin cetakan baru? Salin data yang sudah Anda atur di aplikasi ke konstanta di seeder terkait (`ROLES`, `USERS`, `SETTINGS`, `MENUS`).
 
 ---
 
@@ -185,7 +202,7 @@ TELESCOPE_ALLOWED_EMAILS=email@anda.com
 yarn dev                 # Vite dev server (HMR)
 yarn build               # kompilasi aset produksi — WAJIB setelah mengubah .vue/.css bila tidak memakai yarn dev
 php artisan migrate      # migrasi
-php artisan db:seed      # seeding ulang (idempoten)
+php artisan db:seed      # seeding ulang (idempoten, atau --class=NamaSeeder)
 php artisan cache:clear  # WAJIB setelah mengubah tabel settings langsung dari DB (branding di-cache)
 ./vendor/bin/pint        # format kode PHP
 ```
