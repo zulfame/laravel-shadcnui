@@ -302,7 +302,7 @@ const destroy = () => {
 
             <Dialog
                 v-model:open="dialogOpen"
-                :title="editing ? 'Ubah Menu' : 'Tambah'"
+                :title="editing ? 'Ubah Menu' : 'Tambah Menu'"
                 class="max-w-lg"
             >
                 <form class="space-y-3" @submit.prevent="submit">
