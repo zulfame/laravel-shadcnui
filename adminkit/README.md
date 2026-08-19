@@ -492,6 +492,7 @@ AWS_USE_PATH_STYLE_ENDPOINT=false
 - Token warna, densitas, dan tipografi ada di `resources/css/app.css` (`--ctl-h`, `--field-gap`, `--item-gap`, `--label-size`, `--label-tracking`, `--label-weight`, `.form-dense`, `.tbl-density`).
 - **Badge** memakai referensi asli shadcn/ui (`default`, `secondary`, `destructive`, `outline`) dengan padding compact — tanpa palet warna kustom.
 - **Label dan judul memakai Title Case** (mis. `Nama Pengguna`, `Kata Sandi`, `Tambah Pengguna`), bukan Sentence case.
+- **Tombol aksi utama di header/toolbar memakai kata kerja pendek** — `Tambah`, `Ekspor`, `Impor`, `Simpan` (tanpa mengulang nama entitas), sedangkan **judul dialognya lengkap** (`Tambah Menu`, `Tambah Pengguna`, `Ubah Peranan`).
 - Jangan menambahkan `CardDescription` di bawah judul kartu.
 - Header dialog (`ui/Dialog.vue`): judul dan tombol tutup sejajar vertikal (`items-center`, judul `leading-6`, tombol tutup kotak `size-7`). Judul dialog memakai Title Case dan diakhiri `?` untuk konfirmasi.
 - Ikon memakai `lucide-vue-next`; jangan memakai emoji.
